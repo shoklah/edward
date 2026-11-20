@@ -92,7 +92,7 @@ compares more reliably than a calibrated estimate.
   week is marked.
 - **check:real**: a `usage:` line compares, per week, the runs-only estimate sums (the same helper over the week's
   runs) with `totals.weeks`' `all_pct`, `fable_pct` (to 0.01 points, a null read as 0 on both sides) and
-  `pct_unknown`, a count only. Its `work:` line compares `all_pct` instead of cost, since cost leaves the Work
+  `pct_unknown`, naming the differing weeks as the `weeks:` line does. Its `work:` line compares `all_pct` instead of cost, since cost leaves the Work
   responses. Its week cost and points comparisons stay (the server keeps those sums; the page stops showing them).
 
 ### Screens
@@ -118,7 +118,8 @@ unknown one `Unknown`'s dash. Prose, tiles and facts add "%".
 - **Borrowed marker**: a week row whose rates for a limit were borrowed shows, before that limit's value, a muted
   lucide `History` icon (`aria-hidden`) inside a focusable tooltip trigger named, and with the tooltip,
   "Rates borrowed from the week of <week>"; the numbers stay right-aligned. Text, never colour alone.
-- **Not-estimated marker** (Work's goal sections only, where no count fits): a muted lucide `CircleAlert` icon
+- **Not-estimated marker** (Work's goal sections only, where no count fits): a lucide `CircleAlert` icon in primary
+  ink (the row sits on the backdrop)
   (`aria-hidden`) before the total, inside a focusable tooltip trigger named, and with the tooltip, "N units not
   estimated". Everywhere else the count is written.
 - **No other marker**: the current week's estimates move as its rates settle and show as they are; a unit from a
