@@ -87,8 +87,8 @@ compares more reliably than a calibrated estimate.
   total on Work shows the all-models sum, and when its count isn't 0 a not-estimated marker (below), since the row has
   no room for the written count; its page writes the count.
 - **The weekly calibration**: the Weeks view reads `totals.usage` through `reporterTotals` and returns it with
-  `usageSource: 'reporter'`; each week row also says, per limit, the week its rates were borrowed from (null for its
-  own), taken from the same rows. With no `totals.usage` (an older export), the section shows its empty line and no
+  `usageSource: 'reporter'`; the page finds, per limit, the week a row's rates were borrowed from by looking the week
+  up in those rows (no row field carries it). With no `totals.usage` (an older export), the section shows its empty line and no
   week is marked.
 - **check:real**: a `usage:` line compares, per week, the runs-only estimate sums (the same helper over the week's
   runs) with `totals.weeks`' `all_pct`, `fable_pct` (to 0.01 points, a null read as 0 on both sides) and
