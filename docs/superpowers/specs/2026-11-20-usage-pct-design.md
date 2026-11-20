@@ -82,8 +82,10 @@ compares more reliably than a calibrated estimate.
   value.
 - **A change, a goal, a session row, a run row**: the Work views (`views/work.ts`, `sessionRow` in
   `views/sessions.ts`, `runFacts`) carry `allPct`, `fablePct` and, for totals, `notEstimated`, in place of `cost`.
-  A goal section's totals on Work show the all-models sum only (no room for a count in that row); its page shows the
-  count.
+  A session's estimates are its own part only (its transcript's rows outside every run window, as its cost is today);
+  its held runs carry the rest and are listed in its opened row, so no total counts anything twice. A goal section's
+  total on Work shows the all-models sum, and when its count isn't 0 a not-estimated marker (below), since the row has
+  no room for the written count; its page writes the count.
 - **The weekly calibration**: the Weeks view reads `totals.usage` through `reporterTotals` and returns it with
   `usageSource: 'reporter'`; each week row also says, per limit, the week its rates were borrowed from (null for its
   own), taken from the same rows. With no `totals.usage` (an older export), the section shows its empty line and no
@@ -104,7 +106,7 @@ unknown one `Unknown`'s dash. Prose, tiles and facts add "%".
 | Runs view (`/work?view=runs`) | "All models (%)" column | "Fable (%)" first fact of the opened row | cost column |
 | Sessions view and a change's or goal's sessions (`SessionsByWork`) | "All models (%)" column | "Fable (%)" first fact | cost column |
 | Changes table | "All models (%)" column | "Fable (%)", "Not estimated" (left out at 0) | cost column |
-| Work's goal sections | all-models sum | the goal's page | cost total |
+| Work's goal sections | all-models sum, with the not-estimated marker when its count isn't 0 | the goal's page | cost total |
 | Change page, goal page headers | "All-models usage" | "Fable usage", "Not estimated: N" (left out at 0) | cost fact |
 | Run page header | "All-models usage" | "Fable usage" | cost fact |
 | Home's feed, a finished run's facts | "All models" pair | – | "Est. cost" |
@@ -116,6 +118,11 @@ unknown one `Unknown`'s dash. Prose, tiles and facts add "%".
 - **Borrowed marker**: a week row whose rates for a limit were borrowed shows, before that limit's value, a muted
   lucide `History` icon (`aria-hidden`) inside a focusable tooltip trigger named, and with the tooltip,
   "Rates borrowed from the week of <week>"; the numbers stay right-aligned. Text, never colour alone.
+- **Not-estimated marker** (Work's goal sections only, where no count fits): a muted lucide `CircleAlert` icon
+  (`aria-hidden`) before the total, inside a focusable tooltip trigger named, and with the tooltip, "N units not
+  estimated". Everywhere else the count is written.
+- **No other marker**: the current week's estimates move as its rates settle and show as they are; a unit from a
+  borrowed week carries no marker outside Weeks (owner, in the grill).
 - **Usage estimates** (Weeks, below By week): a glass `Panel` titled "Usage estimates" with `ReporterMark` beside its
   title, one row per week of `totals.usage`, newest first: Week; Readings; a Fable group (Points, Rate ($/pt), Fit
   error (± pt), From); an All models group (Points, Fable rate ($/pt), Other rate ($/pt), Fit error (± pt), From).
@@ -164,6 +171,8 @@ convention in `CLAUDE.md` gains the rule.
 - Usage estimates follows the Weeks page's Period, as the page's other sections do.
 - Usage estimates gets a "From" column in each group instead of one "Borrowed from" column, since the reporter borrows
   Fable and all-models rates apart.
+
+- Work's goal sections get the not-estimated icon marker (owner, in the grill), which the mockups don't show.
 
 ## Left to the builder
 
