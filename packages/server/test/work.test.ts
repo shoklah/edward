@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
+  estimateSum,
   loadReport,
   type ChangeResponse,
   type GoalResponse,
@@ -198,6 +199,15 @@ describe('levels', () => {
     expect(unpriced.start).toBe('2026-11-03T09:55:00Z');
   });
 
+  test("a change's estimates sum its runs' and sessions'", () => {
+    const change = levelsOf('report-work').changeOf.get(OFFLINE_RUN)!;
+    expect(change.estimates).toEqual(estimateSum([...change.runs, ...change.sessions].map((unit) => unit.merged)));
+    // 1.15 (the full run) + 0.09 (7d1e…) + 0.03 (2e8d…); the plan record has none.
+    expect(change.estimates.all).toBeCloseTo(1.27, 6);
+    expect(change.estimates.fable).toBeCloseTo(0.74, 6);
+    expect(change.estimates.notEstimated).toBe(1);
+  });
+
   test('a session in no change is loose, with its own goal', () => {
     const { loose, changeOf, goalOf } = levelsOf('report-work');
     expect(keysOf(loose)).toEqual([S_6B1F, S_D4A7].sort());
@@ -316,6 +326,7 @@ describe('workView', () => {
       sessions: 2,
       findings: 17,
       cost: expect.closeTo(15.255, 6),
+      estimates: { all: expect.closeTo(1.27, 6), fable: expect.closeTo(0.74, 6), notEstimated: 1 },
     });
   });
 
@@ -344,6 +355,9 @@ describe('workView', () => {
       expect(section.runs).toBe(sum((r) => r.runs));
       expect(section.sessions).toBe(sum((r) => r.sessions) ?? 0);
       expect(section.cost).toBeCloseTo(sum((r) => r.cost) ?? NaN, 6);
+      expect(section.estimates.all).toBeCloseTo(sum((r) => r.estimates.all) ?? NaN, 6);
+      expect(section.estimates.fable).toBeCloseTo(sum((r) => r.estimates.fable) ?? NaN, 6);
+      expect(section.estimates.notEstimated).toBe(sum((r) => r.estimates.notEstimated));
     }
   });
 
@@ -580,6 +594,8 @@ describe('changeView', () => {
         minutes: listed.minutes,
         models: listed.models,
         cost: listed.cost,
+        allPct: listed.allPct,
+        fablePct: listed.fablePct,
       });
     }
   });
@@ -713,6 +729,10 @@ describe('goalView', () => {
     expect(loose.change).toBeNull();
     expect(goal.sessionCount).toBe(3);
     expect(goal.cost).toBeCloseTo(15.255 + loose.cost!, 6);
+    // The offline change (1.27, 0.74, one not estimated), tidy-imports (not estimated) and 6b1f… (0.01, 0).
+    expect(goal.estimates.all).toBeCloseTo(1.28, 6);
+    expect(goal.estimates.fable).toBeCloseTo(0.74, 6);
+    expect(goal.estimates.notEstimated).toBe(2);
     // The tidy-imports change started before the loose session.
     expect(goal.startedAt).toBe('2026-11-03T09:55:00Z');
   });
@@ -740,6 +760,8 @@ describe('the change and goal pages in showing mode', () => {
     expect(change.runs.map((r) => r.key)).toEqual([OFFLINE_RUN, PLAN_RECORD]);
     expect(change.sessionCount).toBe(2);
     expect(change.cost).toBeCloseTo(15.255, 6);
+    // Whole totals: 2e8d…, in tidepool-api, still counts.
+    expect(change.estimates.all).toBeCloseTo(1.27, 6);
     expect(change.otherProjects).toEqual([]);
     expect(change.otherCount).toBe(1);
 
