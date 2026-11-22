@@ -17,6 +17,7 @@ export const syncChange: ChangeRow = {
   sessions: 5,
   findings: 23,
   cost: 61.4,
+  estimates: { all: 4.85, fable: 2.1, notEstimated: 1 },
 };
 
 /** A change in one project, its headline markup that must show as text. */
@@ -33,6 +34,7 @@ export const markupChange: ChangeRow = {
   sessions: 1,
   findings: 2,
   cost: 3.1,
+  estimates: { all: 0.22, fable: 0, notEstimated: 0 },
 };
 
 /** A change still in design, in no stored run's project: no run, no findings, no known cost. */
@@ -49,6 +51,7 @@ export const designChange: ChangeRow = {
   sessions: 1,
   findings: null,
   cost: null,
+  estimates: { all: null, fable: null, notEstimated: 1 },
 };
 
 const searchChange: ChangeRow = {
@@ -64,6 +67,7 @@ const searchChange: ChangeRow = {
   sessions: 2,
   findings: null,
   cost: 11.6,
+  estimates: { all: 0.9, fable: 0.35, notEstimated: 0 },
 };
 
 const looseChange: ChangeRow = {
@@ -79,6 +83,7 @@ const looseChange: ChangeRow = {
   sessions: 1,
   findings: 0,
   cost: 4.25,
+  estimates: { all: 0.31, fable: 0, notEstimated: 0 },
 };
 
 /** A goal with a change active this week: open, with a long name that wraps in its column. */
@@ -90,6 +95,7 @@ export const syncGoal: GoalSection = {
   runs: 3,
   sessions: 6,
   cost: 64.5,
+  estimates: { all: 5.07, fable: 2.1, notEstimated: 1 },
   lastActivity: '2026-11-11T17:40:00Z',
   rows: [syncChange, markupChange],
 };
@@ -103,6 +109,7 @@ export const searchGoal: GoalSection = {
   runs: 140,
   sessions: 1250,
   cost: 1234.5,
+  estimates: { all: 96.4, fable: 41.2, notEstimated: 3 },
   lastActivity: '2026-11-11T11:30:00Z',
   rows: [searchChange, designChange],
 };
@@ -116,6 +123,7 @@ export const noGoal: GoalSection = {
   runs: 1,
   sessions: 1,
   cost: null,
+  estimates: { all: null, fable: null, notEstimated: 1 },
   lastActivity: '2026-11-07T15:45:00Z',
   rows: [looseChange],
 };
@@ -299,6 +307,8 @@ const syncSessions: WorkSessionRow[] = [
     minutes: 164,
     models: FABLE,
     cost: 5.9,
+    allPct: 0.48,
+    fablePct: 0.31,
     step: 'design',
     startedBy: null,
     run: null,
@@ -312,6 +322,8 @@ const syncSessions: WorkSessionRow[] = [
     minutes: 95,
     models: FABLE,
     cost: 3.25,
+    allPct: 0.26,
+    fablePct: 0.17,
     step: 'design',
     startedBy: { key: S.design, title: 'Design offline sync' },
     run: null,
@@ -325,6 +337,8 @@ const syncSessions: WorkSessionRow[] = [
     minutes: 120,
     models: FABLE,
     cost: 3.2,
+    allPct: 0.25,
+    fablePct: 0.16,
     step: 'plan',
     startedBy: { key: null, title: null },
     run: null,
@@ -338,6 +352,8 @@ const syncSessions: WorkSessionRow[] = [
     minutes: 212,
     models: OPUS,
     cost: 22.15,
+    allPct: 1.62,
+    fablePct: 0,
     step: 'implementation',
     startedBy: { key: S.plan, title: 'Plan the offline queue' },
     run: queueRun,
@@ -351,6 +367,8 @@ const syncSessions: WorkSessionRow[] = [
     minutes: 248,
     models: OPUS,
     cost: 26.9,
+    allPct: 1.97,
+    fablePct: 0,
     step: 'implementation',
     startedBy: { key: S.queue, title: 'Implement the queue' },
     run: replayRun,
@@ -374,6 +392,7 @@ export const changeFull: ChangeResponse = {
   sessionCount: 5,
   runCount: 3,
   cost: 61.4,
+  estimates: { all: 4.85, fable: 2.1, notEstimated: 1 },
   graph: syncGraph,
   runs: [...syncRuns, plannedRun],
   sessions: syncSessions,
@@ -394,6 +413,7 @@ export const changeSmall: ChangeResponse = {
   sessionCount: 1,
   runCount: 1,
   cost: null,
+  estimates: { all: null, fable: null, notEstimated: 1 },
   graph: oneGraph,
   runs: [{ ...syncRuns[1], path: 'small' }],
   sessions: [syncSessions[0]],
@@ -430,6 +450,7 @@ export const goalFull: GoalResponse = {
   sessionCount: 7,
   findings: 25,
   cost: 64.5,
+  estimates: { all: 5.07, fable: 2.1, notEstimated: 1 },
   graph: goalGraph,
   changes: [syncChange, markupChange],
   sessions: [
@@ -442,6 +463,8 @@ export const goalFull: GoalResponse = {
       end: '2026-11-05T09:40:00Z',
       minutes: 40,
       cost: 1.2,
+      allPct: 0.04,
+      fablePct: 0.02,
       startedBy: { key: S.design, title: 'Design offline sync' },
       change: null,
     },

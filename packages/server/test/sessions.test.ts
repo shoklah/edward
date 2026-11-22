@@ -97,6 +97,9 @@ describe('with showing off', () => {
       end: '2026-11-12T08:01:36.550Z',
       models: [{ model: 'claude-opus-5-5', effort: 'medium' }],
       cost: 0.24,
+      // The session's own estimates, not its held runs' (feature/webhooks has 0.73 and 0.42).
+      allPct: 0.02,
+      fablePct: 0,
       startup: false,
       warnings: 1,
     });

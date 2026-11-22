@@ -1,5 +1,6 @@
 import {
   addKnown,
+  estimateSum,
   folderName,
   foundFindings,
   modelsCost,
@@ -10,6 +11,7 @@ import {
   weekOf,
   type ChangeResponse,
   type ChangeRow,
+  type Estimates,
   type GoalResponse,
   type GoalSection,
   type GraphEdge,
@@ -49,6 +51,7 @@ export type Change = {
   start: string | null;
   last: string | null;
   cost: number | null;
+  estimates: Estimates;
   findings: number | null;
 };
 
@@ -139,6 +142,7 @@ function changeOfGroup(group: Group): Change {
       (sum, unit) => addKnown(sum, modelsCost(unit.merged.models)),
       null,
     ),
+    estimates: estimateSum([...runs, ...sessions].map((unit) => unit.merged)),
     findings: runs.reduce<number | null>((sum, run) => addKnown(sum, foundFindings(runFacts(run.merged))), null),
   };
 }
@@ -234,6 +238,7 @@ function changeRow(change: Change, scope: Scope | null, names: Map<string, strin
     sessions: change.sessions.length,
     findings: change.findings,
     cost: change.cost,
+    estimates: change.estimates,
   };
 }
 
@@ -355,7 +360,12 @@ const shownSessions = (pages: Pages, keys: Set<string>) =>
  * shownSession hides it or when its `started_by` names no stored, dated session), its newest shown held run and its
  * listed change. */
 function workRow(pages: Pages, unit: StoredUnit<SessionEntry>): WorkSessionRow {
-  const { key, title, start, end, minutes, models, cost } = sessionRow(unit, pages.runRoots, pages.names, pages.scope);
+  const { key, title, start, end, minutes, models, cost, allPct, fablePct } = sessionRow(
+    unit,
+    pages.runRoots,
+    pages.names,
+    pages.scope,
+  );
   const starter = pages.edges.find((edge) => edge.to === unit.key);
   const from = starter && pages.dated.find((s) => s.key === starter.from);
   const shown = from && shownSession(from.merged, pages.runRoots, pages.names, pages.scope);
@@ -367,6 +377,8 @@ function workRow(pages: Pages, unit: StoredUnit<SessionEntry>): WorkSessionRow {
     minutes,
     models,
     cost,
+    allPct,
+    fablePct,
     step: stepOf(pages.held.get(unit.merged.file) ?? []),
     startedBy:
       starter && shown
@@ -525,6 +537,9 @@ export function goalView(input: {
       (sum, cost) => addKnown(sum, cost),
       null,
     ),
+    estimates: estimateSum(
+      [...changes.flatMap((c) => [...c.runs, ...c.sessions]), ...loose].map((unit) => unit.merged),
+    ),
     graph: graphOf(pages, members, false, listed, 'Other goals', goal, unlisted),
     changes: listed.map((change) => changeRow(change, scope, names)),
     sessions: shownSessions(pages, members).map((unit) => workRow(pages, unit)),
@@ -566,22 +581,26 @@ export function workView(input: {
       change.roots.some((root) => filters({ path: null, projectKey: projectKey(root) })) &&
       inGoal(all, scope, (change.runs[0] ?? change.sessions[0])!.key, query.goal),
   );
-  const sections = new Map<string | null, ChangeRow[]>();
+  const sections = new Map<string | null, Change[]>();
   for (const change of listed.filter((c) => isShown(c.home))) {
-    sections.set(change.goal, [...(sections.get(change.goal) ?? []), changeRow(change, scope, names)]);
+    sections.set(change.goal, [...(sections.get(change.goal) ?? []), change]);
   }
 
-  const goals: GoalSection[] = [...sections].map(([goal, rows]) => ({
-    key: goal === null ? null : goalKey(goal),
-    name: maskText(scope, goal),
-    open: rows.some((row) => !!row.lastActivity && weekOf(parseTime(row.lastActivity)) === thisWeek),
-    changes: rows.length,
-    runs: rows.reduce((sum, row) => sum + row.runs, 0),
-    sessions: rows.reduce((sum, row) => sum + row.sessions, 0),
-    cost: rows.reduce<number | null>((sum, row) => addKnown(sum, row.cost), null),
-    lastActivity: latest(rows.map((row) => row.lastActivity)),
-    rows: byLatest(rows, (row) => row.lastActivity),
-  }));
+  const goals: GoalSection[] = [...sections].map(([goal, members]) => {
+    const rows = members.map((change) => changeRow(change, scope, names));
+    return {
+      key: goal === null ? null : goalKey(goal),
+      name: maskText(scope, goal),
+      open: rows.some((row) => !!row.lastActivity && weekOf(parseTime(row.lastActivity)) === thisWeek),
+      changes: rows.length,
+      runs: rows.reduce((sum, row) => sum + row.runs, 0),
+      sessions: rows.reduce((sum, row) => sum + row.sessions, 0),
+      cost: rows.reduce<number | null>((sum, row) => addKnown(sum, row.cost), null),
+      estimates: estimateSum(members.flatMap((c) => [...c.runs, ...c.sessions]).map((unit) => unit.merged)),
+      lastActivity: latest(rows.map((row) => row.lastActivity)),
+      rows: byLatest(rows, (row) => row.lastActivity),
+    };
+  });
 
   return {
     goals: [
