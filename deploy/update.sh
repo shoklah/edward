@@ -48,8 +48,13 @@ refuse() {
   echo "$1" > state/refused
 }
 
+# Writes the deploy in progress through a temp file, so state/deploying is never empty or partial.
 deploying() {
-  echo "$old $new $name $1" > state/deploying
+  if echo "$old $new $name $1" > state/deploying.tmp && mv state/deploying.tmp state/deploying; then
+    return 0
+  fi
+  rm -f state/deploying.tmp
+  return 1
 }
 
 # Removes all but the KEEP newest copies, counting the one just taken.
@@ -75,10 +80,13 @@ backup_failed() {
 
 # Puts back the data and the old version after a failed health check; every step is safe to repeat.
 rollback() {
+  # A failed write keeps the earlier phase, whose resume rolls back again; the unhealthy version must still go.
   deploying rolling-back
   if ! compose stop edward || ! as_root find /data -mindepth 1 -delete || ! as_root cp -a "/backups/$name/." /data/; then
     refuse "$new"
-    rm -f state/deploying
+    # Every later run stops at state/halted, so no deploy backs up or prunes over the missing data. If it can't
+    # be written, state/deploying stays and the next run redoes the rollback instead.
+    echo "restore failed: data copy in backups/$name" > state/halted && rm -f state/deploying
     echo "restore failed: data copy in backups/$name"
     exit 1
   fi
@@ -113,6 +121,9 @@ start_new() {
 resume() {
   [ -e state/deploying ] || return 0
   read -r old new name phase < state/deploying
+  if [ -z "${old:-}" ] || [ -z "${new:-}" ] || [ -z "${name:-}" ]; then
+    phase=unreadable
+  fi
   case "$phase" in
     backed-up)
       echo "resuming ${new:0:7}"
@@ -120,8 +131,8 @@ resume() {
     rolling-back)
       echo "resuming the rollback of ${new:0:7}"
       rollback ;;
-    *)
-      # building or stopped: data/ was never touched, so the old version comes back and the tick after retries.
+    building|stopped)
+      # data/ was never touched, so the old version comes back and the tick after retries.
       as_root rm -rf "/backups/$name"
       git reset -q --hard "$old"
       docker tag "$IMAGE:previous" "$IMAGE"
@@ -129,11 +140,19 @@ resume() {
       rm -f state/deploying
       echo "abandoned ${new:0:7} after an interrupted run"
       exit 0 ;;
+    *)
+      echo "unreadable deploy state, not deploying"
+      exit 1 ;;
   esac
 }
 
 if [ -z "${EDWARD_PUBLIC_HOST:-}" ]; then
   echo "EDWARD_PUBLIC_HOST is not set"
+  exit 1
+fi
+
+if [ -e state/halted ]; then
+  echo "halted: $(cat state/halted); remove deploy/state/halted once data/ is restored"
   exit 1
 fi
 
@@ -171,7 +190,12 @@ if ! docker tag "$IMAGE" "$IMAGE:previous"; then
 fi
 mkdir -p state backups
 name="$(date -u +%Y%m%dT%H%M%SZ)-${old:0:7}"
-deploying building
+if ! deploying building; then
+  docker tag "$IMAGE:previous" "$IMAGE"
+  refuse "$new"
+  echo "state write failed for ${new:0:7}"
+  exit 1
+fi
 if ! git merge -q --ff-only "$new"; then
   docker tag "$IMAGE:previous" "$IMAGE"
   rm -f state/deploying
@@ -189,10 +213,12 @@ if ! compose build; then
   exit 1
 fi
 
-deploying stopped
+deploying stopped || backup_failed
 compose stop edward || backup_failed
 as_root cp -a /data "/backups/$name" || backup_failed
-deploying backed-up
+# Past the copy, a failed write would leave a stopped phase, whose resume restarts the old version over data
+# the new one may have migrated, so the old version is restarted now, before the new one ever starts.
+deploying backed-up || backup_failed
 echo "backed up data to backups/$name"
 prune_copies
 

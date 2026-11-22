@@ -476,6 +476,61 @@ describe('update.sh', () => {
     expect(ds.slice(restore).some((call) => call.includes(' up '))).toBe(false);
     expect(t.state('refused')).toBe(sha);
     expect(t.state('deploying')).toBeNull();
+    expect(t.state('halted')).toBe(`restore failed: data copy in backups/${name}`);
+  });
+
+  test('a halted checkout touches nothing until the owner clears it', () => {
+    const t = setup();
+    const old = t.head();
+    t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    mkdirSync(join(t.deploy, 'state'));
+    writeFileSync(join(t.deploy, 'state', 'halted'), 'restore failed: data copy in backups/20260101T000000Z-aaaaaaa\n');
+    const { status, stdout, calls } = t.run();
+    expect(stdout).toBe(
+      'halted: restore failed: data copy in backups/20260101T000000Z-aaaaaaa; remove deploy/state/halted once data/ is restored\n',
+    );
+    expect(status).toBe(1);
+    expect(calls).toEqual([]);
+    expect(t.head()).toBe(old);
+    expect(existsSync(join(t.edward, '.git', 'FETCH_HEAD'))).toBe(false);
+  });
+
+  for (const [what, text] of [
+    ['an empty deploy state', ''],
+    ['an unknown phase', 'aaaaaaa bbbbbbb 20260101T000000Z-aaaaaaa shipping\n'],
+    ['a deploy state with a field missing', 'aaaaaaa bbbbbbb\n'],
+  ]) {
+    test(`stops on ${what}, touching nothing`, () => {
+      const t = setup();
+      const old = t.head();
+      t.push();
+      t.checks({ status: 'completed', conclusion: 'success' });
+      mkdirSync(join(t.deploy, 'state'));
+      writeFileSync(join(t.deploy, 'state', 'deploying'), text);
+      const { status, stdout, calls } = t.run();
+      expect(stdout).toBe('unreadable deploy state, not deploying\n');
+      expect(status).toBe(1);
+      expect(docker(calls)).toEqual([]);
+      expect(t.head()).toBe(old);
+      expect(t.state('deploying')).toBe(text.trim());
+    });
+  }
+
+  test('a failed state write stops before the checkout moves', () => {
+    const t = setup();
+    const old = t.head();
+    const sha = t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    // A folder where the temp state file goes makes the write fail.
+    mkdirSync(join(t.deploy, 'state', 'deploying.tmp'), { recursive: true });
+    const { status, stdout, calls } = t.run();
+    expect(stdout.endsWith(`state write failed for ${short(sha)}\n`)).toBe(true);
+    expect(status).toBe(1);
+    expect(t.head()).toBe(old);
+    expect(docker(calls).at(-1)).toBe('docker tag edward-hosted:previous edward-hosted');
+    expect(calls.some((call) => call.endsWith(' build'))).toBe(false);
+    expect(t.state('deploying')).toBeNull();
   });
 
   test('stops loudly when the old version fails too', () => {
