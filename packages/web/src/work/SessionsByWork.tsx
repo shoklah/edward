@@ -4,8 +4,8 @@ import { Num, Unknown } from '../components/Num.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionLink } from '../components/SessionLink.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { STAGE_LABELS, formatLength, formatUsage, sessionName } from '../lib/format.ts';
-import { CHANGE_FACT, FABLE_FACT } from '../runs/RunsTable.tsx';
+import { STAGE_LABELS, formatLength, sessionName } from '../lib/format.ts';
+import { CHANGE_FACT, FABLE_FACT, usageColumn } from '../runs/RunsTable.tsx';
 import { ALIGNED } from './ChangesTable.tsx';
 import { MODEL_FACT } from '../sessions/SessionsTable.tsx';
 
@@ -35,14 +35,7 @@ const COLUMNS: ListColumn<WorkSessionRow>[] = [
     cell: (s) => <Time iso={s.start} />,
   },
   { id: 'length', header: 'Length', num: true, width: ALIGNED.count, value: (s) => s.minutes, cell: (s) => <Num value={s.minutes} format={formatLength} /> },
-  {
-    id: 'usage',
-    header: 'All models (%)',
-    num: true,
-    fold: true,
-    value: (s) => s.allPct,
-    cell: (s) => <Num value={s.allPct} format={formatUsage} />,
-  },
+  usageColumn((s) => s.allPct),
 ];
 
 /** Who started it, its models and its held run, after its Fable usage (and, on a goal's page, its change). */

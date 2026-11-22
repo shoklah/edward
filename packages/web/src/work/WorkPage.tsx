@@ -6,14 +6,15 @@ import { useLiveQuery } from '../api.ts';
 import { GoalLink } from '../components/GoalLink.tsx';
 import { Unknown } from '../components/Num.tsx';
 import { Option, Options } from '../components/Option.tsx';
-import { LINK, Line, PageTitle, Pairs, Section, State, Term } from '../components/Panel.tsx';
+import { IconTerm, LINK, Line, PageTitle, Pairs, Section, State } from '../components/Panel.tsx';
 import { RowToggle } from '../components/RowToggle.tsx';
 import { Button } from '../components/ui/button.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { formatUsagePercent, formatWhole, hiddenLabel, looseSessionsLabel, notEstimatedLabel } from '../lib/format.ts';
+import { formatWhole, hiddenLabel, looseSessionsLabel, notEstimatedLabel } from '../lib/format.ts';
 import { ListFilters, RunsPage, listPath, useProjects } from '../runs/RunsPage.tsx';
 import { SessionsPage } from '../sessions/SessionsPage.tsx';
 import { ChangesTable } from './ChangesTable.tsx';
+import { backdropUsage } from './estimates.tsx';
 
 /** The Work page's views, as the URL's `view` names them (none for Changes). */
 export type WorkView = 'runs' | 'sessions';
@@ -30,16 +31,10 @@ const TOTAL_WIDTHS = ['sm:w-26', 'sm:w-20', 'sm:w-26', 'sm:w-34', 'sm:w-52'];
 /** A goal section's all-models sum, the dash when none is known, after the not-estimated marker when it left units
  * out: an icon in primary ink (the row sits on the backdrop) whose tooltip and name count them. */
 function GoalUsage({ estimates }: { estimates: GoalSection['estimates'] }) {
-  const label = notEstimatedLabel(estimates.notEstimated);
   return (
     <span className="inline-flex items-center gap-1.5">
-      {estimates.notEstimated > 0 && (
-        <Term tip={label}>
-          <CircleAlert aria-hidden className="size-3.5" />
-          <span className="sr-only">{label}</span>
-        </Term>
-      )}
-      {estimates.all === null ? <Unknown backdrop /> : formatUsagePercent(estimates.all)}
+      {estimates.notEstimated > 0 && <IconTerm icon={CircleAlert} label={notEstimatedLabel(estimates.notEstimated)} />}
+      {backdropUsage(estimates.all)}
     </span>
   );
 }

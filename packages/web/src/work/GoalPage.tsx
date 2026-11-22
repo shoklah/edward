@@ -7,10 +7,10 @@ import { Unknown } from '../components/Num.tsx';
 import { LINK, PageTitle, Pairs, Section, State } from '../components/Panel.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { formatWhole, projectLabel } from '../lib/format.ts';
-import { estimateFacts } from './ChangePage.tsx';
 import { ChangesTable } from './ChangesTable.tsx';
 import { SessionGraph } from './SessionGraph.tsx';
 import { SessionsByWork } from './SessionsByWork.tsx';
+import { estimateFacts } from './estimates.tsx';
 
 /** The goal's facts, each a term over its value on the backdrop: its one project, else "Several projects". */
 function Facts({ goal }: { goal: GoalResponse }) {

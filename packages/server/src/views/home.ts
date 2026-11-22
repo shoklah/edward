@@ -81,7 +81,7 @@ export function emptyWeek(): WeekRow {
  * the runs and the given sessions, each in its week (unitWeeks), so a week with sessions alone has a row;
  * `minutesPerRun`, the median of the runs' known minutes; `laterFixes`, the runs' later fix commits.
  */
-export function weekSums(runs: RunEntry[], sessions: SessionEntry[] = []): Map<string, WeekRow> {
+export function weekSums(runs: RunEntry[], sessions: SessionEntry[]): Map<string, WeekRow> {
   const sums = new Map<string, WeekRow>();
   const minutes = new Map<string, (number | null)[]>();
   for (const run of runs) {
@@ -105,7 +105,10 @@ export function weekSums(runs: RunEntry[], sessions: SessionEntry[] = []): Map<s
     sums.set(week, sum);
   }
   const units = new Map<string, (RunEntry | SessionEntry)[]>();
-  for (const { unit, week } of unitWeeks(runs, sessions)) units.set(week, [...(units.get(week) ?? []), unit]);
+  for (const { unit, week } of unitWeeks(runs, sessions)) {
+    if (!units.has(week)) units.set(week, []);
+    units.get(week)!.push(unit);
+  }
   for (const [week, of] of units) {
     const sum = sums.get(week) ?? emptyWeek();
     sum.estimates = estimateSum(of);

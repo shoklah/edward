@@ -1,4 +1,5 @@
 import { useId, type ReactNode, type Ref } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from 'cn';
 import { WARNING_BORDER } from '../lib/format.ts';
 import { NUM } from './Num.tsx';
@@ -21,6 +22,17 @@ export function Term({ tip, className, children }: { tip: ReactNode; className?:
       </TooltipTrigger>
       <TooltipContent>{tip}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/** A marker icon as a tooltip term: the lucide `icon`, `aria-hidden` (`className` its ink), named by `label`, its
+ * tooltip and `sr-only` name alike. */
+export function IconTerm({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) {
+  return (
+    <Term tip={label}>
+      <Icon aria-hidden className={cn('size-3.5', className)} />
+      <span className="sr-only">{label}</span>
+    </Term>
   );
 }
 

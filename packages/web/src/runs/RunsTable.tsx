@@ -43,26 +43,33 @@ const COLUMNS: ListColumn<ListedRun>[] = [
     cell: (r) => (r.finishedAt === null ? <Text value={null} /> : <Time iso={r.finishedAt} />),
   },
   { id: 'found', header: 'Found', num: true, value: foundFindings, cell: (r) => <Num value={foundFindings(r)} /> },
-  {
-    id: 'usage',
-    header: 'All models (%)',
-    num: true,
-    fold: true,
-    value: (r) => r.allPct,
-    cell: (r) => <Num value={r.allPct} format={formatUsage} />,
-  },
+  usageColumn((r) => r.allPct),
   { id: 'warnings', header: 'Warnings', num: true, value: (r) => r.warnings, cell: (r) => <Num value={r.warnings} /> },
 ];
 
 /** A count of the opened row, left out when not known. */
 const known = (value: number | null) => (value === null ? null : <Num value={value} />);
 
-/** A unit's Fable usage, its opened row's first fact, left out when not known: the Runs and Sessions lists' and a
- * change's or goal's sessions' alike. */
-export const FABLE_FACT: ListFact<Pick<RunFacts, 'fablePct'>> = [
-  'Fable (%)',
-  (u) => (u.fablePct === null ? null : <Num value={u.fablePct} format={formatUsage} />),
-];
+/** A list's all-models usage column, folded when narrow, of the estimate `get` reads: the Runs, Sessions and Changes
+ * lists' and a change's or goal's sessions' alike. */
+export function usageColumn<T>(get: (row: T) => number | null): ListColumn<T> {
+  return {
+    id: 'usage',
+    header: 'All models (%)',
+    num: true,
+    fold: true,
+    value: get,
+    cell: (row) => <Num value={get(row)} format={formatUsage} />,
+  };
+}
+
+/** A Fable usage fact of the estimate `get` reads, an opened row's first, left out when not known. */
+export function fableFact<T>(get: (row: T) => number | null): ListFact<T> {
+  return ['Fable (%)', (row) => (get(row) === null ? null : <Num value={get(row)} format={formatUsage} />)];
+}
+
+/** A unit's Fable usage fact: the Runs and Sessions lists' and a change's or goal's sessions' alike. */
+export const FABLE_FACT: ListFact<Pick<RunFacts, 'fablePct'>> = fableFact((u) => u.fablePct);
 
 /** The branch, only when the title names the run: an untitled run's Run cell is already its branch. */
 const BRANCH: ListFact<ListedRun> = ['Branch', (r) => (r.headline ? r.branch : null)];

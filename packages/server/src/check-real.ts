@@ -110,9 +110,10 @@ differLine('reporter keys', `${compared} compared, `, compared ? keysDiffer : nu
 if (!loaded.ok) process.exitCode = 1;
 else {
   const { runs: entries, sessions: sessionEntries, totals } = loaded.report;
-  // The app's week sums over the export's runs against the export's totals.weeks, every field, cost to the cent with
-  // a null read as 0 on both sides, since the reporter writes 0.0 where the dashboard writes null.
-  const sums = weekSums(entries);
+  // The app's week sums over the export's runs alone (the reporter's week rows hold no sessions) against the export's
+  // totals.weeks, every field, cost to the cent with a null read as 0 on both sides, since the reporter writes 0.0
+  // where the dashboard writes null.
+  const sums = weekSums(entries, []);
   const weeks = totals.weeks ?? [];
   const differ = weeks.filter((week) => {
     const sum = sums.get(week.week ?? '');

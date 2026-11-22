@@ -2,8 +2,8 @@ import type { Estimates, FindingSplit } from '../facts.ts';
 import type { Path, StepKind } from '../report.ts';
 
 /** One week's numbers on the home screen's tiles; each is a plain sum over the week's stored runs, but `estimates`,
- * over its runs and its sessions. `perRun`, per limit, the week's runs' known estimates summed over the runs with a
- * known one, null when none has one. */
+ * over its runs and its sessions. `perRun`, per limit, the mean of the week's runs' known estimates, over the runs
+ * with a known one, null when none has one. */
 export type WeekNumbers = {
   runs: Record<Path, number>;
   findings: FindingSplit;

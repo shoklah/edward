@@ -5,9 +5,9 @@ import { DataList, type ListColumn, type ListFact } from '../components/DataList
 import { Num, Unknown } from '../components/Num.tsx';
 import { Term } from '../components/Panel.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
+import { fableFact, usageColumn } from '../runs/RunsTable.tsx';
 import {
   STAGE_LABELS,
-  formatUsage,
   otherCountLabel,
   otherProjectsLabel,
   pathLabel,
@@ -57,18 +57,11 @@ const COLUMNS: ListColumn<ChangeRow>[] = [
     cell: (c) => (c.lastActivity ? <Time iso={c.lastActivity} /> : <Unknown />),
   },
   { id: 'findings', header: 'Findings', num: true, width: ALIGNED.count, value: (c) => c.findings, cell: (c) => <Num value={c.findings} /> },
-  {
-    id: 'usage',
-    header: 'All models (%)',
-    num: true,
-    fold: true,
-    value: (c) => c.estimates.all,
-    cell: (c) => <Num value={c.estimates.all} format={formatUsage} />,
-  },
+  usageColumn((c) => c.estimates.all),
 ];
 
 const FACTS: ListFact<ChangeRow>[] = [
-  ['Fable (%)', (c) => (c.estimates.fable === null ? null : <Num value={c.estimates.fable} format={formatUsage} />)],
+  fableFact((c) => c.estimates.fable),
   ['Not estimated', (c) => (c.estimates.notEstimated === 0 ? null : <Num value={c.estimates.notEstimated} />)],
   ['Runs', (c) => <Num value={c.runs} />],
   ['Sessions', (c) => <Num value={c.sessions} />],

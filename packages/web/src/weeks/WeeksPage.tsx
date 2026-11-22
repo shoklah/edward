@@ -3,8 +3,8 @@ import { cn } from 'cn';
 import { History } from 'lucide-react';
 import type { FindingsQuery, RunTime, UsageWeek, WeeksResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
-import { ColumnHead, Line, PageTitle, Panel, ScrollTable, Section, State, Term } from '../components/Panel.tsx';
+import { GROUP, GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
+import { ColumnHead, IconTerm, Line, PageTitle, Panel, ScrollTable, Section, State } from '../components/Panel.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, CoverageNote, singleBars } from '../home/WeeklyCharts.tsx';
@@ -69,12 +69,7 @@ function Estimate({ value, from }: { value: number | null; from: string | null |
   const label = from ? `Rates borrowed from the week of ${weekLabel(from)}` : null;
   return (
     <span className="inline-flex items-center gap-1.5">
-      {label && (
-        <Term tip={label}>
-          <History aria-hidden className="size-3.5 text-muted-foreground" />
-          <span className="sr-only">{label}</span>
-        </Term>
-      )}
+      {label && <IconTerm icon={History} label={label} className="text-muted-foreground" />}
       <Num value={value} format={formatUsage} />
     </span>
   );
@@ -173,7 +168,8 @@ function UsageEstimates({ usage }: { usage: UsageWeek[] }) {
   const dollars = (value: number | null | undefined) => <Num value={value} format={formatDollars} />;
   const points = (value: number | null | undefined) => <Num value={value} format={formatUsage} />;
   const cell = cn('px-2 py-1.5', NUM);
-  const group = 'border-b px-2 py-1.5 text-center font-medium';
+  // GroupHead's look on a plain th: a shadcn TableHead has no place in an in-panel table.
+  const group = cn(GROUP, 'px-2 font-medium');
   return (
     <Panel title="Usage estimates" aside={<ReporterMark mark={usageMark} />}>
       {usage.length === 0 ? (

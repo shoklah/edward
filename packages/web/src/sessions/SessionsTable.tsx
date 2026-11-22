@@ -5,14 +5,13 @@ import { Num, Text, Unknown } from '../components/Num.tsx';
 import { ColumnHead, ScrollTable } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
-import { CHANGE_FACTS, FABLE_FACT } from '../runs/RunsTable.tsx';
+import { CHANGE_FACTS, FABLE_FACT, usageColumn } from '../runs/RunsTable.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   UNNAMED,
   WARNING_INK,
   formatDayTime,
   formatLength,
-  formatUsage,
   modelLabel,
   pathLabel,
   projectLabel,
@@ -108,14 +107,7 @@ const COLUMNS: ListColumn<SessionRow>[] = [
     cell: (s) => <Time iso={s.start} />,
   },
   { id: 'length', header: 'Length', num: true, value: (s) => s.minutes, cell: (s) => <Num value={s.minutes} format={formatLength} /> },
-  {
-    id: 'usage',
-    header: 'All models (%)',
-    num: true,
-    fold: true,
-    value: (s) => s.allPct,
-    cell: (s) => <Num value={s.allPct} format={formatUsage} />,
-  },
+  usageColumn((s) => s.allPct),
   {
     id: 'warnings',
     header: 'Warnings',

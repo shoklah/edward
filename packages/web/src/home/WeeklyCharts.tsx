@@ -57,7 +57,7 @@ function baseOption(weeks: string[]) {
 }
 
 /**
- * One series of bars: 24px at most, a 4px rounded end, square at the baseline; a `cost` reads in dollars, and `format`
+ * One series of bars: 24px at most, a 4px rounded end, square at the baseline; `format`
  * writes the tooltip's values and the y axis labels, an empty bar's (which ECharts passes as undefined) as null. A
  * `cap` draws a dashed line at that value, labelled "cap 300K", the y axis reaching at least to it.
  */
@@ -65,11 +65,9 @@ export function singleBars(
   weeks: string[],
   name: string,
   data: (number | null)[],
-  options: { cost?: boolean; cap?: number; format?: (value: number | null) => string } = {},
+  { cap, format }: { cap?: number; format?: (value: number | null) => string } = {},
 ) {
   const base = baseOption(weeks);
-  const { cost = false, cap } = options;
-  const format = cost ? formatCost : options.format;
   return {
     ...base,
     // Room above the plot for the cap's label when the axis ends at the cap.
@@ -78,7 +76,7 @@ export function singleBars(
     yAxis: {
       ...base.yAxis,
       max: cap === undefined ? undefined : ({ max }: { max: number }) => Math.max(max, cap),
-      axisLabel: { ...base.yAxis.axisLabel, formatter: cost ? '${value}' : format },
+      axisLabel: { ...base.yAxis.axisLabel, formatter: format },
     },
     series: [
       {
@@ -112,7 +110,7 @@ export function singleBars(
  * Bars of several series by week, each series a palette slot in order unless it names its `color`, a 1px surface border
  * between bars, with a legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the
  * room under the plot for the legend, which each caller sizes to its legend's lines (a `media` rule raising it where
- * the legend wraps). A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar,
+ * the legend wraps). A `cost` reads in dollars; `totals` writes each stack's total above its bar,
  * none over a week with no bar, and hides a total that would overlap another.
  */
 export function barsOption(

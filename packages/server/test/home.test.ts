@@ -430,7 +430,7 @@ test("weekSums matches the fixture's totals.weeks", () => {
   for (const name of reportFixtures().filter((n) => n !== 'report-shape')) {
     const loaded = loadReport(fixture(name));
     if (!loaded.ok) throw new Error(`fixture ${name} does not load`);
-    const sums = weekSums(loaded.report.runs);
+    const sums = weekSums(loaded.report.runs, []);
     const weeks = loaded.report.totals.weeks ?? [];
     expect(weeks.length).toBeGreaterThan(0);
     expect(sums.size).toBe(weeks.length);
@@ -500,7 +500,7 @@ describe('usage estimates', () => {
 });
 
 test('a run date with no zone is UTC, so Sunday 07:00 starts its week', () => {
-  expect([...weekSums([{ record: { date: '2026-11-08T07:00:00' } }]).keys()]).toEqual(['2026-11-08']);
+  expect([...weekSums([{ record: { date: '2026-11-08T07:00:00' } }], []).keys()]).toEqual(['2026-11-08']);
 });
 
 test('no response field holds a slash-containing project or a transcript path', async () => {

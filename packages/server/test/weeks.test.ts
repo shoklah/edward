@@ -154,7 +154,7 @@ describe('usage estimates', () => {
       ...inWeek(raw().sessions, '2026-11-08', (s) => s.start),
     ];
     expect(row.estimates).toEqual(estimateSum(units));
-    const runsOnly = weekSums(listUnits(work, 'run').map((u) => u.merged)).get('2026-11-08')!;
+    const runsOnly = weekSums(listUnits(work, 'run').map((u) => u.merged), []).get('2026-11-08')!;
     expect(row.estimates.all!).toBeGreaterThan(runsOnly.estimates.all!);
     work.$client.close();
   });
