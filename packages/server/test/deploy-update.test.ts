@@ -61,7 +61,8 @@ function setup() {
   const t = `T='${dir}'\necho "$(basename "$0") $*" >> "$T/calls.log"\n`;
   stub(
     join(bin, 'docker'),
-    `${t}case "$*" in
+    `${t}[ -e state/deploying ] && echo "state $(cat state/deploying)" >> "$T/calls.log"
+case "$*" in
   compose*' build') [ -e "$T/fail-build" ] && exit 1 ;;
   compose*' stop edward') [ -e "$T/fail-stop" ] && exit 1 ;;
   run*' cp -a /data '*) [ -e "$T/fail-copy" ] && exit 1 ;;
@@ -127,7 +128,22 @@ exit 0
     return existsSync(file) ? readFileSync(file, 'utf8').trim() : null;
   };
 
-  return { dir, edward, deploy, head, push, checks, flag, run, state };
+  /** Leaves the state a killed run would: HEAD at a new commit (or `at` the old one) and `state/deploying` in `phase`. */
+  const interrupted = (phase: string, at: 'new' | 'old' = 'new') => {
+    const old = head();
+    const sha = push();
+    if (at === 'new') {
+      git(edward, 'fetch', '-q', 'origin', 'main');
+      git(edward, 'merge', '-q', '--ff-only', sha);
+    }
+    const name = `20260101T000000Z-${old.slice(0, 7)}`;
+    mkdirSync(join(deploy, 'backups', name), { recursive: true });
+    mkdirSync(join(deploy, 'state'), { recursive: true });
+    writeFileSync(join(deploy, 'state', 'deploying'), `${old} ${sha} ${name} ${phase}\n`);
+    return { old, sha, name };
+  };
+
+  return { dir, edward, deploy, head, push, checks, flag, run, state, interrupted };
 }
 
 const short = (sha: string) => sha.slice(0, 7);
@@ -403,4 +419,130 @@ describe('update.sh', () => {
     expect(calls).toContain('docker image prune -f');
     expect(status).toBe(0);
   });
+
+  /** Checks the rollback's calls after the new version's failed `up`, and the state its run leaves. */
+  const expectRollback = (t: ReturnType<typeof setup>, calls: string[], old: string, sha: string, name: string) => {
+    const ds = docker(calls);
+    const up = 'docker compose -f compose.example.yml up -d --no-build edward';
+    const after = ds.slice(ds.indexOf(up) + 1);
+    const order = [
+      (call: string) => call === 'docker compose -f compose.example.yml stop edward',
+      (call: string) => call.startsWith('docker run --rm -u 0 ') && call.endsWith(' edward-hosted:previous find /data -mindepth 1 -delete'),
+      (call: string) => call.startsWith('docker run --rm -u 0 ') && call.endsWith(` edward-hosted:previous cp -a /backups/${name}/. /data/`),
+      (call: string) => call === 'docker tag edward-hosted:previous edward-hosted',
+      (call: string) => call === up,
+    ];
+    const at = order.map((match) => after.findIndex(match));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    expect(calls).toContain(`state ${old} ${sha} ${name} rolling-back`);
+    expect(t.head()).toBe(old);
+    expect(t.state('refused')).toBe(sha);
+    expect(t.state('deploying')).toBeNull();
+  };
+
+  const unhealthyThenHealthy = `${'000\n'.repeat(60)}200\n`;
+
+  test('rolls back data, image and checkout when the health check fails', () => {
+    const t = setup();
+    const old = t.head();
+    const sha = t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    t.flag('health', unhealthyThenHealthy);
+    const { status, stdout, calls } = t.run();
+    expect(status).toBe(1);
+    const lines = stdout.trim().split('\n');
+    const name = lines[2].replace('backed up data to backups/', '');
+    expect(lines.slice(-2)).toEqual([
+      `health check failed for ${short(sha)}, rolling back`,
+      `rolled back ${short(sha)} to ${short(old)}`,
+    ]);
+    expectRollback(t, calls, old, sha, name);
+  });
+
+  test('stops when the restore fails', () => {
+    const t = setup();
+    const sha = t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    t.flag('health', unhealthyThenHealthy);
+    t.flag('fail-restore');
+    const { status, stdout, calls } = t.run();
+    expect(status).toBe(1);
+    const name = stdout.split('\n')[2].replace('backed up data to backups/', '');
+    expect(stdout.endsWith(`restore failed: data copy in backups/${name}\n`)).toBe(true);
+    const ds = docker(calls);
+    const restore = ds.findIndex((call) => call.includes(' cp -a /backups/'));
+    expect(restore).toBeGreaterThan(0);
+    expect(ds.slice(restore).some((call) => call.includes(' up '))).toBe(false);
+    expect(t.state('refused')).toBe(sha);
+    expect(t.state('deploying')).toBeNull();
+  });
+
+  test('stops loudly when the old version fails too', () => {
+    const t = setup();
+    const old = t.head();
+    const sha = t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    const { status, stdout, calls } = t.run();
+    expect(status).toBe(1);
+    const name = stdout.split('\n')[2].replace('backed up data to backups/', '');
+    expect(stdout.endsWith(`rollback to ${short(old)} failed its health check too: data copy in backups/${name}\n`)).toBe(true);
+    expect(calls.some((call) => call.includes(`rm -rf /backups/${name}`))).toBe(false);
+    expect(t.state('deploying')).toBeNull();
+    expect(t.state('refused')).toBe(sha);
+  });
+
+  test('resumes a run that died after the copy', () => {
+    const t = setup();
+    const { sha } = t.interrupted('backed-up');
+    t.flag('health', '200\n');
+    const { status, stdout, calls } = t.run();
+    expect(stdout).toBe(`resuming ${short(sha)}\nstarted ${short(sha)}\ndeployed ${short(sha)}\n`);
+    expect(status).toBe(0);
+    expect(calls.some((call) => call.endsWith(' build') || call.includes(' cp '))).toBe(false);
+    expect(t.head()).toBe(sha);
+    expect(t.state('deploying')).toBeNull();
+  });
+
+  test('resumes into a rollback when the resumed version is unhealthy', () => {
+    const t = setup();
+    const { old, sha, name } = t.interrupted('backed-up');
+    t.flag('health', unhealthyThenHealthy);
+    const { status, stdout, calls } = t.run();
+    expect(status).toBe(1);
+    expect(stdout).toBe(
+      `resuming ${short(sha)}\nstarted ${short(sha)}\nhealth check failed for ${short(sha)}, rolling back\n` +
+        `rolled back ${short(sha)} to ${short(old)}\n`,
+    );
+    expectRollback(t, calls, old, sha, name);
+  });
+
+  for (const at of ['new', 'old'] as const) {
+    test(`resumes an interrupted rollback with HEAD at the ${at} commit`, () => {
+      const t = setup();
+      const { old, sha, name } = t.interrupted('rolling-back', at);
+      t.flag('health', '200\n');
+      const { status, stdout, calls } = t.run();
+      expect(stdout).toBe(`resuming the rollback of ${short(sha)}\nrolled back ${short(sha)} to ${short(old)}\n`);
+      expect(status).toBe(1);
+      expectRollback(t, ['docker compose -f compose.example.yml up -d --no-build edward', ...calls], old, sha, name);
+    });
+  }
+
+  for (const phase of ['stopped', 'building']) {
+    test(`abandons a run that died in phase ${phase}`, () => {
+      const t = setup();
+      const { old, sha, name } = t.interrupted(phase);
+      const { status, stdout, calls } = t.run();
+      expect(stdout).toBe(`abandoned ${short(sha)} after an interrupted run\n`);
+      expect(status).toBe(0);
+      const ds = docker(calls);
+      expect(ds.some((call) => call.startsWith('docker run --rm -u 0 ') && call.endsWith(` rm -rf /backups/${name}`))).toBe(true);
+      expect(ds).toContain('docker tag edward-hosted:previous edward-hosted');
+      expect(ds.at(-1)).toBe('docker compose -f compose.example.yml up -d --no-build edward');
+      expect(t.head()).toBe(old);
+      expect(t.state('refused')).toBeNull();
+      expect(t.state('deploying')).toBeNull();
+    });
+  }
 });

@@ -73,14 +73,63 @@ backup_failed() {
   exit 1
 }
 
-# Task 3: picks up a deploy that a killed run left in state/deploying.
-resume() {
-  :
+# Puts back the data and the old version after a failed health check; every step is safe to repeat.
+rollback() {
+  deploying rolling-back
+  if ! compose stop edward || ! as_root find /data -mindepth 1 -delete || ! as_root cp -a "/backups/$name/." /data/; then
+    refuse "$new"
+    rm -f state/deploying
+    echo "restore failed: data copy in backups/$name"
+    exit 1
+  fi
+  docker tag "$IMAGE:previous" "$IMAGE"
+  git reset -q --hard "$old"
+  compose up -d --no-build edward
+  refuse "$new"
+  rm -f state/deploying
+  if ! healthy; then
+    echo "rollback to ${old:0:7} failed its health check too: data copy in backups/$name"
+    exit 1
+  fi
+  echo "rolled back ${new:0:7} to ${old:0:7}"
+  exit 1
 }
 
-# Task 3: puts back the data and the old version after a failed health check.
-rollback() {
-  exit 1
+# Starts the new version from its copy taken, then deploys it or rolls back.
+start_new() {
+  compose up -d --no-build edward
+  echo "started ${new:0:7}"
+  if ! healthy; then
+    echo "health check failed for ${new:0:7}, rolling back"
+    rollback
+  fi
+  echo "deployed ${new:0:7}"
+  rm -f state/deploying
+  docker image prune -f
+  exit 0
+}
+
+# Picks up a deploy that a killed run left in state/deploying.
+resume() {
+  [ -e state/deploying ] || return 0
+  read -r old new name phase < state/deploying
+  case "$phase" in
+    backed-up)
+      echo "resuming ${new:0:7}"
+      start_new ;;
+    rolling-back)
+      echo "resuming the rollback of ${new:0:7}"
+      rollback ;;
+    *)
+      # building or stopped: data/ was never touched, so the old version comes back and the tick after retries.
+      as_root rm -rf "/backups/$name"
+      git reset -q --hard "$old"
+      docker tag "$IMAGE:previous" "$IMAGE"
+      compose up -d --no-build edward
+      rm -f state/deploying
+      echo "abandoned ${new:0:7} after an interrupted run"
+      exit 0 ;;
+  esac
 }
 
 if [ -z "${EDWARD_PUBLIC_HOST:-}" ]; then
@@ -147,13 +196,4 @@ deploying backed-up
 echo "backed up data to backups/$name"
 prune_copies
 
-compose up -d --no-build edward
-echo "started ${new:0:7}"
-if ! healthy; then
-  echo "health check failed for ${new:0:7}, rolling back"
-  rollback
-fi
-echo "deployed ${new:0:7}"
-rm -f state/deploying
-docker image prune -f
-exit 0
+start_new
