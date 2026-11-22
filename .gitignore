@@ -9,3 +9,5 @@ storybook-static/
 .env
 deploy/data/
 deploy/compose.*.local.yml
+deploy/backups/
+deploy/state/

@@ -10,3 +10,5 @@
 .worktrees
 .env
 deploy/data
+deploy/backups
+deploy/state
