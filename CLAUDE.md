@@ -79,7 +79,9 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - `hostedDeps` opens every stored account's file at start, which the deploy's health check (`deploy/update.sh`) relies on.
 - `deploy/update.sh` stays within bash 3.2 and BSD userland.
 - `deploy/update.sh` touches `data/` and its copies in `backups/` only in a one-off root container (`as_root`).
-- `deploy/update.sh`'s tests (`packages/server/test/deploy-update.test.ts`) stub `docker`, `curl` and `sleep` on `PATH`.
+- `deploy/update.sh`'s tests (`packages/server/test/deploy-update.test.ts`) stub `docker`, `curl` and `sleep` on `PATH`, and need a real `jq` and `git`.
+- `deploy/update.sh` relies on the compose service `edward`, the image `edward-hosted`, the published `127.0.0.1:4317`, `/signin` answering 200 to the public `Host` with no session, and the image running the command it is given (no `ENTRYPOINT` in the Dockerfile); a change to any of them changes the script with it.
+- A commit is deployed by the previous commit's `deploy/update.sh` (the unit runs a copy taken before the pull), so a change to the health path, the port or `state/deploying`'s format lands in two steps, the script first.
 - A failure's error text (the reporter's, an import's, the labeller's) never quotes the reporter's stdout or the model's reply, which hold the data: it names the command, the exit and stderr's last line, the API's own error, or a fixed message; model calls go only through `anthropicLabelClient` in `packages/server/src/labeller.ts`, which turns the reply parser's errors into a fixed message.
 - Background work runs through `createQueue` in `packages/server/src/queue.ts`, one queue per job named by its second argument (`import`, `label`), which logs a failing job under that name instead of rejecting, so a background error never crashes the server.
 - An e2e axe check right after an animated change (a pressed switch, a dialog opening) first waits for that element's animations through `settled` in `packages/web/e2e/settled.ts`.
