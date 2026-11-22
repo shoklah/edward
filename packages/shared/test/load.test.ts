@@ -215,6 +215,12 @@ describe('reporterTotals', () => {
     expect(report.report.runs.some((run) => run.all_pct != null)).toBe(true);
   });
 
+  test('loads a usage row with no week', () => {
+    const raw = fixture('report-work') as { totals: { usage: { week: string | null }[] } };
+    raw.totals.usage[0].week = null;
+    expect(loadReport(raw).ok).toBe(true);
+  });
+
   test('is null with no import, or for totals the schema rejects', () => {
     expect(reporterTotals(undefined)).toBeNull();
     expect(reporterTotals(null)).toBeNull();

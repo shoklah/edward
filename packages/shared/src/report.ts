@@ -251,7 +251,7 @@ const WeekSchema = z.object({
 
 // A week's calibration of points to dollars, per limit; borrowed_from names the week whose rates it used.
 const UsageWeekSchema = z.object({
-  week: z.string(),
+  week: str,
   readings: num,
   pairs: num,
   fable: z.object({ points: num, cost: num, rate: num, chunks: num, error: num, borrowed_from: str }).nullish(),
