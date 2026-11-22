@@ -47,8 +47,9 @@ const COLUMNS: ListColumn<ListedRun>[] = [
   { id: 'warnings', header: 'Warnings', num: true, value: (r) => r.warnings, cell: (r) => <Num value={r.warnings} /> },
 ];
 
-/** A count of the opened row, left out when not known. */
-const known = (value: number | null) => (value === null ? null : <Num value={value} />);
+/** A value of the opened row (a count unless `format` says otherwise), left out when not known. */
+const known = (value: number | null, format?: (n: number) => string) =>
+  value === null ? null : <Num value={value} format={format} />;
 
 /** A list's all-models usage column, folded when narrow, of the estimate `get` reads: the Runs, Sessions and Changes
  * lists' and a change's or goal's sessions' alike. */
@@ -65,7 +66,7 @@ export function usageColumn<T>(get: (row: T) => number | null): ListColumn<T> {
 
 /** A Fable usage fact of the estimate `get` reads, an opened row's first, left out when not known. */
 export function fableFact<T>(get: (row: T) => number | null): ListFact<T> {
-  return ['Fable (%)', (row) => (get(row) === null ? null : <Num value={get(row)} format={formatUsage} />)];
+  return ['Fable (%)', (row) => known(get(row), formatUsage)];
 }
 
 /** A unit's Fable usage fact: the Runs and Sessions lists' and a change's or goal's sessions' alike. */

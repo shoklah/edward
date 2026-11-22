@@ -3,7 +3,7 @@ import { cn } from 'cn';
 import { History } from 'lucide-react';
 import type { FindingsQuery, RunTime, UsageWeek, WeeksResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GROUP, GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
+import { GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
 import { ColumnHead, IconTerm, Line, PageTitle, Panel, ScrollTable, Section, State } from '../components/Panel.tsx';
 import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
@@ -168,8 +168,6 @@ function UsageEstimates({ usage }: { usage: UsageWeek[] }) {
   const dollars = (value: number | null | undefined) => <Num value={value} format={formatDollars} />;
   const points = (value: number | null | undefined) => <Num value={value} format={formatUsage} />;
   const cell = cn('px-2 py-1.5', NUM);
-  // GroupHead's look on a plain th: a shadcn TableHead has no place in an in-panel table.
-  const group = cn(GROUP, 'px-2 font-medium');
   return (
     <Panel title="Usage estimates" aside={<ReporterMark mark={usageMark} />}>
       {usage.length === 0 ? (
@@ -183,12 +181,8 @@ function UsageEstimates({ usage }: { usage: UsageWeek[] }) {
               <ColumnHead rowSpan={2} num>
                 Readings
               </ColumnHead>
-              <th scope="colgroup" colSpan={4} className={group}>
-                Fable
-              </th>
-              <th scope="colgroup" colSpan={5} className={group}>
-                All models
-              </th>
+              <ColumnHead colSpan={4}>Fable</ColumnHead>
+              <ColumnHead colSpan={5}>All models</ColumnHead>
             </tr>
             <tr>
               {['Points', 'Rate ($/pt)', 'Fit error (± pt)'].map((column) => (

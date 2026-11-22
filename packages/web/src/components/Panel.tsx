@@ -2,7 +2,7 @@ import { useId, type ReactNode, type Ref } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from 'cn';
 import { WARNING_BORDER } from '../lib/format.ts';
-import { NUM } from './Num.tsx';
+import { GROUP, NUM } from './Num.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 
 /** A link's underline: the disclosure's summary and every in-table link. */
@@ -173,8 +173,25 @@ export function ScrollTable({ label, className, children }: { label: string; cla
   );
 }
 
-/** A plain table's column head, muted; `num` for a numeric column, `rowSpan` over a two-row header's groups. */
-export function ColumnHead({ num = false, rowSpan, children }: { num?: boolean; rowSpan?: number; children: ReactNode }) {
+/** A plain table's column head, muted; `num` for a numeric column, `rowSpan` over a two-row header's groups; with
+ * `colSpan`, a group head over that many sub-columns, in `GroupHead`'s look. */
+export function ColumnHead({
+  num = false,
+  rowSpan,
+  colSpan,
+  children,
+}: {
+  num?: boolean;
+  rowSpan?: number;
+  colSpan?: number;
+  children: ReactNode;
+}) {
+  if (colSpan)
+    return (
+      <th scope="colgroup" colSpan={colSpan} className={cn(GROUP, 'px-2 font-medium')}>
+        {children}
+      </th>
+    );
   return (
     <th scope="col" rowSpan={rowSpan} className={cn('px-2 py-1.5 text-left font-medium text-muted-foreground', num && NUM)}>
       {children}
