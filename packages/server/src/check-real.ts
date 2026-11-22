@@ -1,9 +1,9 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
 // paths, the run key counts, the count of the reporter's unit keys that differ from the app's, the weeks, run time
-// groups, step kinds, rules, unit figures and context weeks whose sums differ from the reporter's totals, the count of
-// skills, of models and of units whose phases differ from their models and advisor, whether the units' cost adds up
-// by change and by goal, the counts of units carrying each Work fact, and the leaks showing mode lets through, each by
-// route and kind. It prints no value from the data but those weeks' dates, and no skill or agent
+// groups, step kinds, rules, unit figures, usage weeks and context weeks whose sums differ from the reporter's totals,
+// the count of skills, of models and of units whose phases differ from their models and advisor, whether the units'
+// usage adds up by change and by goal, the counts of units carrying each Work fact, and the leaks showing mode lets
+// through, each by route and kind. It prints no value from the data but those weeks' dates, and no skill or agent
 // name, since a project can name one. Usage:
 // `pnpm --filter @cwd/server check:real [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -132,6 +132,24 @@ else {
   });
   console.log(`weeks: ${weeks.length} compared, ${differ.length} differ`);
   for (const week of differ) console.log(week.week);
+  // The runs' usage estimates per week against the reporter's, to 0.01 points with a null read as 0 on both sides.
+  differLine(
+    'usage',
+    `${weeks.length} compared, `,
+    weeks.some((week) => week.all_pct !== undefined)
+      ? weeks
+          .filter((week) => {
+            const estimates = sums.get(week.week ?? '')?.estimates;
+            return (
+              !estimates ||
+              cents(estimates.all ?? 0) !== cents(week.all_pct ?? 0) ||
+              cents(estimates.fable ?? 0) !== cents(week.fable_pct ?? 0) ||
+              estimates.notEstimated !== (week.pct_unknown ?? 0)
+            );
+          })
+          .map((week) => week.week ?? '')
+      : null,
+  );
 
   // The other pages' sums over every run (and session, for skills) of the export against its all-time totals.
   const time = runTime(entries);
@@ -339,26 +357,26 @@ else {
     const units = [...storedRuns, ...storedSessions];
     const work = levels(storedRuns, storedSessions);
 
-    // Every stored unit's cost against the changes' plus the loose sessions', and against the goals' pages' plus No
-    // goal's, to the cent, so a unit counted twice or dropped shows; only the two sums are named.
-    const unitCost = (unit: StoredUnit<RunEntry | SessionEntry>) => modelsCost(unit.merged.models);
+    // Every stored unit's known usage estimate against the changes' plus the loose sessions', and against the goals'
+    // pages' plus No goal's, to 0.01 points, so a unit counted twice or dropped shows; only the two sums are named.
+    const unitUsage = (unit: StoredUnit<RunEntry | SessionEntry>) => unit.merged.all_pct;
     const names = storedNames(storedRuns);
-    const goalCost = (goal: string) =>
-      goalView({ runs: storedRuns, sessions: storedSessions, key: goalKey(goal), scope: null, names })?.cost;
+    const goalUsage = (goal: string) =>
+      goalView({ runs: storedRuns, sessions: storedSessions, key: goalKey(goal), scope: null, names })?.estimates.all;
     const workSums = {
-      changes: sum([...work.changes.map((change) => change.cost), ...work.loose.map(unitCost)]),
+      changes: sum([...work.changes.map((change) => change.estimates.all), ...work.loose.map(unitUsage)]),
       goals: sum([
-        ...[...goalHomes(work).keys()].map(goalCost),
-        ...work.changes.filter((change) => !change.goal).map((change) => change.cost),
-        ...work.loose.filter((session) => !session.merged.goal).map(unitCost),
+        ...[...goalHomes(work).keys()].map(goalUsage),
+        ...work.changes.filter((change) => !change.goal).map((change) => change.estimates.all),
+        ...work.loose.filter((session) => !session.merged.goal).map(unitUsage),
       ]),
     };
-    const unitsCost = cents(sum(units.map(unitCost)));
+    const unitsUsage = cents(sum(units.map(unitUsage)));
     differLine(
       'work',
       '2 compared, ',
       Object.entries(workSums)
-        .filter(([, cost]) => cents(cost) !== unitsCost)
+        .filter(([, usage]) => cents(usage) !== unitsUsage)
         .map(([name]) => name),
     );
     // How many stored units carry each Work fact, and the starters no stored session has, so a renamed or reshaped
