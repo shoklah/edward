@@ -22,9 +22,8 @@
 
 1. **The first run on a server that has never run it:** no `backups/`, no `state/`, no `edward-hosted:previous`. The script creates its folders and the deploy goes through. (Task 2's first deploy test starts from a bare checkout.)
 2. **CI half done:** one job finished `success` and another still `queued`. That is pending, not passed. (Task 2, `pending while any check run is not completed`.)
-3. **`main` moving during a run:** the script deploys the commit it fetched at the start (`merge --ff-only <sha>`), never `origin/main` read again. (Task 2, `deploys the commit it fetched, not a later one`.)
-4. **The container taking seconds to listen:** the health check answers `000` (no connection) a few times, then 200. That is a deploy, not a rollback. (Task 2, `retries the health check until 200`.)
-5. **A run killed mid-deploy:** the next tick must not stay silent with the site down. (Task 3's resume tests.)
+3. **The container taking seconds to listen:** the health check answers `000` (no connection) a few times, then 200. That is a deploy, not a rollback. (Task 2's first deploy test.)
+4. **A run killed mid-deploy:** the next tick must not stay silent with the site down. (Task 3's resume tests.)
 
 ## Files
 
@@ -72,7 +71,7 @@ Run as `bash <path to update.sh>` with the working folder `deploy/` of the check
   - `curl`: for a URL holding `check-runs`, prints `check-runs.json` (exits 22 when `fail-api` exists). For `/signin`, prints the first line of `health` and removes it, or `000` once `health` is empty.
   - `sleep`: does nothing.
 
-`run()` spawns `bash <repo>/deploy/update.sh` with the working folder `edward/deploy`, and `PATH` set to `bin/` ahead of the inherited one, then returns `{ status, stdout, calls }`. Helpers: `push()` commits a change in a second clone and pushes it, returning its sha; `checks(...runs)` writes `check-runs.json` from `{ status, conclusion }` pairs, each with `app.slug` `github-actions` (plus one run from another app, which must be ignored).
+`run()` spawns `/bin/bash <repo>/deploy/update.sh` (3.2 on macOS, as the service's `ExecStart` names it) with the working folder `edward/deploy`, and `PATH` set to `bin/` ahead of the inherited one, then returns `{ status, stdout, calls }`. Helpers: `push()` commits a change in a second clone and pushes it, returning its sha; `checks(...runs)` writes `check-runs.json` from `{ status, conclusion }` pairs, each with `app.slug` `github-actions` (plus one run from another app, which must be ignored).
 
 ---
 
@@ -104,24 +103,20 @@ Run as `bash <path to update.sh>` with the working folder `deploy/` of the check
 **Interfaces:**
 - Produces: the contract and the harness above. Task 3 adds to the same files.
 
-The test file starts with a `describe.skipIf(!jqAvailable)` guard (`spawnSync('jq', ['--version'])`), since the script needs `jq`; both CI runners have it.
-
 - [ ] **Step 1: Write the failing tests**:
   - `exits silently when the checkout is on origin/main`: status 0, empty stdout, no `docker` call.
   - `stays silent while any check run is not completed`: checks `(completed, success)` and `(queued, null)`. Status 0, empty stdout, `HEAD` unchanged, no `docker` call.
   - `refuses a commit whose CI failed, once`: checks `(completed, failure)`. The first run's stdout is `new commit <7>\nCI failed on <7>`, status 1, and `state/refused` holds the sha. A second run is silent, status 0.
   - `logs a GitHub API error`: with `fail-api`, stdout ends `GitHub API error`, status 1, nothing refused.
   - `refuses to deploy when HEAD is not behind origin/main`: commit locally in `edward/` too. Stdout holds `not a fast-forward of <head7>, not deploying`, status 1.
-  - `first deploy from a bare checkout`: no `backups/`, `state/` or override file, checks `(completed, success)` and `(completed, skipped)`. Status 0. The stdout lines are `new commit`, `building`, `backed up data to backups/<name>`, `started`, `deployed`, in that order. `HEAD` is the new sha. The calls hold, in order: `docker tag edward-hosted edward-hosted:previous`, `docker compose -f compose.example.yml build`, `… stop edward`, a `docker run --rm -u 0 … edward-hosted:previous cp -a …` naming the copy, `… up -d --no-build edward`, and `docker image prune -f`. `state/deploying` doesn't exist.
+  - `first deploy from a bare checkout`: no `backups/`, `state/` or override file, checks `(completed, success)` and `(completed, skipped)`, `health` `000`, `000`, `200`. Status 0, with three `/signin` calls. The stdout lines are `new commit`, `building`, `backed up data to backups/<name>`, `started`, `deployed`, in that order. `HEAD` is the new sha. The calls hold, in order: `docker tag edward-hosted edward-hosted:previous`, `docker compose -f compose.example.yml build`, `… stop edward`, a `docker run --rm -u 0 … edward-hosted:previous cp -a …` naming the copy, `… up -d --no-build edward`, and `docker image prune -f`. `state/deploying` doesn't exist.
   - `passes the proxy override when it exists`: with `edward/deploy/compose.proxy.local.yml` present, every `docker compose` call holds `-f compose.example.yml -f compose.proxy.local.yml`.
-  - `retries the health check until 200`: `health` is `000`, `000`, `200`. Deployed, with three `/signin` calls.
-  - `deploys the commit it fetched, not a later one`: the `docker` stub pushes a second commit on its `build` call (a hook file the stub runs when present). `HEAD` ends at the first commit, and the next run deploys the second.
   - `keeps the three newest copies`: pre-create `backups/` names for four earlier times. After a deploy, the calls hold `rm -rf /backups/<oldest>` and `rm -rf /backups/<second oldest>`, and nothing else is removed.
   - `a failed build leaves the old version running`: with `fail-build`, status 1, stdout ends `build failed for <7>`. `HEAD` is the old sha, the calls hold `docker tag edward-hosted:previous edward-hosted` and no `stop`, and `state/refused` is the sha.
   - `a failed copy restarts the old version`: with `fail-copy`, status 1, stdout ends `backup failed, <old7> restarted`. `HEAD` is the old sha, the calls end with the tag restored and `up -d --no-build edward`, and `state/deploying` doesn't exist. Nothing is refused: the next tick tries again.
 - [ ] **Step 2: Run** `pnpm vitest run packages/server/test/deploy-update.test.ts`. Expected: every test FAILS, since the script doesn't exist.
 - [ ] **Step 3: Implement `deploy/update.sh`** by the contract, `set -u`, in this order: resume check (Task 3, a stub for now), fetch (`git fetch -q origin main`, the sha from `git rev-parse FETCH_HEAD`), the steps of the spec's "One run" 1 to 9. Write `state/deploying` with phase `building` before the `merge --ff-only <sha>`, `stopped` before `stop`, `backed-up` after the copy, and remove it after `deployed`. Rollback (Task 3) is a stub that exits 1 for now.
-- [ ] **Step 4: Run** the test file, then `pnpm vitest run --project @cwd/server`. Expected: PASS. Also run it under `/bin/bash` 3.2 on macOS (the default `bash` here).
+- [ ] **Step 4: Run** the test file, then `pnpm vitest run --project @cwd/server`. Expected: PASS.
 - [ ] **Step 5: Commit** `feat: deploy/update.sh deploys main once CI passes`.
 
 ### Task 3: Rollback and resuming an interrupted run
