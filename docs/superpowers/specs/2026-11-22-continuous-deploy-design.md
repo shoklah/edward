@@ -48,7 +48,7 @@ A fourth question, how a broken account file is caught, had three answers: open 
 ### Pieces, all in `deploy/`
 
 - `update.sh`, the deploy script, committed.
-- `edward-deploy.service` and `edward-deploy.timer`, committed systemd unit templates: a oneshot service run as `<user>` with the checkout's `deploy/` as its working folder, and a timer every 5 minutes (`OnUnitActiveSec=5min`, plus `OnBootSec`), `Persistent=true`. Installed once by the owner as system units with sudo (copied to `/etc/systemd/system/`, `systemctl enable --now edward-deploy.timer`), so they run without a login and log under `edward-deploy`. systemd never starts a oneshot that is still running, so a long build never overlaps the next tick; `TimeoutStartSec=30min` ends a hung run, which then counts as a run that died midway (below). The committed service holds a placeholder for the public host (`EDWARD_PUBLIC_HOST`), which the owner fills in at install.
+- `edward-deploy.service` and `edward-deploy.timer`, committed systemd unit templates: a oneshot service run as `<user>` with the checkout's `deploy/` as its working folder, and a timer every 5 minutes (`OnUnitActiveSec=5min`, plus `OnBootSec`). Installed once by the owner as system units with sudo (copied to `/etc/systemd/system/`, `systemctl enable --now edward-deploy.timer`), so they run without a login and log under `edward-deploy`. systemd never starts a oneshot that is still running, so a long build never overlaps the next tick; `TimeoutStartSec=30min` ends a hung run, which then counts as a run that died midway (below). The committed service holds a placeholder for the public host (`EDWARD_PUBLIC_HOST`), which the owner fills in at install.
 - `backups/` and the script's state file (the last refused commit, and a deploy in progress: its old and new commits and its backup's folder) beside `data/`, both git-ignored; `backups/` is also in `.dockerignore`, since the build's `COPY . .` can't read the root-owned copies.
 
 ### One run of `update.sh`
@@ -73,7 +73,7 @@ Stop the new container, put `data/` back from the copy just taken (in a one-off 
 
 ### A run that died midway
 
-A reboot, a kill or the start timeout can end a run after the checkout moved and before step 9 or the rollback finished, leaving the container stopped or unchecked while `HEAD` is already `origin/main`. Step 6 records the deploy in progress in the state file before it stops the container, and a successful step 9 or a finished rollback clears it. A run that finds one recorded starts there, before step 1: it logs `resuming <new sha7>`, starts the container (`up -d --no-build`) and runs the health check; healthy, it logs `deployed`; unhealthy, it rolls back from the recorded backup.
+A reboot, a kill or the start timeout can end a run after the checkout moved and before step 9 or the rollback finished, leaving the container stopped or unchecked while `HEAD` is already `origin/main`. Step 5 records the deploy in progress in the state file before it moves the checkout, with its phase (building, stopped, backed up), and a successful step 9 or a finished rollback clears it. A run that died before its copy finished never touched `data/`: the next run abandons it (checkout, tag and old container back, nothing refused) and the tick after retries. A run that finds one recorded past its copy starts there, before step 1: it logs `resuming <new sha7>`, starts the container (`up -d --no-build`) and runs the health check; healthy, it logs `deployed`; unhealthy, it rolls back from the recorded backup.
 
 ### The compose files
 
