@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { emptyWeek, fullHome } from '../test/home.ts';
 import { WeekTiles } from './WeekTiles.tsx';
-import { expectNoJoined } from '../test/table.ts';
+import { expectNoJoined, width } from '../test/table.ts';
 
 const meta = { component: WeekTiles } satisfies Meta<typeof WeekTiles>;
 export default meta;
@@ -107,5 +107,35 @@ export const UsageUnknown: Story = {
       ['All models', '–not known', '<0.1'],
       ['Fable', '–not known', '0.0'],
     ]);
+  },
+};
+
+/** The panel as narrow as Home's at 768 px, beside the rail: each table takes the whole width, none runs into another. */
+export const Narrow: Story = {
+  args: { thisWeek: fullHome.thisWeek, lastWeek: fullHome.lastWeek },
+  decorators: [width(500)],
+  play: async ({ canvasElement }) => {
+    const all = tables(canvasElement);
+    const lefts = all.map((table) => Math.round(table.getBoundingClientRect().left));
+    await expect(new Set(lefts).size).toBe(1);
+    // No table is wider than its column, and every title stays on one line.
+    for (const table of all) {
+      await expect(table.scrollWidth).toBeLessThanOrEqual(table.parentElement!.clientWidth);
+      const title = table.querySelector('th')!;
+      await expect(title.getBoundingClientRect().height).toBeLessThan(30);
+    }
+  },
+};
+
+/** The panel as wide as Home's at 1440 px: two tables side by side, the usage tables together on one row. */
+export const Wide: Story = {
+  args: { thisWeek: fullHome.thisWeek, lastWeek: fullHome.lastWeek },
+  decorators: [width(846)],
+  play: async ({ canvasElement }) => {
+    const [runs, findings, usage, perRun] = tables(canvasElement);
+    const top = (el: HTMLElement) => Math.round(el.getBoundingClientRect().top);
+    await expect(top(findings)).toBe(top(runs));
+    await expect(top(perRun)).toBe(top(usage));
+    await expect(usage.getBoundingClientRect().right).toBeLessThan(perRun.getBoundingClientRect().left);
   },
 };

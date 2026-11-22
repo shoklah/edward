@@ -17,8 +17,7 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
     <table aria-label={title} className="w-full text-sm">
       <thead>
         <tr className="border-b">
-          {/* The title may wrap, so two tables fit side by side in the narrowest panel (768 px, beside the rail). */}
-          <th scope="col" className="py-1 text-left font-semibold">
+          <th scope="col" className="py-1 text-left font-semibold whitespace-nowrap">
             {title}
           </th>
           <th scope="col" className={cn('py-1 pl-3 font-medium whitespace-nowrap text-muted-foreground', NUM)}>
@@ -50,7 +49,8 @@ export function WeekTiles({ thisWeek: a, lastWeek: b }: { thisWeek: WeekNumbers;
   const u = (value: number | null) => <Num value={value} format={formatUsage} />;
   return (
     <Panel title="This week">
-      <div className="grid items-start gap-x-10 gap-y-5 sm:grid-cols-2 2xl:grid-cols-4">
+      {/* As many columns as fit tables at their widest one's least width (the usage tables'), so none runs into the next. */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] items-start gap-x-10 gap-y-5">
         <Group
           title="Runs"
           rows={[

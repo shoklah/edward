@@ -164,6 +164,15 @@ export const Full: Story = {
     await expect(cells(usageRows[1])).toEqual([
       '3', '9.0', '5.80', '1.1', '–not borrowed', '7.2', '12.50', '25.00', '–not known', 'Oct 25',
     ]);
+    // A known fit error under 0.05 points is "<0.1", not a zero.
+    await expect(cells(usageRows[2])[3]).toBe('<0.1');
+    // Each head on one line, so a narrow page scrolls the table sideways; rows as tight as the panel's other tables.
+    const usageTable = usageRows[0].closest('table')!;
+    for (const head of usage.getAllByRole('columnheader')) await expect(getComputedStyle(head).whiteSpace).toBe('nowrap');
+    for (const row of usageRows) {
+      await expect(row.getBoundingClientRect().height).toBeLessThan(36);
+    }
+    await expect(usageTable.querySelectorAll('[data-slot]')).toHaveLength(0);
     for (const row of usageRows) {
       await expect([...row.children].map(aligned)).toEqual([false, ...Array(4).fill(true), false, ...Array(4).fill(true), false]);
     }

@@ -12,7 +12,6 @@ import {
   PATH_LABELS,
   countName,
   formatDollars,
-  formatPoints,
   formatUsage,
   formatUsagePercent,
   total,
@@ -172,21 +171,28 @@ function From({ rates }: { rates: { borrowed_from?: string | null } | null | und
  * rates, fit error and the week its rates were borrowed from; account-wide, so the reporter's mark. */
 function UsageEstimates({ usage }: { usage: UsageWeek[] }) {
   const dollars = (value: number | null | undefined) => <Num value={value} format={formatDollars} />;
-  const points = (value: number | null | undefined) => <Num value={value} format={formatPoints} />;
+  const points = (value: number | null | undefined) => <Num value={value} format={formatUsage} />;
+  const cell = cn('px-2 py-1.5', NUM);
+  const group = 'border-b px-2 py-1.5 text-center font-medium';
   return (
     <Panel title="Usage estimates" aside={<ReporterMark mark={usageMark} />}>
       {usage.length === 0 ? (
         <Line muted>No usage estimates in this export.</Line>
       ) : (
-        <ScrollTable label="Usage estimates">
+        // Every head and cell on one line: a narrow page scrolls the table sideways.
+        <ScrollTable label="Usage estimates" className="whitespace-nowrap">
           <thead>
             <tr>
               <ColumnHead rowSpan={2}>Week</ColumnHead>
               <ColumnHead rowSpan={2} num>
                 Readings
               </ColumnHead>
-              <GroupHead span={4}>Fable</GroupHead>
-              <GroupHead span={5}>All models</GroupHead>
+              <th scope="colgroup" colSpan={4} className={group}>
+                Fable
+              </th>
+              <th scope="colgroup" colSpan={5} className={group}>
+                All models
+              </th>
             </tr>
             <tr>
               {['Points', 'Rate ($/pt)', 'Fit error (± pt)'].map((column) => (
@@ -205,25 +211,27 @@ function UsageEstimates({ usage }: { usage: UsageWeek[] }) {
           </thead>
           <tbody>
             {usage.map((u, i) => (
-              <TableRow key={u.week ?? i}>
-                <TableHead scope="row">{u.week ? weekLabel(u.week) : <Unknown />}</TableHead>
-                <TableCell className={NUM}>
+              <tr key={u.week ?? i} className="border-t hover:bg-muted/50">
+                <th scope="row" className="px-2 py-1.5 text-left font-medium">
+                  {u.week ? weekLabel(u.week) : <Unknown />}
+                </th>
+                <td className={cell}>
                   <Num value={u.readings} />
-                </TableCell>
-                <TableCell className={NUM}>{points(u.fable?.points)}</TableCell>
-                <TableCell className={NUM}>{dollars(u.fable?.rate)}</TableCell>
-                <TableCell className={NUM}>{points(u.fable?.error)}</TableCell>
-                <TableCell>
+                </td>
+                <td className={cell}>{points(u.fable?.points)}</td>
+                <td className={cell}>{dollars(u.fable?.rate)}</td>
+                <td className={cell}>{points(u.fable?.error)}</td>
+                <td className="px-2 py-1.5">
                   <From rates={u.fable} />
-                </TableCell>
-                <TableCell className={NUM}>{points(u.all?.points)}</TableCell>
-                <TableCell className={NUM}>{dollars(u.all?.fable_rate)}</TableCell>
-                <TableCell className={NUM}>{dollars(u.all?.other_rate)}</TableCell>
-                <TableCell className={NUM}>{points(u.all?.error)}</TableCell>
-                <TableCell>
+                </td>
+                <td className={cell}>{points(u.all?.points)}</td>
+                <td className={cell}>{dollars(u.all?.fable_rate)}</td>
+                <td className={cell}>{dollars(u.all?.other_rate)}</td>
+                <td className={cell}>{points(u.all?.error)}</td>
+                <td className="px-2 py-1.5">
                   <From rates={u.all} />
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
           </tbody>
         </ScrollTable>

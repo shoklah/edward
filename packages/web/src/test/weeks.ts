@@ -112,7 +112,12 @@ export const weeksFull: WeeksResponse = {
   },
   coverageFrom: '2026-10-13T09:00:00Z',
   // Newest first; the week of Nov 1 borrowed its all-models rates from the week before.
-  usage: [calibration('2026-11-08'), calibration('2026-11-01', '2026-10-25'), calibration('2026-10-25')],
+  // The week of Oct 25's Fable fit is under 0.05 points.
+  usage: [
+    calibration('2026-11-08'),
+    calibration('2026-11-01', '2026-10-25'),
+    { ...calibration('2026-10-25'), fable: { ...calibration('2026-10-25').fable!, error: 0.04 } },
+  ],
   usageSource: 'reporter',
 };
 

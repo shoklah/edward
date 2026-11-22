@@ -496,10 +496,6 @@ export function formatUsagePercent(value: number | null): string {
   return value === null ? NONE : `${formatUsage(value)}%`;
 }
 
-/** Usage points (a share of a weekly limit, in percent points) or a fit error in points, one decimal: "7.2", "0.4". */
-export function formatPoints(value: number): string {
-  return USAGE.format(value);
-}
 
 /** The units a usage total left out: "1 unit not estimated", "3 units not estimated". */
 export function notEstimatedLabel(count: number): string {
