@@ -111,7 +111,7 @@ Read the runs with `journalctl -u edward-deploy` (`docker compose`'s build, star
 
 `backups/` keeps the three newest copies. They guard a deploy only, and are no replacement for the server's backups.
 
-Never run `update.sh` by hand while the timer is active: it reads the live run's state. To deploy by hand:
+Never run `update.sh` by hand while the timer is active: it reads the live run's state. To deploy by hand (as for a change to `update.sh` that the running script would roll back, such as moving its health check):
 1. Stop the timer: `sudo systemctl stop edward-deploy.timer`. A run already going keeps going, so wait until `systemctl is-active edward-deploy.service` prints `inactive`.
 2. Check that neither `deploy/state/deploying` nor `deploy/state/halted` exists. If `deploying` does, a killed run hasn't finished: start the timer again, wait for its next run to finish it, and start over. Deploying over it would let that run put back the old version or an older copy of `data/`.
 3. From `deploy/`, update the checkout and run step 4's command (with the proxy override's `-f compose.proxy.local.yml` too, if you use it), then start the timer again:

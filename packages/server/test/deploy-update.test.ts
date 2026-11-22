@@ -1,8 +1,11 @@
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 const SCRIPT = fileURLToPath(new URL('../../../deploy/update.sh', import.meta.url));
@@ -75,8 +78,6 @@ case "$*" in
   compose*' exec -T edward node '*)
     if [ -s "$T/health" ]; then
       head -n 1 "$T/health"; tail -n +2 "$T/health" > "$T/health.next"; mv "$T/health.next" "$T/health"
-    else
-      echo 0
     fi ;;
 esac
 exit 0
@@ -252,7 +253,7 @@ describe('update.sh', () => {
     const old = t.head();
     const sha = t.push();
     t.checks({ status: 'completed', conclusion: 'success' }, { status: 'completed', conclusion: 'skipped' });
-    t.flag('health', '000\n000\n200\n');
+    t.flag('health', '\n\n200\n');
     const { status, stdout, calls } = t.run();
     expect(status).toBe(0);
 
@@ -493,7 +494,7 @@ describe('update.sh', () => {
     expect(t.state('deploying')).toBeNull();
   };
 
-  const unhealthyThenHealthy = `${'000\n'.repeat(60)}200\n`;
+  const unhealthyThenHealthy = `${'\n'.repeat(60)}200\n`;
 
   test('rolls back data, image and checkout when the health check fails', () => {
     const t = setup();
@@ -662,4 +663,48 @@ describe('update.sh', () => {
       expect(t.state('deploying')).toBe(`${old} ${sha} ${name} ${phase}`);
     });
   }
+});
+
+// The health check's probe, run with real node against a throwaway server on another port (never 4317, which a local
+// edward may hold).
+describe('health probe', () => {
+  const probe = (port: number): string => {
+    const text = /^PROBE='(.*)'$/m.exec(readFileSync(SCRIPT, 'utf8'))?.[1];
+    if (!text?.includes('port: 4317')) throw new Error('no probe on port 4317 in update.sh');
+    return text.replace('port: 4317', `port: ${port}`);
+  };
+
+  const ask = async (port: number, host: string) => {
+    try {
+      const { stdout } = await promisify(execFile)(process.execPath, ['-e', probe(port), host]);
+      return { stdout, code: 0 };
+    } catch (error) {
+      const { stdout, code } = error as { stdout: string; code: number };
+      return { stdout, code };
+    }
+  };
+
+  const listen = async () => {
+    const server = createServer((req, res) => {
+      res.writeHead(req.url === '/signin' && req.headers.host === HOST ? 200 : 403).end();
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    return { server, port: (server.address() as AddressInfo).port };
+  };
+
+  test('prints /signin\'s status as the public host sees it', async () => {
+    const { server, port } = await listen();
+    try {
+      expect(await ask(port, HOST)).toEqual({ stdout: '200\n', code: 0 });
+      expect(await ask(port, 'other.example')).toEqual({ stdout: '403\n', code: 0 });
+    } finally {
+      server.close();
+    }
+  });
+
+  test('prints nothing when it cannot connect', async () => {
+    const { server, port } = await listen();
+    await new Promise((resolve) => server.close(resolve));
+    expect(await ask(port, HOST)).toEqual({ stdout: '', code: 1 });
+  });
 });
