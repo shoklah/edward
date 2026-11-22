@@ -10,7 +10,7 @@ import { Pairs, Panel } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { formatCost, formatMinutes, pathLabel } from '../lib/format.ts';
+import { formatMinutes, formatUsagePercent, pathLabel } from '../lib/format.ts';
 
 /** An item (docs/design/2026-11-18-feed-items): a small muted caption, its status a swatch beside the word (the
  * warning orange or the finished green) and its time; then its message in medium weight, a warning's text or a finished
@@ -59,7 +59,7 @@ function Item({ item }: { item: FeedItem }) {
             ['Acted on', <Num value={item.findings?.actedOn} />],
             ['Open', <Num value={item.findings?.open} />],
             ['Time', <Num value={item.minutes} format={formatMinutes} />],
-            ['Est. cost', <Num value={item.cost} format={formatCost} />],
+            ['All models', <Num value={item.allPct} format={formatUsagePercent} />],
           ]}
         />
       )}

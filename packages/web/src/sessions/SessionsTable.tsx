@@ -5,13 +5,12 @@ import { Num, Text, Unknown } from '../components/Num.tsx';
 import { ColumnHead, ScrollTable } from '../components/Panel.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionChip } from '../components/SessionChip.tsx';
-import { CHANGE_FACTS } from '../runs/RunsTable.tsx';
+import { CHANGE_FACTS, FABLE_FACT, usageColumn } from '../runs/RunsTable.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   UNNAMED,
   WARNING_INK,
   formatDayTime,
-  formatDollars,
   formatLength,
   modelLabel,
   pathLabel,
@@ -108,14 +107,7 @@ const COLUMNS: ListColumn<SessionRow>[] = [
     cell: (s) => <Time iso={s.start} />,
   },
   { id: 'length', header: 'Length', num: true, value: (s) => s.minutes, cell: (s) => <Num value={s.minutes} format={formatLength} /> },
-  {
-    id: 'cost',
-    header: 'Est. cost ($)',
-    num: true,
-    fold: true,
-    value: (s) => s.cost,
-    cell: (s) => <Num value={s.cost} format={formatDollars} />,
-  },
+  usageColumn((s) => s.allPct),
   {
     id: 'warnings',
     header: 'Warnings',
@@ -143,6 +135,7 @@ export const MODEL_FACT: ListFact<Pick<SessionRow, 'models'>> = [
 ];
 
 const FACTS: ListFact<SessionRow>[] = [
+  FABLE_FACT,
   ...CHANGE_FACTS,
   ['ID', (s) => (s.sessionId === null ? null : <SessionChip id={s.sessionId} />)],
   MODEL_FACT,

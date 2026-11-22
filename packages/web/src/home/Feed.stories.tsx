@@ -56,7 +56,7 @@ export const Full: Story = {
       ['Acted on', '5'],
       ['Open', '0'],
       ['Time', '2 h 10'],
-      ['Est. cost', '$7.10'],
+      ['All models', '1.1%'],
     ]);
     await expect(items[0].querySelector('time')).toHaveAttribute('datetime', '2026-11-12T10:40:00.000Z');
     await expect(items[0].querySelector('.bg-success-edge')).not.toBeNull();
@@ -83,7 +83,7 @@ export const Full: Story = {
       ['Acted on', '1'],
       ['Open', '0'],
       ['Time', '25 min'],
-      ['Est. cost', '$1.20'],
+      ['All models', '–not known'],
     ]);
     await expect(canvasElement.querySelector('img')).toBeNull();
 
@@ -171,16 +171,16 @@ export const LogPrefix: Story = {
   },
 };
 
-/** A finished run whose cost, time and findings aren't known: each a dash read out as not known, never 0. */
+/** A finished run whose usage, time and findings aren't known: each a dash read out as not known, never 0. */
 export const Unknowns: Story = {
-  args: { items: [{ ...fullHome.feed[0], findings: null, minutes: null, cost: null }] },
+  args: { items: [{ ...fullHome.feed[0], findings: null, minutes: null, allPct: null }] },
   play: async ({ canvas }) => {
     await expect(facts(canvas.getByRole('listitem'))).toEqual([
       ['Findings', '–not known'],
       ['Acted on', '–not known'],
       ['Open', '–not known'],
       ['Time', '–not known'],
-      ['Est. cost', '–not known'],
+      ['All models', '–not known'],
     ]);
   },
 };

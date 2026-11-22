@@ -21,6 +21,8 @@ export const fullRun: RunRow = {
   finishedAt: '2026-11-09T11:22:00Z',
   minutes: 130,
   cost: 7.1,
+  allPct: 0.59,
+  fablePct: 0.33,
   findings: { total: 6, actedOn: 3, notActedOn: 2, open: 1 },
   warnings: 1,
   stops: 0,
@@ -43,6 +45,8 @@ export const smallRun: RunRow = {
   finishedAt: '2026-11-09T09:40:00Z',
   minutes: 25,
   cost: 1.2,
+  allPct: 0.1,
+  fablePct: 0,
   findings: { total: 1, actedOn: 1, notActedOn: 0, open: 0 },
   warnings: 0,
   stops: 0,
@@ -66,6 +70,8 @@ export const oldRun: RunRow = {
   finishedAt: '2026-10-30T15:31:00Z',
   minutes: null,
   cost: null,
+  allPct: null,
+  fablePct: null,
   findings: NO_FINDINGS,
   warnings: 0,
   stops: null,
@@ -286,10 +292,10 @@ export const runStopped: RunPageResponse = { ...runFull, facts: { ...fullRun, st
 /** The full run handed off to a stored session. */
 export const runHandedOff: RunPageResponse = { ...runFull, handoffTo: { title: 'Search page polish', sessionId: '7a6b5c4d-3e2f-4a1b-9c8d-7e6f5a4b3c2d' } };
 
-/** The full run alone: no time, cost, session, context, related run or later fix. */
+/** The full run alone: no time, cost, usage, session, context, related run or later fix. */
 export const runAlone: RunPageResponse = {
   ...runFull,
-  facts: { ...fullRun, startedAt: null, finishedAt: null, minutes: null, cost: null },
+  facts: { ...fullRun, startedAt: null, finishedAt: null, minutes: null, cost: null, allPct: null, fablePct: null },
   timeline: runFull.timeline.map((g) => (g.kind === 'start' || g.kind === 'end' ? { ...g, at: null } : g)),
   session: null,
   context: null,

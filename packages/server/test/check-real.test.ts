@@ -20,7 +20,7 @@ const OLD_TOTALS = ['run time', 'steps', 'rules', 'skills', 'models', 'units', '
   .map((name) => `${name}: not in the export\n`)
   .join('');
 
-// An export with none of the Work facts: its costs still add up the same by change and by goal.
+// An export with none of the Work facts: its usage estimates still add up the same by change and by goal.
 const WORK = 'work: 2 compared, 0 differ\nwork facts: 0 headline, 0 goal, 0 spec, 0 started_by, 0 starters not stored\n';
 
 /** Writes a changed copy of a fixture to a temp file and returns its path. */
@@ -65,14 +65,14 @@ afterEach(() => {
 describe('check:real', () => {
   test('prints version, fields and key counts only', () => {
     const { stdout, status } = checkReal(['cat', fixturePath('report-full')]);
-    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\n${OLD_TOTALS}${WORK}showing: pass\n`);
+    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n${OLD_TOTALS}${WORK}showing: pass\n`);
     expect(status).toBe(0);
   });
 
   test("compares the new pages' sums with the reporter's totals and checks their routes", () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v5')]);
     expect(stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
     );
@@ -84,6 +84,7 @@ describe('check:real', () => {
     const file = changed('report-v5', (raw) => {
       const { totals } = raw;
       totals.weeks.find((w: { week: string }) => w.week === '2026-10-18').tasks += 1;
+      totals.weeks.find((w: { week: string }) => w.week === '2026-11-08').all_pct += 0.01;
       totals.run_time.with_waves.timed += 1;
       totals.scoreboard.task_review.outcomes.fixed += 1;
       totals.scoreboard.final_review.cost += 0.01;
@@ -99,7 +100,7 @@ describe('check:real', () => {
     });
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-10-18\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-10-18\nusage: 4 compared, 1 differ\n2026-11-08\n' +
         'run time: compared, 1 differ\nwith_waves\nsteps: 8 compared, 3 differ\ntask_review\nfinal_review\nfinal_fix_check\n' +
         'rules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
     );
@@ -112,7 +113,7 @@ describe('check:real', () => {
   test("compares the units' sums and skills' missing with the reporter's totals and checks the sessions route", () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v6')]);
     expect(stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
     );
@@ -132,7 +133,7 @@ describe('check:real', () => {
     });
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 1 differ\n' +
         'models: 0 differ\nunits: 3 differ\ndispatch_guard\nstartup\nadvisor\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
     );
@@ -157,7 +158,7 @@ describe('check:real', () => {
 
   test('prints the whole check of report-v7, its context line after the units', () => {
     expect(checkReal(['cat', fixturePath('report-v7')]).stdout).toBe(
-      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\n' +
+      'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n' +
         'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: 2 compared, 0 differ\nphases: 9 compared, 0 differ\n' + WORK + 'showing: pass\n',
     );
@@ -201,15 +202,26 @@ describe('check:real', () => {
     for (const key of fixture('report-v7').runs.map((run: any) => run.key)) expect(`${stdout}${stderr}`).not.toContain(key);
   });
 
+  test('prints usage: not in the export from an export whose weeks have no usage', () => {
+    const file = changed('report-v6', (raw) => {
+      for (const week of raw.totals.weeks) {
+        delete week.all_pct;
+        delete week.fable_pct;
+        delete week.pct_unknown;
+      }
+    });
+    expect(checkReal(['cat', file]).stdout).toContain('\nweeks: 4 compared, 0 differ\nusage: not in the export\nrun time: ');
+  });
+
   test("reads an unpriced week's null cost as the reporter's 0", () => {
-    expect(checkReal(['cat', fixturePath('report-projects')]).stdout).toContain('weeks: 4 compared, 0 differ\n');
+    expect(checkReal(['cat', fixturePath('report-projects')]).stdout).toContain('weeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n');
   });
 
   test('prints phases: not in the export from an export with no phases', () => {
     expect(checkReal(['cat', fixturePath('report-v6')]).stdout).toContain('\nphases: not in the export\n' + WORK + 'showing: pass\n');
   });
 
-  test("compares the units' cost with the changes' and the goals', counts the Work facts and checks the Work routes", () => {
+  test("compares the units' usage estimates with the changes' and the goals', counts the Work facts and checks the Work routes", () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-work')]);
     expect(stdout).toContain(
       '\nphases: 9 compared, 0 differ\nwork: 2 compared, 0 differ\n' +
@@ -332,9 +344,9 @@ describe('check:real', () => {
     dirs.push(dir);
     const file = join(dir, 'report keys.json');
     writeFileSync(file, JSON.stringify(report));
-    // The extra run and the one with no date also change their weeks' sums.
+    // The extra run and the one with no date also change their weeks' sums, their unestimated counts too.
     expect(checkReal(['cat', file]).stdout).toBe(
-      `version: 1\nfields: none\nrun keys: 1 duplicates, 1 missing\nreporter keys: not in the export\nweeks: 4 compared, 2 differ\n2026-10-04\n2026-10-18\n${OLD_TOTALS}${WORK}showing: pass\n`,
+      `version: 1\nfields: none\nrun keys: 1 duplicates, 1 missing\nreporter keys: not in the export\nweeks: 4 compared, 2 differ\n2026-10-04\n2026-10-18\nusage: 4 compared, 2 differ\n2026-10-04\n2026-10-18\n${OLD_TOTALS}${WORK}showing: pass\n`,
     );
   });
 
@@ -347,7 +359,7 @@ describe('check:real', () => {
     const file = join(dir, 'report weeks.json');
     writeFileSync(file, JSON.stringify(report));
     const { stdout, status } = checkReal(['cat', file]);
-    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-11-01\n${OLD_TOTALS}${WORK}showing: pass\n`);
+    expect(stdout).toBe(`version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-11-01\nusage: 4 compared, 0 differ\n${OLD_TOTALS}${WORK}showing: pass\n`);
     expect(status).toBe(0);
   });
 

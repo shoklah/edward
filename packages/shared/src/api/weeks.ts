@@ -1,8 +1,10 @@
-import type { Path } from '../report.ts';
+import type { Estimates } from '../facts.ts';
+import type { Path, UsageWeek } from '../report.ts';
 
 /** One week's sums over its runs, as the reporter's week_rows: runs by path, the summed tasks, final review findings,
  * fix rounds and stops, the summed known Fable and all points (null when none is known), the priced cost (null when
- * no run has a priced model), the median of the known minutes (null when none is known) and the later fix commits. */
+ * no run has a priced model), the usage estimates of its runs and its sessions (estimateSum), the median of the known
+ * minutes (null when none is known) and the later fix commits. */
 export type WeekRow = {
   runs: Record<Path, number>;
   tasks: number;
@@ -12,6 +14,7 @@ export type WeekRow = {
   fablePoints: number | null;
   allPoints: number | null;
   cost: number | null;
+  estimates: Estimates;
   minutesPerRun: number | null;
   laterFixes: number;
 };
@@ -20,6 +23,13 @@ export type WeekRow = {
  * minutes (null when none has one). */
 export type RunTime = Record<'withWaves' | 'withoutWaves', { runs: number; timed: number; medianMinutes: number | null }>;
 
-/** `GET /api/weeks`: the period's weeks, oldest first, each with its sums; the period's Full run time; and the earliest
- * finish time of the runs whose transcript the reporter could read. */
-export type WeeksResponse = { weeks: (WeekRow & { week: string })[]; runTime: RunTime; coverageFrom: string | null };
+/** `GET /api/weeks`: the period's weeks, oldest first, each with its sums; the period's Full run time; the earliest
+ * finish time of the runs whose transcript the reporter could read; and the reporter's weekly calibration of the
+ * period's weeks (`totals.usage`), newest first, empty for an export without it. */
+export type WeeksResponse = {
+  weeks: (WeekRow & { week: string })[];
+  runTime: RunTime;
+  coverageFrom: string | null;
+  usage: UsageWeek[];
+  usageSource: 'reporter';
+};

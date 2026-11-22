@@ -1,15 +1,19 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, expect, test } from 'vitest';
-import { loadReport, type WeeksResponse } from '@cwd/shared';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { estimateSum, loadReport, parseTime, weekOf, type WeeksResponse } from '@cwd/shared';
 import { fixture } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
-import { setShowing } from '../src/db/read.ts';
+import { listUnits, setShowing } from '../src/db/read.ts';
 import { projectKey } from '../src/keys.ts';
-import { leaks } from '../src/views/scope.ts';
+import { weekSums } from '../src/views/home.ts';
+import { weeksView } from '../src/views/weeks.ts';
+import { storedBranches, storedSessionRoots } from '../src/views/runs.ts';
+import { forbiddenStrings, leaks } from '../src/views/scope.ts';
+import { goalHomes, levels } from '../src/views/work.ts';
 
 const PORT = 4317;
 const NOW = new Date('2026-11-12T12:00:00Z');
@@ -31,9 +35,18 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-async function weeks(query = ''): Promise<WeeksResponse> {
+/** A fresh database holding a fixture's JSON (a changed copy of one too), beside the test's. */
+function dbOf(raw: any): Db {
+  const other = openDb(join(dir, 'other.sqlite'));
+  const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
+  if (!loaded.ok) throw new Error('the fixture does not load');
+  importReport(other, loaded.report, { runs: raw.runs, sessions: raw.sessions, totals: raw.totals }, NOW);
+  return other;
+}
+
+async function weeks(query = '', on: Db = db): Promise<WeeksResponse> {
   const app = createApp({
-    db,
+    db: on,
     port: PORT,
     requestImport: () => {},
     importing: () => false,
@@ -83,6 +96,7 @@ test('a week with no runs has an empty row', async () => {
     fablePoints: null,
     allPoints: null,
     cost: null,
+    estimates: { all: null, fable: null, notEstimated: 0 },
     minutesPerRun: null,
     laterFixes: 0,
   });
@@ -124,4 +138,84 @@ test('with showing on, the response holds no project text', async () => {
   const body = await weeks('?weeks=52');
   expect(body.weeks.at(-1)!.runs).toEqual({ small: 1, full: 2, plan: 1 });
   expect(leaks(body, ['/Users/example', 'tidepool-api', 'feature/webhooks', 'fix/retry-backoff'], [])).toEqual([]);
+});
+
+describe('usage estimates', () => {
+  const LANTERN = '/Users/example/Work/lantern-notes';
+  const raw = () => fixture('report-work');
+  const inWeek = (units: any[], week: string, time: (u: any) => string | undefined) =>
+    units.filter((u) => time(u) && weekOf(parseTime(time(u)!)) === week);
+
+  test("a week's estimates sum its runs and its sessions", async () => {
+    const work = dbOf(raw());
+    const row = (await weeks('', work)).weeks.find((w) => w.week === '2026-11-08')!;
+    const units = [
+      ...inWeek(raw().runs, '2026-11-08', (r) => r.record?.date),
+      ...inWeek(raw().sessions, '2026-11-08', (s) => s.start),
+    ];
+    expect(row.estimates).toEqual(estimateSum(units));
+    const runsOnly = weekSums(listUnits(work, 'run').map((u) => u.merged), []).get('2026-11-08')!;
+    expect(row.estimates.all!).toBeGreaterThan(runsOnly.estimates.all!);
+    work.$client.close();
+  });
+
+  test('a path filter leaves the sessions out', async () => {
+    const work = dbOf(raw());
+    const row = (await weeks('?path=full', work)).weeks.find((w) => w.week === '2026-11-08')!;
+    const full = inWeek(raw().runs, '2026-11-08', (r) => r.record?.date).filter((r) => r.record.path === 'full');
+    expect(row.estimates).toEqual(estimateSum(full));
+    work.$client.close();
+  });
+
+  test("usage is the Period's weeks of totals.usage, newest first, from the reporter", async () => {
+    const work = dbOf(raw());
+    const body = await weeks('', work);
+    expect(body.usage.map((u) => u.week)).toEqual(['2026-11-08', '2026-11-01', '2026-10-25', '2026-10-18']);
+    expect(body.usage.find((u) => u.week === '2026-11-01')!.all!.borrowed_from).toBe('2026-10-25');
+    expect(body.usageSource).toBe('reporter');
+    // Two weeks: only those two rows.
+    expect((await weeks('?weeks=2', work)).usage.map((u) => u.week)).toEqual(['2026-11-08', '2026-11-01']);
+    work.$client.close();
+  });
+
+  test('an export with no usage totals has no usage', async () => {
+    const old = raw();
+    delete old.totals.usage;
+    const work = dbOf(old);
+    expect((await weeks('', work)).usage).toEqual([]);
+    const runs = listUnits(work, 'run');
+    const sessions = listUnits(work, 'session');
+    expect(weeksView({ runs, sessions, totals: null, query: { weeks: 4 }, now: NOW, scope: null }).usage).toEqual([]);
+    work.$client.close();
+  });
+
+  test('usage follows no filter and no scope', async () => {
+    const work = dbOf(raw());
+    const all = (await weeks('', work)).usage;
+    expect((await weeks('?path=full', work)).usage).toEqual(all);
+    expect((await weeks(`?project=${projectKey(LANTERN)}`, work)).usage).toEqual(all);
+    setShowing(work, [projectKey(LANTERN)]);
+    expect((await weeks('', work)).usage).toEqual(all);
+    work.$client.close();
+  });
+
+  test('with showing on, the usage response holds no hidden text', async () => {
+    const work = dbOf(raw());
+    setShowing(work, [projectKey(LANTERN)]);
+    const body = await weeks('?weeks=52', work);
+    const runs = listUnits(work, 'run');
+    const sessions = listUnits(work, 'session');
+    const branches = storedBranches(runs);
+    const sessionIds = sessions.flatMap((s) => s.merged.file.match(/[0-9a-f]{8}-[0-9a-f-]{27}/) ?? []);
+    const strings = forbiddenStrings(
+      [...branches.keys()],
+      branches,
+      [LANTERN],
+      sessionIds,
+      storedSessionRoots(sessions),
+      goalHomes(levels(runs, sessions)),
+    );
+    expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+    work.$client.close();
+  });
 });

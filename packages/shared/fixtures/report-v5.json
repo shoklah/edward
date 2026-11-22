@@ -223,6 +223,8 @@
       "waves": [],
       "fable_points": null,
       "all_points": null,
+      "fable_pct": null,
+      "all_pct": null,
       "minutes": 135,
       "window": null,
       "warns": [],
@@ -464,6 +466,8 @@
       "waves": [],
       "fable_points": 2,
       "all_points": 1,
+      "fable_pct": null,
+      "all_pct": null,
       "minutes": 150,
       "window": null,
       "warns": [
@@ -770,6 +774,8 @@
       "waves": [],
       "fable_points": 2,
       "all_points": 1,
+      "fable_pct": null,
+      "all_pct": null,
       "minutes": 45,
       "window": null,
       "warns": [
@@ -998,6 +1004,8 @@
       "waves": [],
       "fable_points": 4,
       "all_points": 2,
+      "fable_pct": null,
+      "all_pct": null,
       "minutes": 80,
       "window": {
         "transcript": "/Users/example/.claude/projects/-Users-example-Work-lantern-notes/5a9d3f12-6e8b-4c7a-9f2d-3b1e0c8a4d56.jsonl",
@@ -1919,6 +1927,8 @@
       ],
       "fable_points": 7,
       "all_points": 5,
+      "fable_pct": 0.74,
+      "all_pct": 1.15,
       "minutes": 460,
       "window": {
         "transcript": "/Users/example/.claude/projects/-Users-example-Work-lantern-notes/7d1e4b90-3c2a-4f6e-8b5d-1a9c0e2f6b47.jsonl",
@@ -2573,6 +2583,8 @@
       "categories": 1,
       "fable_points": null,
       "all_points": null,
+      "fable_pct": 0.68,
+      "all_pct": 0.85,
       "minutes": 320,
       "window": {
         "transcript": "/Users/example/.claude/projects/-Users-example-Work-tidepool-api/9b2e6c41-7a3d-4f85-b0e9-5c1d8a7f3e26.jsonl",
@@ -3156,6 +3168,8 @@
       "waves": [],
       "fable_points": 1,
       "all_points": 1,
+      "fable_pct": 0,
+      "all_pct": 0.06,
       "minutes": 30,
       "window": {
         "transcript": "/Users/example/.claude/projects/-Users-example-Work-lantern-notes/c3f7a9e1-2b4d-4e6f-8a0c-7d9e1f3b5a28.jsonl",
@@ -3252,6 +3266,8 @@
           "cost": 1.05
         }
       },
+      "fable_pct": 0,
+      "all_pct": 0.09,
       "efforts": {
         "claude-opus-5-5": {
           "medium": 12
@@ -3457,6 +3473,9 @@
         "fable_points": null,
         "all_points": null,
         "cost": null,
+        "fable_pct": null,
+        "all_pct": null,
+        "pct_unknown": 1,
         "minutes_per_run": 135,
         "later_fixes": 0
       },
@@ -3477,6 +3496,9 @@
         "fable_points": 2,
         "all_points": 1,
         "cost": null,
+        "fable_pct": null,
+        "all_pct": null,
+        "pct_unknown": 1,
         "minutes_per_run": 150,
         "later_fixes": 0
       },
@@ -3497,6 +3519,9 @@
         "fable_points": 2,
         "all_points": 1,
         "cost": null,
+        "fable_pct": null,
+        "all_pct": null,
+        "pct_unknown": 1,
         "minutes_per_run": 45,
         "later_fixes": 0
       },
@@ -3519,6 +3544,9 @@
         "fable_points": 12,
         "all_points": 8,
         "cost": 24.74,
+        "fable_pct": 1.42,
+        "all_pct": 2.06,
+        "pct_unknown": 1,
         "minutes_per_run": 200.0,
         "later_fixes": 1
       }

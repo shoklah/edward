@@ -1,4 +1,4 @@
-import type { RunFacts } from '../facts.ts';
+import type { Estimates, RunFacts } from '../facts.ts';
 import type { FindingsQuery } from './findings.ts';
 import type { SessionRow } from './sessions.ts';
 
@@ -24,7 +24,7 @@ export type ChangeRow = {
   runs: number;
   sessions: number;
   findings: number | null;
-  cost: number | null;
+  estimates: Estimates;
 };
 
 /** A goal's section (key and name null for "No goal"): open when a change of it was active this week, its totals the
@@ -36,7 +36,7 @@ export type GoalSection = {
   changes: number;
   runs: number;
   sessions: number;
-  cost: number | null;
+  estimates: Estimates;
   lastActivity: string | null;
   rows: ChangeRow[];
 };
@@ -93,7 +93,10 @@ export type SessionGraphData = {
  * (null: started by you; key and title null for a session showing mode hides), its newest shown held run and its
  * change (null when it has none or Work doesn't list it).
  */
-export type WorkSessionRow = Pick<SessionRow, 'key' | 'title' | 'start' | 'end' | 'minutes' | 'models' | 'cost'> & {
+export type WorkSessionRow = Pick<
+  SessionRow,
+  'key' | 'title' | 'start' | 'end' | 'minutes' | 'models' | 'allPct' | 'fablePct'
+> & {
   step: WorkStep;
   startedBy: { key: string | null; title: string | null } | null;
   run: HeldRun | null;
@@ -125,7 +128,7 @@ export type GoalResponse = {
   runCount: number;
   sessionCount: number;
   findings: number | null;
-  cost: number | null;
+  estimates: Estimates;
   graph: SessionGraphData;
   changes: ChangeRow[];
   sessions: WorkSessionRow[];

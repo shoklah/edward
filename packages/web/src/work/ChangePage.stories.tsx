@@ -70,7 +70,9 @@ export const Full: Story = {
       'Last activity',
       'Sessions',
       'Runs',
-      'Est. cost',
+      'All-models usage',
+      'Fable usage',
+      'Not estimated',
       'Spec',
     ]);
     await expect(within(fact(header, 'Goal') as HTMLElement).getByRole('link', { name: 'Offline sync' })).toHaveAttribute(
@@ -79,7 +81,9 @@ export const Full: Story = {
     );
     await expect(fact(header, 'Other projects')).toHaveTextContent('tidepool-api');
     await expect(fact(header, 'Started')).toHaveTextContent(formatDayTime(parseTime(changeFull.startedAt!)));
-    await expect(fact(header, 'Est. cost')).toHaveTextContent('$61.40');
+    await expect(fact(header, 'All-models usage')).toHaveTextContent('4.9%');
+    await expect(fact(header, 'Fable usage')).toHaveTextContent('2.1%');
+    await expect(fact(header, 'Not estimated')).toHaveTextContent('1 unit');
     await expect(fact(header, 'Spec')).toHaveTextContent(changeFull.spec!);
 
     await expect(canvas.getByRole('region', { name: 'Sessions of this change, as a graph' })).toBeVisible();
@@ -91,7 +95,7 @@ export const Full: Story = {
       'Path',
       'Finished',
       'Found',
-      'Est. cost ($)',
+      'All models (%)',
     ]);
     const rows = within(runs).getAllByRole('row').slice(1);
     await expect(within(rows[0]).getByRole('link', { name: 'Replay the queue on reconnect' })).toHaveAttribute(
@@ -103,22 +107,22 @@ export const Full: Story = {
       'Full',
       formatDayTime(parseTime(changeFull.runs[0].finishedAt!)),
       '12',
-      '26.90',
+      '2.0',
     ]);
     await expect(cells(rows[2]).slice(1, 3)).toEqual(['tidepool-api', 'Plan']);
     // Its branch and other counts open under the row.
     await userEvent.click(within(runs).getByRole('button', { name: 'Details of Replay the queue on reconnect' }));
     const opened = openedRow(within(runs).getByRole('button', { name: 'Details of Replay the queue on reconnect' }));
-    await expect(visibleTerms(opened)).toEqual(['Branch', 'Time (min)', 'Tasks', 'Closed findings']);
-    await expect(visibleValues(opened)).toEqual(['claude/offline-sync-replay', '231', '6', '11']);
+    await expect(visibleTerms(opened)).toEqual(['Fable (%)', 'Branch', 'Time (min)', 'Tasks', 'Closed findings']);
+    await expect(visibleValues(opened)).toEqual(['0.9', 'claude/offline-sync-replay', '231', '6', '11']);
     await expectNoJoined(runs);
 
     await expect(canvas.getByRole('region', { name: 'Sessions table' })).toBeVisible();
   },
 };
 
-/** A change of one project and one run, with no goal, spec or known cost: no Other projects or Spec, the dash for the
- * goal, and no Project or Path column. */
+/** A change of one project and one run, with no goal, spec or known usage: no Other projects or Spec, the dash for the
+ * goal and each usage, and no Project or Path column. */
 export const Small: Story = {
   args: { changeKey: changeSmall.key },
   beforeEach: () => {
@@ -131,7 +135,9 @@ export const Small: Story = {
     await expect(terms).not.toContain('Other projects');
     await expect(terms).not.toContain('Spec');
     await expect(fact(header, 'Goal')).toHaveTextContent('no goal');
-    await expect(fact(header, 'Est. cost')).toHaveTextContent('not known');
+    await expect(fact(header, 'All-models usage')).toHaveTextContent('not known');
+    await expect(fact(header, 'Fable usage')).toHaveTextContent('not known');
+    await expect(fact(header, 'Not estimated')).toHaveTextContent('1 unit');
     const runs = canvas.getByRole('region', { name: 'Runs table' });
     const heads = within(runs).getAllByRole('columnheader').map((th) => th.textContent);
     await expect(heads).not.toContain('Project');

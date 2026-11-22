@@ -3,7 +3,7 @@ import { cn } from 'cn';
 import type { WeekNumbers } from '@cwd/shared';
 import { NUM, Num } from '../components/Num.tsx';
 import { Panel } from '../components/Panel.tsx';
-import { PATH_LABELS, formatDollars } from '../lib/format.ts';
+import { PATH_LABELS, formatUsage } from '../lib/format.ts';
 
 // runs: the week's runs on every path, the sum of WeekNumbers.runs.
 const runCount = (week: WeekNumbers) => week.runs.small + week.runs.full + week.runs.plan;
@@ -46,10 +46,11 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
 /** This week's numbers against last week's: one panel, a small table per measure, one value per cell. */
 export function WeekTiles({ thisWeek: a, lastWeek: b }: { thisWeek: WeekNumbers; lastWeek: WeekNumbers }) {
   const n = (value: number | null) => <Num value={value} />;
-  const d = (value: number | null) => <Num value={value} format={formatDollars} />;
+  const u = (value: number | null) => <Num value={value} format={formatUsage} />;
   return (
     <Panel title="This week">
-      <div className="grid items-start gap-x-10 gap-y-5 sm:grid-cols-2 2xl:grid-cols-4">
+      {/* As many columns as fit tables at their widest one's least width (the usage tables'), so none runs into the next. */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] items-start gap-x-10 gap-y-5">
         <Group
           title="Runs"
           rows={[
@@ -68,10 +69,21 @@ export function WeekTiles({ thisWeek: a, lastWeek: b }: { thisWeek: WeekNumbers;
           ]}
         />
         <Group
-          title="Est. cost ($)"
+          title="Usage this week (%)"
           rows={[
-            ['All runs', d(a.cost), d(b.cost)],
-            ['A run', d(a.costPerRun), d(b.costPerRun)],
+            ['All models', u(a.estimates.all), u(b.estimates.all)],
+            ['Fable', u(a.estimates.fable), u(b.estimates.fable)],
+            // The units this week's estimates left out, shown only when there are any.
+            ...(a.estimates.notEstimated > 0
+              ? [['Not estimated', n(a.estimates.notEstimated), n(b.estimates.notEstimated)] satisfies Row]
+              : []),
+          ]}
+        />
+        <Group
+          title="Usage per run (%)"
+          rows={[
+            ['All models', u(a.perRun.all), u(b.perRun.all)],
+            ['Fable', u(a.perRun.fable), u(b.perRun.fable)],
           ]}
         />
         <Group

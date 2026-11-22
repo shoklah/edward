@@ -46,6 +46,9 @@ import {
   splitPair,
   formatDollars,
   formatCost,
+  formatUsage,
+  formatUsagePercent,
+  notEstimatedLabel,
   formatWhole,
   formatCompactFixed,
   formatLength,
@@ -476,6 +479,22 @@ test('formatCost and formatDollars round the same way, so a total agrees with it
   expect(formatDollars(8.975)).toBe('8.98');
   expect(formatCost(8.975)).toBe('$8.98');
   expect(formatCost(1234.5)).toBe('$1,234.50');
+});
+test('formatUsage writes one decimal, "<0.1" for a known value under 0.05 and "0.0" for 0', () => {
+  expect(formatUsage(0)).toBe('0.0');
+  expect(formatUsage(0.04)).toBe('<0.1');
+  expect(formatUsage(0.05)).toBe('0.1');
+  expect(formatUsage(12.345)).toBe('12.3');
+});
+test('formatUsagePercent adds the percent sign', () => {
+  expect(formatUsagePercent(2.7)).toBe('2.7%');
+  expect(formatUsagePercent(0.01)).toBe('<0.1%');
+  // A chart's empty bar.
+  expect(formatUsagePercent(null)).toBe('–');
+});
+test('notEstimatedLabel counts the units left out', () => {
+  expect(notEstimatedLabel(1)).toBe('1 unit not estimated');
+  expect(notEstimatedLabel(3)).toBe('3 units not estimated');
 });
 test('formatLength uses the largest units that fit', () => {
   expect(formatLength(0)).toBe('0 min'); expect(formatLength(45)).toBe('45 min'); expect(formatLength(466.3)).toBe('7 h 46');

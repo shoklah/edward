@@ -1,4 +1,4 @@
-import type { WeekRow, WeeksResponse } from '@cwd/shared';
+import type { UsageWeek, WeekRow, WeeksResponse } from '@cwd/shared';
 
 // Invented answers of GET /api/weeks for the Weeks page's stories: twelve weeks, oldest first as the API gives them.
 
@@ -26,6 +26,7 @@ const empty: WeekRow = {
   fablePoints: null,
   allPoints: null,
   cost: null,
+  estimates: { all: null, fable: null, notEstimated: 0 },
   minutesPerRun: null,
   laterFixes: 0,
 };
@@ -46,6 +47,8 @@ function week(
     fablePoints: count * 2,
     allPoints: count,
     cost: count * 5.5,
+    // Runs and sessions: a session's share on top of the runs'.
+    estimates: { all: count * 0.45 + 0.3, fable: count * 0.25, notEstimated: 0 },
     minutesPerRun: 140,
     laterFixes: 0,
     ...more,
@@ -60,6 +63,7 @@ const ROWS: WeekRow[] = [
   // Before the reporter's coverage: no window, so no cost or points.
   week({ small: 1, full: 0, plan: 0 }, { critical: 0, important: 0, minor: 0, unneeded: 0 }, {
     cost: null,
+    estimates: { all: null, fable: null, notEstimated: 1 },
     fablePoints: null,
     allPoints: null,
     minutesPerRun: 50,
@@ -67,6 +71,7 @@ const ROWS: WeekRow[] = [
   empty,
   week({ small: 0, full: 1, plan: 0 }, { critical: 0, important: 1, minor: 2, unneeded: 0 }, {
     cost: null,
+    estimates: { all: null, fable: null, notEstimated: 1 },
     fablePoints: null,
     allPoints: null,
     minutesPerRun: 135,
@@ -78,6 +83,26 @@ const ROWS: WeekRow[] = [
   week({ small: 4, full: 2, plan: 1 }, { critical: 0, important: 3, minor: 8, unneeded: 0 }, { laterFixes: 1, cost: 38.4 }),
 ];
 
+/** A week's calibration as the reporter gives it; `borrowed` names the week whose all-models rates it used. */
+function calibration(week: string, borrowed: string | null = null): UsageWeek {
+  return {
+    week,
+    readings: borrowed ? 3 : 14,
+    pairs: borrowed ? 1 : 9,
+    fable: { points: 9, cost: 52.2, rate: 5.8, chunks: 3, error: 1.1, borrowed_from: null },
+    all: {
+      points: 7.2,
+      fable_cost: 52.2,
+      other_cost: 70,
+      fable_rate: 12.5,
+      other_rate: 25,
+      chunks: borrowed ? null : 3,
+      error: borrowed ? null : 0.9,
+      borrowed_from: borrowed,
+    },
+  };
+}
+
 /** Full: runs in most weeks, the reporter's coverage starting in the week of Oct 11. */
 export const weeksFull: WeeksResponse = {
   weeks: WEEKS.map((w, i) => ({ week: w, ...ROWS[i] })),
@@ -86,6 +111,14 @@ export const weeksFull: WeeksResponse = {
     withoutWaves: { runs: 4, timed: 3, medianMinutes: 185.4 },
   },
   coverageFrom: '2026-10-13T09:00:00Z',
+  // Newest first; the week of Nov 1 borrowed its all-models rates from the week before.
+  // The week of Oct 25's Fable fit is under 0.05 points.
+  usage: [
+    calibration('2026-11-08'),
+    calibration('2026-11-01', '2026-10-25'),
+    { ...calibration('2026-10-25'), fable: { ...calibration('2026-10-25').fable!, error: 0.04 } },
+  ],
+  usageSource: 'reporter',
 };
 
 /** Empty: twelve weeks with no runs, and no coverage known. */
@@ -96,4 +129,6 @@ export const weeksEmpty: WeeksResponse = {
     withoutWaves: { runs: 0, timed: 0, medianMinutes: null },
   },
   coverageFrom: null,
+  usage: [],
+  usageSource: 'reporter',
 };

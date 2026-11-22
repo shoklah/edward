@@ -6,10 +6,11 @@ import { ApiError, useLiveQuery } from '../api.ts';
 import { Unknown } from '../components/Num.tsx';
 import { LINK, PageTitle, Pairs, Section, State } from '../components/Panel.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { formatCost, formatWhole, projectLabel } from '../lib/format.ts';
+import { formatWhole, projectLabel } from '../lib/format.ts';
 import { ChangesTable } from './ChangesTable.tsx';
 import { SessionGraph } from './SessionGraph.tsx';
 import { SessionsByWork } from './SessionsByWork.tsx';
+import { estimateFacts } from './ChangePage.tsx';
 
 /** The goal's facts, each a term over its value on the backdrop: its one project, else "Several projects". */
 function Facts({ goal }: { goal: GoalResponse }) {
@@ -22,7 +23,7 @@ function Facts({ goal }: { goal: GoalResponse }) {
     ['Runs', formatWhole(goal.runCount)],
     ['Sessions', formatWhole(goal.sessionCount)],
     ['Findings', goal.findings === null ? <Unknown backdrop /> : formatWhole(goal.findings)],
-    ['Est. cost', goal.cost === null ? <Unknown backdrop /> : formatCost(goal.cost)],
+    ...estimateFacts(goal.estimates),
   ];
   return <Pairs inline="over" backdrop className="gap-x-10 gap-y-3" pairs={pairs} />;
 }

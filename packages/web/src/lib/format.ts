@@ -29,6 +29,12 @@ export const reporterMark = {
   tooltip: "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
 };
 
+/** The badge on Weeks' usage estimates: the reporter's weekly calibration, account-wide, for the period's weeks. */
+export const usageMark = {
+  text: 'reporter',
+  tooltip: "The reporter's weekly rates for turning list-price cost into usage, over every project; not filtered by path or project.",
+};
+
 /** The badge on Compliance's information lines, which are the latest export's, not an all-time figure. */
 export const informationMark = {
   text: 'reporter',
@@ -474,6 +480,26 @@ const DOLLARS = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maxim
 /** Dollars for a cell under a "($)" header: "12.40", "1,234.50". */
 export function formatDollars(cost: number): string {
   return DOLLARS.format(cost);
+}
+
+const USAGE = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** A usage estimate in percent of a weekly limit, for a cell under a "(%)" header: one decimal, "0.0" for a known 0,
+ * "<0.1" for a known value above 0 that would round to it. */
+export function formatUsage(value: number): string {
+  return value > 0 && value < 0.05 ? '<0.1' : USAGE.format(value);
+}
+
+/** A usage estimate with its percent sign, for prose, tiles, facts and a chart's axis and tooltip: "2.7%", "<0.1%";
+ * a dash when it isn't known. */
+export function formatUsagePercent(value: number | null): string {
+  return value === null ? NONE : `${formatUsage(value)}%`;
+}
+
+
+/** The units a usage total left out: "1 unit not estimated", "3 units not estimated". */
+export function notEstimatedLabel(count: number): string {
+  return `${plural(count, 'unit')} not estimated`;
 }
 
 const WHOLE = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });

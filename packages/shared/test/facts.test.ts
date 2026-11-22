@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { modelsCost, runFacts, splitFindings, splitSessionId } from '../src/facts.ts';
+import { estimateSum, modelsCost, runFacts, splitFindings, splitSessionId } from '../src/facts.ts';
 import { loadReport } from '../src/load.ts';
 import type { Report, RunEntry } from '../src/report.ts';
 import { fixture } from './fixture.ts';
@@ -34,6 +34,10 @@ describe('runFacts', () => {
 
   test('cost is null when no model is priced', () => {
     expect(runFacts(run('plan')).cost).toBeNull();
+  });
+
+  test("the usage estimates come from the entry, unknown as null", () => {
+    expect(runFacts({ ...run('full'), all_pct: 2.25, fable_pct: null })).toMatchObject({ allPct: 2.25, fablePct: null });
   });
 
   test('stops comes from the record', () => {
@@ -103,5 +107,19 @@ describe('modelsCost', () => {
     expect(modelsCost({})).toBeNull();
     expect(modelsCost({ a: { ...tokens, cost: 0 } })).toBe(0);
     expect(modelsCost(null)).toBeNull();
+  });
+});
+
+describe('estimateSum', () => {
+  test('is unknown with no units', () => {
+    expect(estimateSum([])).toEqual({ all: null, fable: null, notEstimated: 0 });
+  });
+
+  test('sums the known values and counts the units with either estimate unknown', () => {
+    expect(estimateSum([{ all_pct: 1.5, fable_pct: 0 }, { all_pct: null, fable_pct: 0.5 }, {}])).toEqual({
+      all: 1.5,
+      fable: 0.5,
+      notEstimated: 2,
+    });
   });
 });

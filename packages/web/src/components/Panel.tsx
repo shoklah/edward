@@ -1,7 +1,8 @@
 import { useId, type ReactNode, type Ref } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from 'cn';
 import { WARNING_BORDER } from '../lib/format.ts';
-import { NUM } from './Num.tsx';
+import { GROUP, NUM } from './Num.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 
 /** A link's underline: the disclosure's summary and every in-table link. */
@@ -21,6 +22,17 @@ export function Term({ tip, className, children }: { tip: ReactNode; className?:
       </TooltipTrigger>
       <TooltipContent>{tip}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/** A marker icon as a tooltip term: the lucide `icon`, `aria-hidden` (`className` its ink), named by `label`, its
+ * tooltip and `sr-only` name alike. */
+export function IconTerm({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) {
+  return (
+    <Term tip={label}>
+      <Icon aria-hidden className={cn('size-3.5', className)} />
+      <span className="sr-only">{label}</span>
+    </Term>
   );
 }
 
@@ -161,10 +173,27 @@ export function ScrollTable({ label, className, children }: { label: string; cla
   );
 }
 
-/** A plain table's column head, muted; `num` for a numeric column. */
-export function ColumnHead({ num = false, children }: { num?: boolean; children: ReactNode }) {
+/** A plain table's column head, muted; `num` for a numeric column, `rowSpan` over a two-row header's groups; with
+ * `colSpan`, a group head over that many sub-columns, in `GroupHead`'s look. */
+export function ColumnHead({
+  num = false,
+  rowSpan,
+  colSpan,
+  children,
+}: {
+  num?: boolean;
+  rowSpan?: number;
+  colSpan?: number;
+  children: ReactNode;
+}) {
+  if (colSpan)
+    return (
+      <th scope="colgroup" colSpan={colSpan} className={cn(GROUP, 'px-2 font-medium')}>
+        {children}
+      </th>
+    );
   return (
-    <th scope="col" className={cn('px-2 py-1.5 text-left font-medium text-muted-foreground', num && NUM)}>
+    <th scope="col" rowSpan={rowSpan} className={cn('px-2 py-1.5 text-left font-medium text-muted-foreground', num && NUM)}>
       {children}
     </th>
   );

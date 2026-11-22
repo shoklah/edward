@@ -164,6 +164,9 @@ export const RunEntrySchema = z.object({
   offers: z.array(z.object({ skill: str, outcome: str })).nullish(),
   fable_points: num,
   all_points: num,
+  // The reporter's estimates of the run's share of the weekly Fable and all-models limits, in percent (CR17).
+  fable_pct: num,
+  all_pct: num,
   minutes: num,
   window: z.object({ transcript: str, start: str, end: str }).nullish(),
   warns: strings,
@@ -205,6 +208,9 @@ export const SessionEntrySchema = z.object({
   skills: z.array(SkillSchema).nullish(),
   typed: z.array(TypedSchema).nullish(),
   models: ModelsSchema,
+  // The session's own part of the weekly Fable and all-models limits, in percent, as a run's.
+  fable_pct: num,
+  all_pct: num,
   phases: PhasesSchema,
   efforts: EffortsSchema,
   advisor: UnitAdvisorSchema.nullish(),
@@ -235,8 +241,32 @@ const WeekSchema = z.object({
   fable_points: num,
   all_points: num,
   cost: num,
+  // The week's runs' known estimates and the count of its runs with either one null (week_rows).
+  fable_pct: num,
+  all_pct: num,
+  pct_unknown: num,
   minutes_per_run: num,
   later_fixes: num,
+});
+
+// A week's calibration of points to dollars, per limit; borrowed_from names the week whose rates it used.
+const UsageWeekSchema = z.object({
+  week: str,
+  readings: num,
+  pairs: num,
+  fable: z.object({ points: num, cost: num, rate: num, chunks: num, error: num, borrowed_from: str }).nullish(),
+  all: z
+    .object({
+      points: num,
+      fable_cost: num,
+      other_cost: num,
+      fable_rate: num,
+      other_rate: num,
+      chunks: num,
+      error: num,
+      borrowed_from: str,
+    })
+    .nullish(),
 });
 
 const tokens = z.object({ input: num, output: num, cache_read: num, cache_write: num }).nullish();
@@ -300,6 +330,7 @@ const TotalsSchema = z.object({
     )
     .nullish(),
   health: z.object({ info: strings }).nullish(),
+  usage: z.array(UsageWeekSchema).nullish(),
 });
 
 // The finding category list: its version, tie-break rule, validity definitions and a list per area.
@@ -333,6 +364,7 @@ export type Step = z.infer<typeof StepSchema>;
 export type Finding = z.infer<typeof FindingSchema>;
 export type SessionEntry = z.infer<typeof SessionEntrySchema>;
 export type Totals = z.infer<typeof TotalsSchema>;
+export type UsageWeek = z.infer<typeof UsageWeekSchema>;
 export type SpecRef = z.infer<typeof SpecRefSchema>;
 export type Warning = z.infer<typeof WarningSchema>;
 export type CategoryList = z.infer<typeof CategoryListSchema>;

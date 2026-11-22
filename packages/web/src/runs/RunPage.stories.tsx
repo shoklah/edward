@@ -67,21 +67,21 @@ async function openFold(canvasElement: HTMLElement, click: (element: Element) =>
   await expect(fold).toHaveAttribute('open');
 }
 
-/** A zero time, cost or token count shows muted, as every zero does. */
+/** A zero time, usage or token count shows muted, as every zero does. */
 export const Zeros: Story = {
   beforeEach: () => {
     mockApi({
       '/api/status': status,
       [`/api/runs/${fullRun.key}`]: {
         ...runFull,
-        facts: { ...runFull.facts, minutes: 0, cost: 0 },
+        facts: { ...runFull.facts, minutes: 0, allPct: 0 },
         context: { ...runFull.context!, medianTokens: 0 },
       },
     });
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await expect(await canvas.findByText('0 min')).toHaveClass('text-muted-foreground');
-    await expect(canvas.getByText('$0.00')).toHaveClass('text-muted-foreground');
+    await expect(canvas.getByText('0.0%')).toHaveClass('text-muted-foreground');
     await openFold(canvasElement, (summary) => userEvent.click(summary));
     await expect(within(canvas.getByRole('region', { name: 'Context' })).getByText('0')).toHaveClass('text-muted-foreground');
   },
@@ -144,7 +144,8 @@ export const Full: Story = {
       ['Path', 'Full'],
       ['Stage', '1'],
       ['Time', '2 h 10'],
-      ['Est. cost', '$7.10'],
+      ['All-models usage', '0.6%'],
+      ['Fable usage', '0.3%'],
       ['Tasks', '4'],
       ['Findings', '6'],
       ['Closed', '5'],
@@ -510,7 +511,7 @@ export const Stopped: Story = {
   },
 };
 
-/** A run with nothing around it: dashes for its time and cost, pills with no time, and a chain of this run alone. */
+/** A run with nothing around it: dashes for its time and usage, pills with no time, and a chain of this run alone. */
 export const Alone: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runAlone });
@@ -519,7 +520,9 @@ export const Alone: Story = {
     await canvas.findByRole('heading', { name: fullRun.headline!, level: 1 });
     const facts = Object.fromEntries(pairs(canvasElement.querySelector('dl')!));
     await expect(facts['Time']).toBe('–not known');
-    await expect(facts['Est. cost']).toBe('–not known');
+    await expect(facts['All-models usage']).toBe('–not known');
+    await expect(facts['Fable usage']).toBe('–not known');
+    await expect(facts).not.toHaveProperty('Est. cost');
     // Its session isn't known, so the header names none.
     await expect(facts['Change']).toBe('Plan full-text search');
     await expect(facts).not.toHaveProperty('Session');

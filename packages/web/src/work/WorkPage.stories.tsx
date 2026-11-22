@@ -133,9 +133,12 @@ export const Full: Story = {
       'Changes',
       'Runs',
       'Sessions',
-      'Est. cost',
+      'All models',
       'Last activity',
     ]);
+    // The all-models sum in percent, no cost.
+    await expect(within(sync).queryByText(/cost/i)).toBeNull();
+    await expect(within(sync).getAllByRole('definition')[3]).toHaveTextContent('5.1%');
 
     // The sections' Changes lists line up, a long project name included: each column starts at the same place.
     const lefts = (section: HTMLElement) =>
@@ -148,6 +151,37 @@ export const Full: Story = {
       'href',
       '/work?view=sessions',
     );
+  },
+};
+
+/** A goal section whose total left units out shows the not-estimated marker, an icon whose tooltip and name count
+ * them; a section that left none out shows none. */
+export const NotEstimated: Story = {
+  ...DESKTOP,
+  beforeEach: () => {
+    mockApi({
+      '/api/status': status,
+      [PROJECTS]: runsFull,
+      [WORK]: {
+        ...workFull,
+        goals: [
+          { ...syncGoal, estimates: { ...syncGoal.estimates, notEstimated: 2 } },
+          { ...searchGoal, estimates: { ...searchGoal.estimates, notEstimated: 0 } },
+        ],
+      },
+    });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const sync = await canvas.findByRole('region', { name: syncGoal.name! });
+    const search = canvas.getByRole('region', { name: searchGoal.name! });
+    const marker = within(sync).getByText('2 units not estimated');
+    await expect(marker).toHaveClass('sr-only');
+    await expect(within(search).queryByText(/not estimated/)).toBeNull();
+    // The icon is decoration; its trigger's tooltip names the count.
+    const trigger = marker.closest('[tabindex="0"]')!;
+    await expect(trigger.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    await userEvent.hover(trigger);
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('2 units not estimated');
   },
 };
 

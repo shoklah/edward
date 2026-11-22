@@ -1,18 +1,20 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { CircleAlert } from 'lucide-react';
 import type { GoalSection, WorkQuery, WorkResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { GoalLink } from '../components/GoalLink.tsx';
 import { Unknown } from '../components/Num.tsx';
 import { Option, Options } from '../components/Option.tsx';
-import { LINK, Line, PageTitle, Pairs, Section, State } from '../components/Panel.tsx';
+import { IconTerm, LINK, Line, PageTitle, Pairs, Section, State } from '../components/Panel.tsx';
 import { RowToggle } from '../components/RowToggle.tsx';
 import { Button } from '../components/ui/button.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { formatCost, formatWhole, hiddenLabel, looseSessionsLabel } from '../lib/format.ts';
+import { formatWhole, hiddenLabel, looseSessionsLabel, notEstimatedLabel } from '../lib/format.ts';
 import { ListFilters, RunsPage, listPath, useProjects } from '../runs/RunsPage.tsx';
 import { SessionsPage } from '../sessions/SessionsPage.tsx';
 import { ChangesTable } from './ChangesTable.tsx';
+import { backdropUsage } from './ChangePage.tsx';
 
 /** The Work page's views, as the URL's `view` names them (none for Changes). */
 export type WorkView = 'runs' | 'sessions';
@@ -25,6 +27,17 @@ const VIEWS: { view: WorkView | undefined; label: string }[] = [
 
 /** A section title row's totals' columns from `sm`, shared by every section so the totals line up down the page. */
 const TOTAL_WIDTHS = ['sm:w-26', 'sm:w-20', 'sm:w-26', 'sm:w-34', 'sm:w-52'];
+
+/** A goal section's all-models sum, the dash when none is known, after the not-estimated marker when it left units
+ * out: an icon in primary ink (the row sits on the backdrop) whose tooltip and name count them. */
+function GoalUsage({ estimates }: { estimates: GoalSection['estimates'] }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {estimates.notEstimated > 0 && <IconTerm icon={CircleAlert} label={notEstimatedLabel(estimates.notEstimated)} />}
+      {backdropUsage(estimates.all)}
+    </span>
+  );
+}
 
 /** A goal's section: its title row (the chevron, the goal's name linking to its page, "No goal" as plain text, and its
  * totals in the shared columns), then, while open, its changes. */
@@ -57,7 +70,7 @@ function GoalRows({ goal }: { goal: GoalSection }) {
             ['Changes', formatWhole(goal.changes)],
             ['Runs', formatWhole(goal.runs)],
             ['Sessions', formatWhole(goal.sessions)],
-            ['Est. cost', goal.cost === null ? <Unknown backdrop /> : formatCost(goal.cost)],
+            ['All models', <GoalUsage estimates={goal.estimates} />],
             ['Last activity', goal.lastActivity ? <Time iso={goal.lastActivity} /> : <Unknown backdrop />],
           ]}
         />

@@ -5,9 +5,9 @@ import { DataList, type ListColumn, type ListFact } from '../components/DataList
 import { Num, Unknown } from '../components/Num.tsx';
 import { Term } from '../components/Panel.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
+import { fableFact, usageColumn } from '../runs/RunsTable.tsx';
 import {
   STAGE_LABELS,
-  formatDollars,
   otherCountLabel,
   otherProjectsLabel,
   pathLabel,
@@ -15,8 +15,8 @@ import {
 } from '../lib/format.ts';
 
 /** The minimum widths lists line up by, the one above the other: a goal's page's Changes and Sessions (Stage over Step,
- * Last activity over Started, Findings over Length; the cost columns already match), and Work's goal sections' Changes
- * (Project too, its cell wrapping a longer name and its "+N"). */
+ * Last activity over Started, Findings over Length; the All models columns already match), and Work's goal sections'
+ * Changes (Project too, its cell wrapping a longer name and its "+N"). */
 export const ALIGNED = { project: 'min-w-36', stage: 'min-w-29', time: 'min-w-28', count: 'min-w-22' };
 
 const COLUMNS: ListColumn<ChangeRow>[] = [
@@ -57,24 +57,20 @@ const COLUMNS: ListColumn<ChangeRow>[] = [
     cell: (c) => (c.lastActivity ? <Time iso={c.lastActivity} /> : <Unknown />),
   },
   { id: 'findings', header: 'Findings', num: true, width: ALIGNED.count, value: (c) => c.findings, cell: (c) => <Num value={c.findings} /> },
-  {
-    id: 'cost',
-    header: 'Est. cost ($)',
-    num: true,
-    fold: true,
-    value: (c) => c.cost,
-    cell: (c) => <Num value={c.cost} format={formatDollars} />,
-  },
+  usageColumn((c) => c.estimates.all),
 ];
 
 const FACTS: ListFact<ChangeRow>[] = [
+  fableFact((c) => c.estimates.fable),
+  ['Not estimated', (c) => (c.estimates.notEstimated === 0 ? null : <Num value={c.estimates.notEstimated} />)],
   ['Runs', (c) => <Num value={c.runs} />],
   ['Sessions', (c) => <Num value={c.sessions} />],
 ];
 
 /** A list of changes, as the API orders them, in a region named `label`: each title linking to its change's page, then
- * (with `project`) its home project with "+N" for its other projects, its path, stage, last activity, findings and cost,
- * a row opening to its runs and sessions; every number a whole change's. */
+ * (with `project`) its home project with "+N" for its other projects, its path, stage, last activity, findings and
+ * all-models usage, a row opening to its Fable usage, the units not estimated (left out at 0), its runs and sessions;
+ * every number a whole change's. */
 export function ChangesTable({ rows, project, label }: { rows: ChangeRow[]; project: boolean; label: string }) {
   const columns = useMemo(() => (project ? COLUMNS : COLUMNS.filter((c) => c.id !== 'project')), [project]);
   return (

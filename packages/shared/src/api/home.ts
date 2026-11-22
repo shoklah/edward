@@ -1,12 +1,14 @@
-import type { FindingSplit } from '../facts.ts';
+import type { Estimates, FindingSplit } from '../facts.ts';
 import type { Path, StepKind } from '../report.ts';
 
-/** One week's numbers on the home screen's tiles; each is a plain sum over the week's stored runs. */
+/** One week's numbers on the home screen's tiles; each is a plain sum over the week's stored runs, but `estimates`,
+ * over its runs and its sessions. `perRun`, per limit, the mean of the week's runs' known estimates, over the runs
+ * with a known one, null when none has one. */
 export type WeekNumbers = {
   runs: Record<Path, number>;
   findings: FindingSplit;
-  cost: number | null;
-  costPerRun: number | null;
+  estimates: Estimates;
+  perRun: { all: number | null; fable: number | null };
   warnings: number;
   newWarnings: number;
 };
@@ -30,7 +32,7 @@ export type FeedItem = {
   sessionId: string | null;
   findings: FindingSplit | null;
   minutes: number | null;
-  cost: number | null;
+  allPct: number | null;
 };
 
 /**
@@ -64,7 +66,7 @@ export type HomeResponse = {
   charts: {
     weeks: string[];
     findingsByStep: Record<StepKind, number[]>;
-    cost: (number | null)[];
+    estimates: Estimates[];
     warnings: number[];
   };
   feed: FeedItem[];

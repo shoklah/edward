@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
-import { STEP_LABELS, formatCompact, formatCost, formatDay, formatDollars, weekLabel } from '../lib/format.ts';
+import { STEP_LABELS, formatCompact, formatCost, formatDay, formatUsage, formatUsagePercent, weekLabel } from '../lib/format.ts';
 import { resolveVars, useDark, useFontLoaded } from '../lib/theme.ts';
 import { NUM, Num } from '../components/Num.tsx';
 import { Details, Line, Panel } from '../components/Panel.tsx';
@@ -57,7 +57,7 @@ function baseOption(weeks: string[]) {
 }
 
 /**
- * One series of bars: 24px at most, a 4px rounded end, square at the baseline; a `cost` reads in dollars, and `format`
+ * One series of bars: 24px at most, a 4px rounded end, square at the baseline; `format`
  * writes the tooltip's values and the y axis labels, an empty bar's (which ECharts passes as undefined) as null. A
  * `cap` draws a dashed line at that value, labelled "cap 300K", the y axis reaching at least to it.
  */
@@ -65,11 +65,9 @@ export function singleBars(
   weeks: string[],
   name: string,
   data: (number | null)[],
-  options: { cost?: boolean; cap?: number; format?: (value: number | null) => string } = {},
+  { cap, format }: { cap?: number; format?: (value: number | null) => string } = {},
 ) {
   const base = baseOption(weeks);
-  const { cost = false, cap } = options;
-  const format = cost ? formatCost : options.format;
   return {
     ...base,
     // Room above the plot for the cap's label when the axis ends at the cap.
@@ -78,7 +76,7 @@ export function singleBars(
     yAxis: {
       ...base.yAxis,
       max: cap === undefined ? undefined : ({ max }: { max: number }) => Math.max(max, cap),
-      axisLabel: { ...base.yAxis.axisLabel, formatter: cost ? '${value}' : format },
+      axisLabel: { ...base.yAxis.axisLabel, formatter: format },
     },
     series: [
       {
@@ -112,7 +110,7 @@ export function singleBars(
  * Bars of several series by week, each series a palette slot in order unless it names its `color`, a 1px surface border
  * between bars, with a legend; stacked per week when `stack` names the stack, else side by side. `legendRoom` is the
  * room under the plot for the legend, which each caller sizes to its legend's lines (a `media` rule raising it where
- * the legend wraps). A `cost` reads in dollars, as `singleBars`' does; `totals` writes each stack's total above its bar,
+ * the legend wraps). A `cost` reads in dollars; `totals` writes each stack's total above its bar,
  * none over a week with no bar, and hides a total that would overlap another.
  */
 export function barsOption(
@@ -213,7 +211,9 @@ function ChartsTable({ charts }: { charts: Charts }) {
                 {STEP_LABELS[kind]} findings
               </TableHead>
             ))}
-            <TableHead className={NUM}>Cost ($)</TableHead>
+            <TableHead className={NUM}>All models (%)</TableHead>
+            <TableHead className={NUM}>Fable (%)</TableHead>
+            <TableHead className={NUM}>Not estimated</TableHead>
             <TableHead className={NUM}>Warnings</TableHead>
           </TableRow>
         </TableHeader>
@@ -227,7 +227,13 @@ function ChartsTable({ charts }: { charts: Charts }) {
                 </TableCell>
               ))}
               <TableCell className={NUM}>
-                <Num value={charts.cost[i]} format={formatDollars} />
+                <Num value={charts.estimates[i].all} format={formatUsage} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={charts.estimates[i].fable} format={formatUsage} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={charts.estimates[i].notEstimated} />
               </TableCell>
               <TableCell className={NUM}>
                 <Num value={charts.warnings[i]} />
@@ -251,7 +257,7 @@ export function CoverageNote({ coverageFrom, firstWeek }: { coverageFrom: string
 }
 
 /**
- * The weekly charts: findings by step, cost and warnings over the charted weeks, with a note when the reporter's
+ * The weekly charts: findings by step, all-models usage and warnings over the charted weeks, with a note when the reporter's
  * coverage starts after the first of them (the earlier weeks hold only what was stored).
  */
 export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverageFrom: string | null }) {
@@ -259,7 +265,11 @@ export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverag
     <section aria-label="Weekly charts" className="flex flex-col gap-3">
       <Chart title="Findings by week, by step" option={findingsOption(charts)} height={260} />
       <div className="grid gap-3 lg:grid-cols-2">
-        <Chart title="Cost by week ($)" option={singleBars(charts.weeks, 'Cost', charts.cost, { cost: true })} height={260} />
+        <Chart
+          title="All-models usage by week (%)"
+          option={singleBars(charts.weeks, 'All models', charts.estimates.map((e) => e.all), { format: formatUsagePercent })}
+          height={260}
+        />
         <Chart title="Warnings by week" option={singleBars(charts.weeks, 'Warnings', charts.warnings)} height={260} />
       </div>
       <CoverageNote coverageFrom={coverageFrom} firstWeek={charts.weeks[0]} />

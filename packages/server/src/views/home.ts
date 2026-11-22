@@ -1,5 +1,6 @@
 import {
   addKnown,
+  estimateSum,
   parseTime,
   PATHS,
   runFacts,
@@ -23,7 +24,15 @@ import {
   type WeekRow,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings, period, periodUnits, sessionWarningShown, storedFacts, storedNames } from './runs.ts';
+import {
+  currentWarnings,
+  period,
+  periodUnits,
+  sessionWarningShown,
+  storedFacts,
+  storedNames,
+  unitWeeks,
+} from './runs.ts';
 import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
 import { commandSkill, skillSums } from './skills.ts';
 
@@ -58,6 +67,7 @@ export function emptyWeek(): WeekRow {
     fablePoints: null,
     allPoints: null,
     cost: null,
+    estimates: estimateSum([]),
     minutesPerRun: null,
     laterFixes: 0,
   };
@@ -67,10 +77,11 @@ export function emptyWeek(): WeekRow {
  * Per week start date, over the runs with a date, as the reporter's week_rows: `runs`, the runs by path; `tasks`,
  * `fixRounds` and `stops`, the sums of the records' (a missing one 0); `findings`, the sum of the runs'
  * final_findings; `fablePoints` and `allPoints`, the sums of the runs' known points, null when none has them; `cost`,
- * the sum of the runs' costs (RunFacts.cost), null when no run of the week has one; `minutesPerRun`, the median of the
- * runs' known minutes; `laterFixes`, the runs' later fix commits.
+ * the sum of the runs' costs (RunFacts.cost), null when no run of the week has one; `estimates`, the usage estimates of
+ * the runs and the given sessions, each in its week (unitWeeks), so a week with sessions alone has a row;
+ * `minutesPerRun`, the median of the runs' known minutes; `laterFixes`, the runs' later fix commits.
  */
-export function weekSums(runs: RunEntry[]): Map<string, WeekRow> {
+export function weekSums(runs: RunEntry[], sessions: SessionEntry[]): Map<string, WeekRow> {
   const sums = new Map<string, WeekRow>();
   const minutes = new Map<string, (number | null)[]>();
   for (const run of runs) {
@@ -93,7 +104,17 @@ export function weekSums(runs: RunEntry[]): Map<string, WeekRow> {
     minutes.get(week)!.push(facts.minutes);
     sums.set(week, sum);
   }
-  for (const [week, sum] of sums) sum.minutesPerRun = median(minutes.get(week)!);
+  const units = new Map<string, (RunEntry | SessionEntry)[]>();
+  for (const { unit, week } of unitWeeks(runs, sessions)) {
+    if (!units.has(week)) units.set(week, []);
+    units.get(week)!.push(unit);
+  }
+  for (const [week, of] of units) {
+    const sum = sums.get(week) ?? emptyWeek();
+    sum.estimates = estimateSum(of);
+    sums.set(week, sum);
+  }
+  for (const [week, sum] of sums) sum.minutesPerRun = median(minutes.get(week) ?? []);
   return sums;
 }
 
@@ -212,7 +233,10 @@ export function homeView(input: {
     return { unit, facts, finished: parseTime(facts.finishedAt!) };
   });
   const isNew = (firstSeenAt: Date) => seenAt === null || firstSeenAt > seenAt;
-  const sums = weekSums(runs.map((r) => r.unit.merged));
+  const sums = weekSums(
+    runs.map((r) => r.unit.merged),
+    input.sessions.map((s) => s.merged),
+  );
   const stepsOf = (of: Run[]) => of.flatMap((r) => r.unit.merged.steps ?? []);
 
   // The charts' weeks: this week and the 11 before it, oldest first.
@@ -221,7 +245,10 @@ export function homeView(input: {
 
   function weekNumbers(week: string, inWeek: Run[]): WeekNumbers {
     const sum = sums.get(week);
-    const cost = sum?.cost ?? null;
+    // A limit's estimate per run: the week's runs' sum (estimateSum) over the runs with a known one.
+    const runSum = estimateSum(inWeek.map((r) => r.unit.merged));
+    const perRun = (total: number | null, of: (facts: RunFacts) => number | null) =>
+      total === null ? null : total / inWeek.filter((r) => of(r.facts) !== null).length;
     const sessionWarnings = warnings.filter((w) => w.kind === 'session' && weekOf(w.firstSeenAt) === week);
     const newRunWarnings = warnings.filter(
       (w) => w.kind === 'run' && isNew(w.firstSeenAt) && inWeek.some((r) => r.unit.key === w.key),
@@ -230,9 +257,9 @@ export function homeView(input: {
       runs: sum?.runs ?? noRuns(),
       // findings: every finding of the week's runs' steps, the sum of their RunFacts.findings.
       findings: splitFindings(stepsOf(inWeek)),
-      cost,
-      // costPerRun: the week's cost over its number of runs.
-      costPerRun: cost === null ? null : cost / inWeek.length,
+      // estimates: the week's runs' and sessions' (weekSums).
+      estimates: sum?.estimates ?? estimateSum([]),
+      perRun: { all: perRun(runSum.all, (f) => f.allPct), fable: perRun(runSum.fable, (f) => f.fablePct) },
       // warnings: the week's runs' RunFacts.warnings (their latest warns), plus the session warnings first seen in the
       // week; newWarnings: those of them first seen after seenAt.
       warnings: inWeek.reduce((n, r) => n + r.facts.warnings, 0) + sessionWarnings.length,
@@ -279,7 +306,7 @@ export function homeView(input: {
       sessionId: null,
       findings: facts.findings,
       minutes: facts.minutes,
-      cost: facts.cost,
+      allPct: facts.allPct,
     }));
   // With a scope, a hidden run's warnings and the warnings of a session in no shown root are left out.
   const sessionShown = sessionWarningShown(scope, input.sessions);
@@ -302,7 +329,7 @@ export function homeView(input: {
         ...showWarning(scope, w.text),
         findings: null,
         minutes: null,
-        cost: null,
+        allPct: null,
       };
     });
 
@@ -338,7 +365,7 @@ export function homeView(input: {
           byWeek.map((of) => splitFindings(stepsOf(of).filter((s) => s.step === kind)).total),
         ]),
       ) as Record<StepKind, number[]>,
-      cost: numbers.map((n) => n.cost),
+      estimates: numbers.map((n) => n.estimates),
       warnings: numbers.map((n) => n.warnings),
     },
     // The feed: the runs and warnings first seen after seenAt, newest first; a run at its finish time.

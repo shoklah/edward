@@ -35,7 +35,7 @@ export const Full: Story = {
       'Stage',
       'Last activity',
       'Findings',
-      'Est. cost ($)',
+      'All models (%)',
     ]);
     for (const th of within(head).getAllByRole('columnheader')) await expect(th).toBeVisible();
     await expectNoJoined(canvasElement);
@@ -46,7 +46,7 @@ export const Full: Story = {
       'Implementation',
       formatDayTime(parseTime(syncChange.lastActivity!)),
       '23',
-      '61.40',
+      '4.9',
     ]);
     await expect(within(sync).getByRole('link', { name: syncChange.title })).toHaveAttribute(
       'href',
@@ -62,12 +62,18 @@ export const Full: Story = {
     await userEvent.hover(within(sync).getByText('+2'));
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('tidepool-api, 1 other project');
 
-    // A row opens to its runs and sessions, zero included.
+    // A row opens to its Fable usage (left out when not known), the units not estimated (left out at 0), then its runs
+    // and sessions, zero included.
     const toggle = canvas.getByRole('button', { name: `Details of ${designChange.title}` });
     await userEvent.click(toggle);
     const opened = openedRow(toggle);
-    await expect(visibleTerms(opened)).toEqual(['Runs', 'Sessions']);
-    await expect(visibleValues(opened)).toEqual(['0', '1']);
+    await expect(visibleTerms(opened)).toEqual(['Not estimated', 'Runs', 'Sessions']);
+    await expect(visibleValues(opened)).toEqual(['1', '0', '1']);
+    const markupToggle = canvas.getByRole('button', { name: `Details of ${HTML_TEXT}` });
+    await userEvent.click(markupToggle);
+    const markupOpened = openedRow(markupToggle);
+    await expect(visibleTerms(markupOpened)).toEqual(['Fable (%)', 'Runs', 'Sessions']);
+    await expect(visibleValues(markupOpened)).toEqual(['0.0', '1', '1']);
   },
 };
 
@@ -81,7 +87,7 @@ export const NoProject: Story = {
   },
 };
 
-/** Narrow: under 768 px the list keeps Change, Stage and Findings; Project, Path, Last activity and the cost open first
+/** Narrow: under 768 px the list keeps Change, Stage and Findings; Project, Path, Last activity and All models open first
  * under a row. */
 export const Narrow: Story = {
   args: { rows: [syncChange, designChange] },
@@ -89,7 +95,7 @@ export const Narrow: Story = {
   play: async ({ canvas, userEvent }) => {
     const head = canvas.getAllByRole('row')[0];
     for (const name of ['Change', 'Stage', 'Findings']) await expect(within(head).getByRole('columnheader', { name })).toBeVisible();
-    for (const name of ['Project', 'Path', 'Last activity', 'Est. cost ($)'])
+    for (const name of ['Project', 'Path', 'Last activity', 'All models (%)'])
       await expect(within(head).getByText(name).closest('th')).not.toBeVisible();
     const toggle = canvas.getByRole('button', { name: `Details of ${syncChange.title}` });
     await userEvent.click(toggle);
@@ -97,7 +103,9 @@ export const Narrow: Story = {
       'Project',
       'Path',
       'Last activity',
-      'Est. cost ($)',
+      'All models (%)',
+      'Fable (%)',
+      'Not estimated',
       'Runs',
       'Sessions',
     ]);

@@ -5,7 +5,7 @@ import { DataList, type ListColumn, type ListFact } from '../components/DataList
 import { Num, Text } from '../components/Num.tsx';
 import { RunLink, runLabel, runName } from '../components/RunLink.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { formatDollars, pathLabel } from '../lib/format.ts';
+import { formatUsage, pathLabel } from '../lib/format.ts';
 
 /** A run as the Runs list takes it: a change's page gives its runs without their change and goal. */
 type ListedRun = RunFacts & Partial<Pick<RunRow, 'change' | 'goal'>>;
@@ -43,19 +43,34 @@ const COLUMNS: ListColumn<ListedRun>[] = [
     cell: (r) => (r.finishedAt === null ? <Text value={null} /> : <Time iso={r.finishedAt} />),
   },
   { id: 'found', header: 'Found', num: true, value: foundFindings, cell: (r) => <Num value={foundFindings(r)} /> },
-  {
-    id: 'cost',
-    header: 'Est. cost ($)',
-    num: true,
-    fold: true,
-    value: (r) => r.cost,
-    cell: (r) => <Num value={r.cost} format={formatDollars} />,
-  },
+  usageColumn((r) => r.allPct),
   { id: 'warnings', header: 'Warnings', num: true, value: (r) => r.warnings, cell: (r) => <Num value={r.warnings} /> },
 ];
 
-/** A count of the opened row, left out when not known. */
-const known = (value: number | null) => (value === null ? null : <Num value={value} />);
+/** A value of the opened row (a count unless `format` says otherwise), left out when not known. */
+const known = (value: number | null, format?: (n: number) => string) =>
+  value === null ? null : <Num value={value} format={format} />;
+
+/** A list's all-models usage column, folded when narrow, of the estimate `get` reads: the Runs, Sessions and Changes
+ * lists' and a change's or goal's sessions' alike. */
+export function usageColumn<T>(get: (row: T) => number | null): ListColumn<T> {
+  return {
+    id: 'usage',
+    header: 'All models (%)',
+    num: true,
+    fold: true,
+    value: get,
+    cell: (row) => <Num value={get(row)} format={formatUsage} />,
+  };
+}
+
+/** A Fable usage fact of the estimate `get` reads, an opened row's first, left out when not known. */
+export function fableFact<T>(get: (row: T) => number | null): ListFact<T> {
+  return ['Fable (%)', (row) => known(get(row), formatUsage)];
+}
+
+/** A unit's Fable usage fact: the Runs and Sessions lists' and a change's or goal's sessions' alike. */
+export const FABLE_FACT: ListFact<Pick<RunFacts, 'fablePct'>> = fableFact((u) => u.fablePct);
 
 /** The branch, only when the title names the run: an untitled run's Run cell is already its branch. */
 const BRANCH: ListFact<ListedRun> = ['Branch', (r) => (r.headline ? r.branch : null)];
@@ -66,6 +81,7 @@ const COUNTS: ListFact<ListedRun>[] = [
 const CLOSED: ListFact<ListedRun> = ['Closed findings', (r) => known(closedFindings(r))];
 
 const FACTS: ListFact<ListedRun>[] = [
+  FABLE_FACT,
   ...CHANGE_FACTS,
   BRANCH,
   ...COUNTS,
@@ -74,10 +90,10 @@ const FACTS: ListFact<ListedRun>[] = [
   ['Stops', (r) => known(r.stops)],
 ];
 /** A change's runs: no change, goal, waves or stops. */
-const CHANGE_RUN_FACTS: ListFact<ListedRun>[] = [BRANCH, ...COUNTS, CLOSED];
+const CHANGE_RUN_FACTS: ListFact<ListedRun>[] = [FABLE_FACT, BRANCH, ...COUNTS, CLOSED];
 
 /** The Runs list: newest first as the API gives them, its title (else its branch) linking to its page, a row opening
- * to its change, goal, branch and other counts; one value per cell, the unit in the header. With `of`, the runs of one
+ * to its Fable usage, change, goal, branch and other counts; one value per cell, the unit in the header. With `of`, the runs of one
  * change (a change's page): no Warnings column, no change, goal, waves or stops, and Project and Path only as `of` asks
  * (several projects, a plan record). */
 export function RunsTable({ runs, of }: { runs: ListedRun[]; of?: { project: boolean; path: boolean } }) {
