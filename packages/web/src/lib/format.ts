@@ -29,6 +29,12 @@ export const reporterMark = {
   tooltip: "The latest export's figure over everything the reporter reads; it isn't summed by period yet.",
 };
 
+/** The badge on Weeks' usage estimates: the reporter's weekly calibration, account-wide, for the period's weeks. */
+export const usageMark = {
+  text: 'reporter',
+  tooltip: "The reporter's weekly rates for turning list-price cost into usage, over every project; not filtered by path or project.",
+};
+
 /** The badge on Compliance's information lines, which are the latest export's, not an all-time figure. */
 export const informationMark = {
   text: 'reporter',
@@ -484,9 +490,15 @@ export function formatUsage(value: number): string {
   return value > 0 && value < 0.05 ? '<0.1' : USAGE.format(value);
 }
 
-/** A usage estimate with its percent sign, for prose, tiles and facts: "2.7%", "<0.1%". */
-export function formatUsagePercent(value: number): string {
-  return `${formatUsage(value)}%`;
+/** A usage estimate with its percent sign, for prose, tiles, facts and a chart's axis and tooltip: "2.7%", "<0.1%";
+ * a dash when it isn't known. */
+export function formatUsagePercent(value: number | null): string {
+  return value === null ? NONE : `${formatUsage(value)}%`;
+}
+
+/** Usage points (a share of a weekly limit, in percent points) or a fit error in points, one decimal: "7.2", "0.4". */
+export function formatPoints(value: number): string {
+  return USAGE.format(value);
 }
 
 /** The units a usage total left out: "1 unit not estimated", "3 units not estimated". */

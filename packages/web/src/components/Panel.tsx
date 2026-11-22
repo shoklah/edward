@@ -161,10 +161,10 @@ export function ScrollTable({ label, className, children }: { label: string; cla
   );
 }
 
-/** A plain table's column head, muted; `num` for a numeric column. */
-export function ColumnHead({ num = false, children }: { num?: boolean; children: ReactNode }) {
+/** A plain table's column head, muted; `num` for a numeric column, `rowSpan` over a two-row header's groups. */
+export function ColumnHead({ num = false, rowSpan, children }: { num?: boolean; rowSpan?: number; children: ReactNode }) {
   return (
-    <th scope="col" className={cn('px-2 py-1.5 text-left font-medium text-muted-foreground', num && NUM)}>
+    <th scope="col" rowSpan={rowSpan} className={cn('px-2 py-1.5 text-left font-medium text-muted-foreground', num && NUM)}>
       {children}
     </th>
   );

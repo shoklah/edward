@@ -79,37 +79,11 @@ describe('week numbers', () => {
     expect((await home(dbWith(fixture('report-full')))).lastWeek.runs).toEqual({ small: 1, full: 0, plan: 0 });
   });
 
-  test("findings and cost sum the week's runs", async () => {
+  test("findings sum the week's runs", async () => {
     const { thisWeek, lastWeek } = await home(dbWith(fixture('report-full')));
     // The plan record's 5 findings and the Full run's 12.
     expect(thisWeek.findings).toEqual({ total: 17, actedOn: 8, notActedOn: 7, open: 1 });
-    // The plan record's models have no price (cost unknown); the Full run costs 9.52 + 4.275.
-    expect(thisWeek.cost).toBeCloseTo(13.795, 10);
-    expect(thisWeek.costPerRun).toBeCloseTo(13.795 / 2, 10);
     expect(lastWeek.findings).toEqual({ total: 4, actedOn: 2, notActedOn: 2, open: 0 });
-    expect(lastWeek.cost).toBeCloseTo(0.793, 10);
-    expect(lastWeek.costPerRun).toBeCloseTo(0.793, 10);
-  });
-
-  test('cost is null when no run is priced', async () => {
-    const raw = fixture('report-full');
-    for (const run of raw.runs) if (run.record.date >= '2026-11-08') run.models = null;
-    const { thisWeek } = await home(dbWith(raw));
-    expect(thisWeek.cost).toBeNull();
-    expect(thisWeek.costPerRun).toBeNull();
-  });
-
-  test('a week of only unpriced runs has a null cost', async () => {
-    const raw = fixture('report-full');
-    for (const run of raw.runs) {
-      if (run.record.date < '2026-11-08') continue;
-      for (const m of Object.values<{ cost: number | null }>(run.models ?? {})) m.cost = null;
-    }
-    const { thisWeek } = await home(dbWith(raw));
-    // The week holds runs, so its null cost is theirs, not an empty week's.
-    expect(thisWeek.runs).toMatchObject({ plan: 1, full: 1 });
-    expect(thisWeek.cost).toBeNull();
-    expect(thisWeek.costPerRun).toBeNull();
   });
 
   test('new warnings are those first seen after seenAt', async () => {
@@ -216,9 +190,6 @@ describe('the charts', () => {
     for (const series of Object.values(charts.findingsByStep)) expect(series).toHaveLength(12);
     expect(charts.findingsByStep.task_review.slice(8)).toEqual([0, 0, 2, 6]);
     expect(charts.findingsByStep.final_review.slice(8)).toEqual([1, 0, 1, 3]);
-    expect(charts.cost.slice(6, 10)).toEqual([null, null, null, null]);
-    expect(charts.cost[10]).toBeCloseTo(0.793, 10);
-    expect(charts.cost[11]).toBeCloseTo(13.795, 10);
     expect(charts.warnings).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 2]);
   });
 });

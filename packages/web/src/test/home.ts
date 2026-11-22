@@ -29,8 +29,6 @@ const step = (kind: StepKind, ran: number, findings: number, actedOn: number, wa
 export const emptyWeek: WeekNumbers = {
   runs: { small: 0, full: 0, plan: 0 },
   findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 },
-  cost: null,
-  costPerRun: null,
   estimates: { all: null, fable: null, notEstimated: 0 },
   perRun: { all: null, fable: null },
   warnings: 0,
@@ -90,8 +88,6 @@ export const fullHome: HomeResponse = {
   thisWeek: {
     runs: { small: 3, full: 2, plan: 1 },
     findings: { total: 19, actedOn: 13, notActedOn: 5, open: 1 },
-    cost: 21,
-    costPerRun: 3.5,
     estimates: { all: 3.4, fable: 2.1, notEstimated: 1 },
     perRun: { all: 0.48, fable: 0.31 },
     warnings: 12,
@@ -100,8 +96,6 @@ export const fullHome: HomeResponse = {
   lastWeek: {
     runs: { small: 4, full: 3, plan: 1 },
     findings: { total: 15, actedOn: 12, notActedOn: 3, open: 0 },
-    cost: 27.25,
-    costPerRun: 3.41,
     estimates: { all: 4.2, fable: 2.6, notEstimated: 0 },
     perRun: { all: 0.46, fable: 0.29 },
     warnings: 9,
@@ -131,7 +125,6 @@ export const fullHome: HomeResponse = {
       final_fix_check: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
       kit_review: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     },
-    cost: [null, null, null, null, null, null, 18.4, 24.1, 15.9, 31.2, 27.25, 21],
     estimates: [null, null, null, null, null, null, 2.9, 3.8, 2.5, 4.9, 4.2, 3.4].map((all) => ({
       all,
       fable: all === null ? null : Math.round(all * 6) / 10,
@@ -215,7 +208,6 @@ export const emptyHome: HomeResponse = {
     findingsByStep: Object.fromEntries(
       Object.keys(fullHome.charts.findingsByStep).map((kind) => [kind, zeros()]),
     ) as Record<StepKind, number[]>,
-    cost: WEEKS.map(() => null),
     estimates: WEEKS.map(() => ({ all: null, fable: null, notEstimated: 0 })),
     warnings: zeros(),
   },

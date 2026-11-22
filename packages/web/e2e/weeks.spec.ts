@@ -21,7 +21,15 @@ test('the weeks page shows its small multiples and weekly sums and has no axe vi
   await expect(thisWeek.getByRole('cell').nth(2)).toHaveText('1');
   await expect(page.getByRole('img', { name: /: bars by week/ })).toHaveCount(4);
   await expect(page.getByRole('region', { name: 'Full runs, with and without waves table', exact: true }).getByRole('table')).toBeVisible();
+  // The reporter's calibration, newest first; report-work's week of Nov 1 borrowed its all-models rates from Oct 25's.
+  const usage = page.getByRole('region', { name: 'Usage estimates table', exact: true });
+  await expect(usage.getByRole('row').nth(2).getByRole('rowheader')).toHaveText('Nov 8');
+  const borrowed = page.getByRole('region', { name: 'By week table', exact: true }).getByText('Rates borrowed from the week of Oct 25');
+  await expect(borrowed).toHaveCount(1);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  // The marker is a focusable tooltip trigger.
+  await borrowed.locator('..').focus();
+  await expect(page.getByRole('tooltip')).toHaveText('Rates borrowed from the week of Oct 25');
 });
 
 for (const width of [375, 768]) {

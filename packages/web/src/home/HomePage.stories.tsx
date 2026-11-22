@@ -44,7 +44,7 @@ export const Empty: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('region', { name: 'This week' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Full path' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(canvas.getByRole('heading', { name: 'Cost by week ($)' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'All-models usage by week (%)' })).toBeVisible();
     await expect(
       canvas.getByText('Nothing new. Finished runs and new warnings show here until you mark them seen.'),
     ).toBeVisible();
@@ -59,7 +59,7 @@ export const Full: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     const week = within(await canvas.findByRole('region', { name: 'This week' }));
-    for (const name of ['Runs', 'Findings', 'Est. cost ($)', 'Warnings']) await expect(week.getByRole('table', { name })).toBeVisible();
+    for (const name of ['Runs', 'Findings', 'Usage this week (%)', 'Usage per run (%)', 'Warnings']) await expect(week.getByRole('table', { name })).toBeVisible();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Full path' })).toHaveAttribute('aria-pressed', 'true');
     await expect(canvas.getByRole('button', { name: 'Small path' })).toHaveAttribute('aria-pressed', 'false');

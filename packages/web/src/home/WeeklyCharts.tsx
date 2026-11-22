@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { parseTime, weekOf, type HomeResponse, type SpendGroup, type StepKind } from '@cwd/shared';
-import { STEP_LABELS, formatCompact, formatCost, formatDay, formatDollars, weekLabel } from '../lib/format.ts';
+import { STEP_LABELS, formatCompact, formatCost, formatDay, formatUsage, formatUsagePercent, weekLabel } from '../lib/format.ts';
 import { resolveVars, useDark, useFontLoaded } from '../lib/theme.ts';
 import { NUM, Num } from '../components/Num.tsx';
 import { Details, Line, Panel } from '../components/Panel.tsx';
@@ -213,7 +213,9 @@ function ChartsTable({ charts }: { charts: Charts }) {
                 {STEP_LABELS[kind]} findings
               </TableHead>
             ))}
-            <TableHead className={NUM}>Cost ($)</TableHead>
+            <TableHead className={NUM}>All models (%)</TableHead>
+            <TableHead className={NUM}>Fable (%)</TableHead>
+            <TableHead className={NUM}>Not estimated</TableHead>
             <TableHead className={NUM}>Warnings</TableHead>
           </TableRow>
         </TableHeader>
@@ -227,7 +229,13 @@ function ChartsTable({ charts }: { charts: Charts }) {
                 </TableCell>
               ))}
               <TableCell className={NUM}>
-                <Num value={charts.cost[i]} format={formatDollars} />
+                <Num value={charts.estimates[i].all} format={formatUsage} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={charts.estimates[i].fable} format={formatUsage} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={charts.estimates[i].notEstimated} />
               </TableCell>
               <TableCell className={NUM}>
                 <Num value={charts.warnings[i]} />
@@ -251,7 +259,7 @@ export function CoverageNote({ coverageFrom, firstWeek }: { coverageFrom: string
 }
 
 /**
- * The weekly charts: findings by step, cost and warnings over the charted weeks, with a note when the reporter's
+ * The weekly charts: findings by step, all-models usage and warnings over the charted weeks, with a note when the reporter's
  * coverage starts after the first of them (the earlier weeks hold only what was stored).
  */
 export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverageFrom: string | null }) {
@@ -259,7 +267,11 @@ export function WeeklyCharts({ charts, coverageFrom }: { charts: Charts; coverag
     <section aria-label="Weekly charts" className="flex flex-col gap-3">
       <Chart title="Findings by week, by step" option={findingsOption(charts)} height={260} />
       <div className="grid gap-3 lg:grid-cols-2">
-        <Chart title="Cost by week ($)" option={singleBars(charts.weeks, 'Cost', charts.cost, { cost: true })} height={260} />
+        <Chart
+          title="All-models usage by week (%)"
+          option={singleBars(charts.weeks, 'All models', charts.estimates.map((e) => e.all), { format: formatUsagePercent })}
+          height={260}
+        />
         <Chart title="Warnings by week" option={singleBars(charts.weeks, 'Warnings', charts.warnings)} height={260} />
       </div>
       <CoverageNote coverageFrom={coverageFrom} firstWeek={charts.weeks[0]} />

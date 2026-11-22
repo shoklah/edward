@@ -7,8 +7,6 @@ import type { Path, StepKind } from '../report.ts';
 export type WeekNumbers = {
   runs: Record<Path, number>;
   findings: FindingSplit;
-  cost: number | null;
-  costPerRun: number | null;
   estimates: Estimates;
   perRun: { all: number | null; fable: number | null };
   warnings: number;
@@ -68,7 +66,6 @@ export type HomeResponse = {
   charts: {
     weeks: string[];
     findingsByStep: Record<StepKind, number[]>;
-    cost: (number | null)[];
     estimates: Estimates[];
     warnings: number[];
   };

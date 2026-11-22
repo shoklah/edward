@@ -1,12 +1,24 @@
 import { useState } from 'react';
 import { cn } from 'cn';
-import type { FindingsQuery, RunTime, WeeksResponse } from '@cwd/shared';
+import { History } from 'lucide-react';
+import type { FindingsQuery, RunTime, UsageWeek, WeeksResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
-import { GroupHead, NUM, Num, SUB } from '../components/Num.tsx';
-import { Line, PageTitle, Section, State } from '../components/Panel.tsx';
+import { GroupHead, NUM, Num, SUB, Unknown } from '../components/Num.tsx';
+import { ColumnHead, Line, PageTitle, Panel, ScrollTable, Section, State, Term } from '../components/Panel.tsx';
+import { ReporterMark } from '../components/ReporterMark.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
 import { Chart, CoverageNote, singleBars } from '../home/WeeklyCharts.tsx';
-import { PATH_LABELS, countName, formatDollars, total, weekLabel } from '../lib/format.ts';
+import {
+  PATH_LABELS,
+  countName,
+  formatDollars,
+  formatPoints,
+  formatUsage,
+  formatUsagePercent,
+  total,
+  usageMark,
+  weekLabel,
+} from '../lib/format.ts';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
 
 type Week = WeeksResponse['weeks'][number];
@@ -14,8 +26,9 @@ type Week = WeeksResponse['weeks'][number];
 const SUBS = [
   ...Object.values(PATH_LABELS),
   ...['critical', 'important', 'minor', 'unneeded'].map(countName),
-  'Fable',
   'All models',
+  'Fable',
+  'Not estimated',
 ];
 
 const RUN_TIMES: { key: keyof RunTime; label: string }[] = [
@@ -30,7 +43,7 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
   const charts = [
     { title: 'Runs', data: weeks.map((w) => total(w.runs)) },
     { title: 'Final review findings', data: weeks.map((w) => total(w.findings)) },
-    { title: 'Estimated cost ($)', data: weeks.map((w) => w.cost), cost: true },
+    { title: 'All-models usage (%)', data: weeks.map((w) => w.estimates.all), format: formatUsagePercent },
     // A duration is rounded to whole minutes first.
     {
       title: 'Time per run (min)',
@@ -43,7 +56,7 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
         <Chart
           key={chart.title}
           title={chart.title}
-          option={singleBars(names, chart.title, chart.data, { cost: chart.cost })}
+          option={singleBars(names, chart.title, chart.data, { format: chart.format })}
           height={180}
         />
       ))}
@@ -51,8 +64,26 @@ function SmallMultiples({ weeks }: { weeks: Week[] }) {
   );
 }
 
-/** The week table, newest first for display, one value per cell under its group. */
-function WeeksTable({ weeks }: { weeks: Week[] }) {
+/** A week's estimate for one limit: its value, after the borrowed marker when the reporter used another week's rates
+ * for that limit (`from`, the week it borrowed them from). */
+function Estimate({ value, from }: { value: number | null; from: string | null | undefined }) {
+  const label = from ? `Rates borrowed from the week of ${weekLabel(from)}` : null;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label && (
+        <Term tip={label}>
+          <History aria-hidden className="size-3.5 text-muted-foreground" />
+          <span className="sr-only">{label}</span>
+        </Term>
+      )}
+      <Num value={value} format={formatUsage} />
+    </span>
+  );
+}
+
+/** The week table, newest first for display, one value per cell under its group; a week's estimates are marked where
+ * the reporter's calibration (`usage`) says its rates were borrowed. */
+function WeeksTable({ weeks, usage }: { weeks: Week[]; usage: UsageWeek[] }) {
   return (
     <Table containerProps={{ tabIndex: 0, role: 'region', 'aria-label': 'By week table' }}>
       <TableHeader>
@@ -69,10 +100,7 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
           <TableHead rowSpan={2} className={NUM}>
             Stops
           </TableHead>
-          <GroupHead span={2}>Usage (points)</GroupHead>
-          <TableHead rowSpan={2} className={NUM}>
-            Est. cost ($)
-          </TableHead>
+          <GroupHead span={3}>Est. usage (%)</GroupHead>
           <TableHead rowSpan={2} className={NUM}>
             Time per run (min)
           </TableHead>
@@ -89,40 +117,118 @@ function WeeksTable({ weeks }: { weeks: Week[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {weeks.toReversed().map((w) => (
-          <TableRow key={w.week}>
-            <TableHead scope="row">{weekLabel(w.week)}</TableHead>
-            {[
-              w.runs.small,
-              w.runs.full,
-              w.runs.plan,
-              w.tasks,
-              w.findings.critical,
-              w.findings.important,
-              w.findings.minor,
-              w.findings.unneeded,
-              w.fixRounds,
-              w.stops,
-              w.fablePoints,
-              w.allPoints,
-            ].map((value, i) => (
-              <TableCell key={i} className={NUM}>
-                <Num value={value} />
+        {weeks.toReversed().map((w) => {
+          // The reporter's calibration of the week, naming the week each limit's rates were borrowed from.
+          const rates = usage.find((u) => u.week === w.week);
+          return (
+            <TableRow key={w.week}>
+              <TableHead scope="row">{weekLabel(w.week)}</TableHead>
+              {[
+                w.runs.small,
+                w.runs.full,
+                w.runs.plan,
+                w.tasks,
+                w.findings.critical,
+                w.findings.important,
+                w.findings.minor,
+                w.findings.unneeded,
+                w.fixRounds,
+                w.stops,
+              ].map((value, i) => (
+                <TableCell key={i} className={NUM}>
+                  <Num value={value} />
+                </TableCell>
+              ))}
+              <TableCell className={NUM}>
+                <Estimate value={w.estimates.all} from={rates?.all?.borrowed_from} />
               </TableCell>
-            ))}
-            <TableCell className={NUM}>
-              <Num value={w.cost} format={formatDollars} />
-            </TableCell>
-            <TableCell className={NUM}>
-              <Num value={w.minutesPerRun} />
-            </TableCell>
-            <TableCell className={NUM}>
-              <Num value={w.laterFixes} />
-            </TableCell>
-          </TableRow>
-        ))}
+              <TableCell className={NUM}>
+                <Estimate value={w.estimates.fable} from={rates?.fable?.borrowed_from} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.estimates.notEstimated} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.minutesPerRun} />
+              </TableCell>
+              <TableCell className={NUM}>
+                <Num value={w.laterFixes} />
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
+  );
+}
+
+/** The week a limit's rates were borrowed from; the dash read "not borrowed" for its own, "not known" with no rates. */
+function From({ rates }: { rates: { borrowed_from?: string | null } | null | undefined }) {
+  if (!rates) return <Unknown />;
+  return rates.borrowed_from ? weekLabel(rates.borrowed_from) : <Unknown label="not borrowed" />;
+}
+
+/** The reporter's weekly calibration of the period's weeks, newest first as the API gives them: per limit, its points,
+ * rates, fit error and the week its rates were borrowed from; account-wide, so the reporter's mark. */
+function UsageEstimates({ usage }: { usage: UsageWeek[] }) {
+  const dollars = (value: number | null | undefined) => <Num value={value} format={formatDollars} />;
+  const points = (value: number | null | undefined) => <Num value={value} format={formatPoints} />;
+  return (
+    <Panel title="Usage estimates" aside={<ReporterMark mark={usageMark} />}>
+      {usage.length === 0 ? (
+        <Line muted>No usage estimates in this export.</Line>
+      ) : (
+        <ScrollTable label="Usage estimates">
+          <thead>
+            <tr>
+              <ColumnHead rowSpan={2}>Week</ColumnHead>
+              <ColumnHead rowSpan={2} num>
+                Readings
+              </ColumnHead>
+              <GroupHead span={4}>Fable</GroupHead>
+              <GroupHead span={5}>All models</GroupHead>
+            </tr>
+            <tr>
+              {['Points', 'Rate ($/pt)', 'Fit error (± pt)'].map((column) => (
+                <ColumnHead key={column} num>
+                  {column}
+                </ColumnHead>
+              ))}
+              <ColumnHead>From</ColumnHead>
+              {['Points', 'Fable rate ($/pt)', 'Other rate ($/pt)', 'Fit error (± pt)'].map((column) => (
+                <ColumnHead key={column} num>
+                  {column}
+                </ColumnHead>
+              ))}
+              <ColumnHead>From</ColumnHead>
+            </tr>
+          </thead>
+          <tbody>
+            {usage.map((u, i) => (
+              <TableRow key={u.week ?? i}>
+                <TableHead scope="row">{u.week ? weekLabel(u.week) : <Unknown />}</TableHead>
+                <TableCell className={NUM}>
+                  <Num value={u.readings} />
+                </TableCell>
+                <TableCell className={NUM}>{points(u.fable?.points)}</TableCell>
+                <TableCell className={NUM}>{dollars(u.fable?.rate)}</TableCell>
+                <TableCell className={NUM}>{points(u.fable?.error)}</TableCell>
+                <TableCell>
+                  <From rates={u.fable} />
+                </TableCell>
+                <TableCell className={NUM}>{points(u.all?.points)}</TableCell>
+                <TableCell className={NUM}>{dollars(u.all?.fable_rate)}</TableCell>
+                <TableCell className={NUM}>{dollars(u.all?.other_rate)}</TableCell>
+                <TableCell className={NUM}>{points(u.all?.error)}</TableCell>
+                <TableCell>
+                  <From rates={u.all} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </tbody>
+        </ScrollTable>
+      )}
+    </Panel>
   );
 }
 
@@ -160,8 +266,8 @@ function RunTimeTable({ runTime }: { runTime: RunTime }) {
 }
 
 /**
- * The Weeks page: the period's four small multiples, its weeks newest first, and its Full runs' run time, with and
- * without waves.
+ * The Weeks page: the period's four small multiples, its weeks newest first, the reporter's usage estimates of those
+ * weeks, and its Full runs' run time, with and without waves.
  */
 export function WeeksPage() {
   const [query, setQuery] = useState<FindingsQuery>({ weeks: 12 });
@@ -182,8 +288,9 @@ export function WeeksPage() {
           )}
           <CoverageNote coverageFrom={data.coverageFrom} firstWeek={data.weeks[0].week} />
           <Section title="By week">
-            <WeeksTable weeks={data.weeks} />
+            <WeeksTable weeks={data.weeks} usage={data.usage} />
           </Section>
+          <UsageEstimates usage={data.usage} />
           <Section title="Full runs, with and without waves">
             <RunTimeTable runTime={data.runTime} />
           </Section>

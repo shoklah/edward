@@ -48,6 +48,7 @@ import {
   formatCost,
   formatUsage,
   formatUsagePercent,
+  formatPoints,
   notEstimatedLabel,
   formatWhole,
   formatCompactFixed,
@@ -489,6 +490,13 @@ test('formatUsage writes one decimal, "<0.1" for a known value under 0.05 and "0
 test('formatUsagePercent adds the percent sign', () => {
   expect(formatUsagePercent(2.7)).toBe('2.7%');
   expect(formatUsagePercent(0.01)).toBe('<0.1%');
+  // A chart's empty bar.
+  expect(formatUsagePercent(null)).toBe('–');
+});
+test('formatPoints writes usage points with one decimal, small values included', () => {
+  expect(formatPoints(7.2)).toBe('7.2');
+  expect(formatPoints(12)).toBe('12.0');
+  expect(formatPoints(0.04)).toBe('0.0');
 });
 test('notEstimatedLabel counts the units left out', () => {
   expect(notEstimatedLabel(1)).toBe('1 unit not estimated');

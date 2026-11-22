@@ -242,7 +242,6 @@ export function homeView(input: {
 
   function weekNumbers(week: string, inWeek: Run[]): WeekNumbers {
     const sum = sums.get(week);
-    const cost = sum?.cost ?? null;
     // A limit's estimate per run: the known estimates over the runs that have one.
     const perRun = (of: (facts: RunFacts) => number | null) => {
       const known = inWeek.flatMap((r) => of(r.facts) ?? []);
@@ -256,9 +255,6 @@ export function homeView(input: {
       runs: sum?.runs ?? noRuns(),
       // findings: every finding of the week's runs' steps, the sum of their RunFacts.findings.
       findings: splitFindings(stepsOf(inWeek)),
-      cost,
-      // costPerRun: the week's cost over its number of runs.
-      costPerRun: cost === null ? null : cost / inWeek.length,
       // estimates: the week's runs' and sessions' (weekSums).
       estimates: sum?.estimates ?? estimateSum([]),
       perRun: { all: perRun((f) => f.allPct), fable: perRun((f) => f.fablePct) },
@@ -367,7 +363,6 @@ export function homeView(input: {
           byWeek.map((of) => splitFindings(stepsOf(of).filter((s) => s.step === kind)).total),
         ]),
       ) as Record<StepKind, number[]>,
-      cost: numbers.map((n) => n.cost),
       estimates: numbers.map((n) => n.estimates),
       warnings: numbers.map((n) => n.warnings),
     },
