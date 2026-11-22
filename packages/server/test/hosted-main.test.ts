@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { createApp, type AppDeps } from '../src/app.ts';
-import { addInvite, createSession, signInAccount } from '../src/hosted/accounts.ts';
+import { addInvite, createSession, openAccountsDb, signInAccount } from '../src/hosted/accounts.ts';
 import { githubClient } from '../src/hosted/github.ts';
 import { hostedDeps, hostedSettings } from '../src/hosted/main.ts';
 
@@ -57,19 +57,34 @@ describe('hostedDeps', () => {
     const webDist = join(dir, 'web dist');
     mkdirSync(webDist);
     writeFileSync(join(webDist, 'index.html'), '<!doctype html><title>edward</title>');
-    deps = hostedDeps({
-      dataDir: join(dir, 'data'),
+    deps = build(join(dir, 'data'));
+  });
+
+  const build = (dataDir: string) =>
+    hostedDeps({
+      dataDir,
       port: 0,
       publicHost: SET.EDWARD_PUBLIC_HOST,
       origin: `https://${SET.EDWARD_PUBLIC_HOST}`,
       admin: SET.EDWARD_ADMIN,
       github: githubClient({ clientId: SET.GITHUB_CLIENT_ID, clientSecret: SET.GITHUB_CLIENT_SECRET }),
-      webDist,
+      webDist: join(dir, 'web dist'),
       now: () => NOW,
       secret: hostedSettings(SET).secret,
       requestLabels: () => {},
     });
-  });
+
+  /** A data folder whose `accounts.sqlite` holds `ids`, each signed in under an invited login. */
+  const seeded = (ids: number[]) => {
+    const dataDir = join(dir, 'seeded');
+    const accounts = openAccountsDb(join(dataDir, 'accounts.sqlite'));
+    for (const id of ids) {
+      addInvite(accounts, `user-${id}`, NOW);
+      signInAccount(accounts, { id, login: `user-${id}` }, SET.EDWARD_ADMIN, NOW);
+    }
+    accounts.$client.close();
+    return dataDir;
+  };
 
   afterEach(() => {
     deps.hosted.files.close();
@@ -98,5 +113,24 @@ describe('hostedDeps', () => {
     signInAccount(accounts, { id: 101, login: 'alice' }, SET.EDWARD_ADMIN, NOW);
     const cookie = `edward_session=${createSession(accounts, 101, NOW)}`;
     expect((await get('/api/refresh', { Cookie: cookie })).status).toBe(404);
+  });
+
+  test("opens every stored account's file before it returns", () => {
+    const dataDir = seeded([101, 202]);
+    const built = build(dataDir);
+    try {
+      expect(existsSync(join(dataDir, 'accounts', '101.sqlite'))).toBe(true);
+      expect(existsSync(join(dataDir, 'accounts', '202.sqlite'))).toBe(true);
+    } finally {
+      built.hosted.files.close();
+      built.hosted.accounts.$client.close();
+    }
+  });
+
+  test("throws when an account's file is not a database", () => {
+    const dataDir = seeded([101]);
+    mkdirSync(join(dataDir, 'accounts'));
+    writeFileSync(join(dataDir, 'accounts', '101.sqlite'), 'not a database');
+    expect(() => build(dataDir)).toThrow();
   });
 });

@@ -1,0 +1,15 @@
+# Runs deploy/update.sh once. Installed by the README's "Updates" step; fill in <user>, <checkout> and <host>.
+[Unit]
+Description=Update hosted edward from main
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=<user>
+WorkingDirectory=<checkout>/deploy
+Environment=EDWARD_PUBLIC_HOST=<host>
+RuntimeDirectory=edward-deploy
+# A copy runs, so the pull can't rewrite the script under it.
+ExecStart=/bin/bash -c 'cp update.sh "$${RUNTIME_DIRECTORY}/update.sh" && exec /bin/bash "$${RUNTIME_DIRECTORY}/update.sh"'
+TimeoutStartSec=30min

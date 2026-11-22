@@ -5,7 +5,7 @@ import { builtWebDist, serveApp, type AppDeps, type HostedDeps } from '../app.ts
 import type { Config } from '../config.ts';
 import { anthropicLabelClient } from '../labeller.ts';
 import { createQueue } from '../queue.ts';
-import { openAccountsDb } from './accounts.ts';
+import { listAccounts, openAccountsDb } from './accounts.ts';
 import { accountFiles } from './account-files.ts';
 import { githubClient, type GitHubClient } from './github.ts';
 import { labelAccounts } from './labels.ts';
@@ -43,7 +43,7 @@ export function hostedSettings(env: Record<string, string | undefined>): {
 
 /** The hosted app's deps over `dataDir`: its `accounts.sqlite` and account files, no local database, no refresh, no
  * aliases and no global labeller (each account has its own, under `secret`, run by `requestLabels`). The one place
- * they are built. */
+ * they are built, and opens every stored account's file, so a failing migration stops the start. */
 export function hostedDeps(opts: {
   dataDir: string;
   port: number;
@@ -57,6 +57,9 @@ export function hostedDeps(opts: {
   requestLabels: () => void;
 }): AppDeps & { hosted: HostedDeps } {
   const { dataDir, port, publicHost, origin, admin, github, webDist, now, secret, requestLabels } = opts;
+  const accounts = openAccountsDb(join(dataDir, 'accounts.sqlite'));
+  const files = accountFiles(dataDir);
+  for (const { id } of listAccounts(accounts)) files.db(id);
   return {
     db: null,
     port,
@@ -69,8 +72,8 @@ export function hostedDeps(opts: {
     hosted: {
       publicHost,
       origin,
-      accounts: openAccountsDb(join(dataDir, 'accounts.sqlite')),
-      files: accountFiles(dataDir),
+      accounts,
+      files,
       admin,
       github,
       secret,
