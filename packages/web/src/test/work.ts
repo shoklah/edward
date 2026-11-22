@@ -16,7 +16,6 @@ export const syncChange: ChangeRow = {
   runs: 2,
   sessions: 5,
   findings: 23,
-  cost: 61.4,
   estimates: { all: 4.85, fable: 2.1, notEstimated: 1 },
 };
 
@@ -33,11 +32,10 @@ export const markupChange: ChangeRow = {
   runs: 1,
   sessions: 1,
   findings: 2,
-  cost: 3.1,
   estimates: { all: 0.22, fable: 0, notEstimated: 0 },
 };
 
-/** A change still in design, in no stored run's project: no run, no findings, no known cost. */
+/** A change still in design, in no stored run's project: no run, no findings, no known usage. */
 export const designChange: ChangeRow = {
   key: 'c3c4d5e6f708192a',
   title: 'Terms of use page',
@@ -50,7 +48,6 @@ export const designChange: ChangeRow = {
   runs: 0,
   sessions: 1,
   findings: null,
-  cost: null,
   estimates: { all: null, fable: null, notEstimated: 1 },
 };
 
@@ -66,7 +63,6 @@ const searchChange: ChangeRow = {
   runs: 0,
   sessions: 2,
   findings: null,
-  cost: 11.6,
   estimates: { all: 0.9, fable: 0.35, notEstimated: 0 },
 };
 
@@ -82,7 +78,6 @@ const looseChange: ChangeRow = {
   runs: 1,
   sessions: 1,
   findings: 0,
-  cost: 4.25,
   estimates: { all: 0.31, fable: 0, notEstimated: 0 },
 };
 
@@ -94,7 +89,6 @@ export const syncGoal: GoalSection = {
   changes: 2,
   runs: 3,
   sessions: 6,
-  cost: 64.5,
   estimates: { all: 5.07, fable: 2.1, notEstimated: 1 },
   lastActivity: '2026-11-11T17:40:00Z',
   rows: [syncChange, markupChange],
@@ -108,13 +102,12 @@ export const searchGoal: GoalSection = {
   changes: 12,
   runs: 140,
   sessions: 1250,
-  cost: 1234.5,
   estimates: { all: 96.4, fable: 41.2, notEstimated: 3 },
   lastActivity: '2026-11-11T11:30:00Z',
   rows: [searchChange, designChange],
 };
 
-/** "No goal": no key, no name, closed, its cost not known. */
+/** "No goal": no key, no name, closed, its usage not known. */
 export const noGoal: GoalSection = {
   key: null,
   name: null,
@@ -122,7 +115,6 @@ export const noGoal: GoalSection = {
   changes: 1,
   runs: 1,
   sessions: 1,
-  cost: null,
   estimates: { all: null, fable: null, notEstimated: 1 },
   lastActivity: '2026-11-07T15:45:00Z',
   rows: [looseChange],
@@ -272,6 +264,8 @@ const syncRuns: RunFacts[] = [
     finishedAt: '2026-11-11T17:40:00Z',
     minutes: 231,
     cost: 26.9,
+    allPct: 1.97,
+    fablePct: 0.9,
     findings: { total: 12, actedOn: 10, notActedOn: 1, open: 1 },
     tasks: 6,
     stops: 0,
@@ -289,6 +283,8 @@ const syncRuns: RunFacts[] = [
     finishedAt: '2026-11-08T18:10:00Z',
     minutes: 187,
     cost: 22.15,
+    allPct: 1.62,
+    fablePct: 0.7,
     findings: { total: 11, actedOn: 11, notActedOn: 0, open: 0 },
     tasks: 5,
     stops: 0,
@@ -306,7 +302,6 @@ const syncSessions: WorkSessionRow[] = [
     end: '2026-11-03T12:54:00Z',
     minutes: 164,
     models: FABLE,
-    cost: 5.9,
     allPct: 0.48,
     fablePct: 0.31,
     step: 'design',
@@ -321,7 +316,6 @@ const syncSessions: WorkSessionRow[] = [
     end: '2026-11-03T15:55:00Z',
     minutes: 95,
     models: FABLE,
-    cost: 3.25,
     allPct: 0.26,
     fablePct: 0.17,
     step: 'design',
@@ -336,7 +330,6 @@ const syncSessions: WorkSessionRow[] = [
     end: '2026-11-04T13:00:00Z',
     minutes: 120,
     models: FABLE,
-    cost: 3.2,
     allPct: 0.25,
     fablePct: 0.16,
     step: 'plan',
@@ -351,7 +344,6 @@ const syncSessions: WorkSessionRow[] = [
     end: '2026-11-08T18:22:00Z',
     minutes: 212,
     models: OPUS,
-    cost: 22.15,
     allPct: 1.62,
     fablePct: 0,
     step: 'implementation',
@@ -366,7 +358,6 @@ const syncSessions: WorkSessionRow[] = [
     end: '2026-11-11T17:48:00Z',
     minutes: 248,
     models: OPUS,
-    cost: 26.9,
     allPct: 1.97,
     fablePct: 0,
     step: 'implementation',
@@ -391,14 +382,13 @@ export const changeFull: ChangeResponse = {
   lastActivity: '2026-11-11T17:40:00Z',
   sessionCount: 5,
   runCount: 3,
-  cost: 61.4,
   estimates: { all: 4.85, fable: 2.1, notEstimated: 1 },
   graph: syncGraph,
   runs: [...syncRuns, plannedRun],
   sessions: syncSessions,
 };
 
-/** A change of one project and one run with no spec, no goal and no known cost: no Project, Other projects, Path
+/** A change of one project and one run with no spec, no goal and no known usage: no Project, Other projects, Path
  * or Spec. */
 export const changeSmall: ChangeResponse = {
   ...changeFull,
@@ -412,7 +402,6 @@ export const changeSmall: ChangeResponse = {
   startedAt: null,
   sessionCount: 1,
   runCount: 1,
-  cost: null,
   estimates: { all: null, fable: null, notEstimated: 1 },
   graph: oneGraph,
   runs: [{ ...syncRuns[1], path: 'small' }],
@@ -449,7 +438,6 @@ export const goalFull: GoalResponse = {
   runCount: 3,
   sessionCount: 7,
   findings: 25,
-  cost: 64.5,
   estimates: { all: 5.07, fable: 2.1, notEstimated: 1 },
   graph: goalGraph,
   changes: [syncChange, markupChange],
@@ -462,7 +450,6 @@ export const goalFull: GoalResponse = {
       start: '2026-11-05T09:00:00Z',
       end: '2026-11-05T09:40:00Z',
       minutes: 40,
-      cost: 1.2,
       allPct: 0.04,
       fablePct: 0.02,
       startedBy: { key: S.design, title: 'Design offline sync' },
@@ -471,5 +458,10 @@ export const goalFull: GoalResponse = {
   ],
 };
 
-/** The goal across two projects, with no known findings or cost. */
-export const goalSeveral: GoalResponse = { ...goalFull, projects: ['lantern-notes', 'tidepool-api'], findings: null, cost: null };
+/** The goal across two projects, with no known findings or usage. */
+export const goalSeveral: GoalResponse = {
+  ...goalFull,
+  projects: ['lantern-notes', 'tidepool-api'],
+  findings: null,
+  estimates: { all: null, fable: null, notEstimated: 7 },
+};

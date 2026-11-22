@@ -476,6 +476,24 @@ export function formatDollars(cost: number): string {
   return DOLLARS.format(cost);
 }
 
+const USAGE = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** A usage estimate in percent of a weekly limit, for a cell under a "(%)" header: one decimal, "0.0" for a known 0,
+ * "<0.1" for a known value above 0 that would round to it. */
+export function formatUsage(value: number): string {
+  return value > 0 && value < 0.05 ? '<0.1' : USAGE.format(value);
+}
+
+/** A usage estimate with its percent sign, for prose, tiles and facts: "2.7%", "<0.1%". */
+export function formatUsagePercent(value: number): string {
+  return `${formatUsage(value)}%`;
+}
+
+/** The units a usage total left out: "1 unit not estimated", "3 units not estimated". */
+export function notEstimatedLabel(count: number): string {
+  return `${plural(count, 'unit')} not estimated`;
+}
+
 const WHOLE = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
 /** A whole number with grouping, for a cell under a header that names its unit: "5,759". */

@@ -308,7 +308,6 @@ export function homeView(input: {
       sessionId: null,
       findings: facts.findings,
       minutes: facts.minutes,
-      cost: facts.cost,
       allPct: facts.allPct,
     }));
   // With a scope, a hidden run's warnings and the warnings of a session in no shown root are left out.
@@ -332,7 +331,6 @@ export function homeView(input: {
         ...showWarning(scope, w.text),
         findings: null,
         minutes: null,
-        cost: null,
         allPct: null,
       };
     });

@@ -1,5 +1,4 @@
 import {
-  modelsCost,
   parseTime,
   sessionRootOf,
   splitSessionId,
@@ -100,8 +99,8 @@ export function shownSession(
 
 /**
  * A dated session's row facts, for the Sessions view and the Work pages alike: its key, sessionFacts, start, end,
- * length in minutes, models by cost with each one's most-used effort (masked, maskText), cost (modelsCost) and its own
- * usage estimates.
+ * length in minutes, models by cost with each one's most-used effort (masked, maskText) and its own usage
+ * estimates.
  */
 export function sessionRow(
   unit: StoredUnit<SessionEntry>,
@@ -119,7 +118,6 @@ export function sessionRow(
   | 'end'
   | 'minutes'
   | 'models'
-  | 'cost'
   | 'allPct'
   | 'fablePct'
 > {
@@ -137,7 +135,6 @@ export function sessionRow(
     end,
     minutes: end === null ? null : (time(end) - time(start)) / 60000,
     models: models.map(([model]) => ({ model: maskText(scope, model), effort: maskText(scope, mostUsed(model)) })),
-    cost: modelsCost(session.models),
     allPct: session.all_pct ?? null,
     fablePct: session.fable_pct ?? null,
   };

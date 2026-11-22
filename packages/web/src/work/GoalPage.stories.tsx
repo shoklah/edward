@@ -67,7 +67,9 @@ export const Full: Story = {
       'Runs',
       'Sessions',
       'Findings',
-      'Est. cost',
+      'All-models usage',
+      'Fable usage',
+      'Not estimated',
     ]);
     await expect(fact(header, 'Project')).toHaveTextContent('lantern-notes');
     await expect(fact(header, 'Started')).toHaveTextContent(formatDayTime(parseTime(goalFull.startedAt!)));
@@ -76,7 +78,9 @@ export const Full: Story = {
     await expect(fact(header, 'Runs')).toHaveTextContent('3');
     await expect(fact(header, 'Sessions')).toHaveTextContent('7');
     await expect(fact(header, 'Findings')).toHaveTextContent('25');
-    await expect(fact(header, 'Est. cost')).toHaveTextContent('$64.50');
+    await expect(fact(header, 'All-models usage')).toHaveTextContent('5.1%');
+    await expect(fact(header, 'Fable usage')).toHaveTextContent('2.1%');
+    await expect(fact(header, 'Not estimated')).toHaveTextContent('1 unit');
 
     const graph = canvas.getByRole('region', { name: 'Sessions of this goal, as a graph' });
     const lanes = ['Offline sync: queue and replay', 'No change', 'Other goals'].map((name) => within(graph).getByText(name));
@@ -110,7 +114,7 @@ export const Full: Story = {
   },
 };
 
-/** A goal across projects with no known findings or cost: "Several projects", the dash for each, and the Changes
+/** A goal across projects with no known findings or usage: "Several projects", the dash for each, and the Changes
  * table's Project column. */
 export const Several: Story = {
   beforeEach: () => {
@@ -121,7 +125,8 @@ export const Several: Story = {
     const header = canvas.getByRole('heading', { level: 1 }).parentElement!.querySelector('dl')!;
     await expect(fact(header, 'Project')).toHaveTextContent('Several projects');
     await expect(fact(header, 'Findings')).toHaveTextContent('not known');
-    await expect(fact(header, 'Est. cost')).toHaveTextContent('not known');
+    await expect(fact(header, 'All-models usage')).toHaveTextContent('not known');
+    await expect(fact(header, 'Not estimated')).toHaveTextContent('7 units');
     const changes = canvas.getByRole('region', { name: 'Changes table' });
     await expect(within(changes).getAllByRole('columnheader').map((th) => th.textContent)).toContain('Project');
   },

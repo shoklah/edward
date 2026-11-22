@@ -26,7 +26,7 @@ export const Full: Story = {
       'Step',
       'Started',
       'Length',
-      'Est. cost ($)',
+      'All models (%)',
     ]);
     for (const th of within(table).getAllByRole('columnheader')) await expect(th).toBeVisible();
     const rows = within(table).getAllByRole('row').slice(1);
@@ -36,7 +36,7 @@ export const Full: Story = {
       'href',
       `/work?view=sessions&session=${first.key}`,
     );
-    await expect(cells(rows[0])).toEqual(['Design offline sync', 'Design', formatDayTime(parseTime(first.start)), '2 h 44', '5.90']);
+    await expect(cells(rows[0])).toEqual(['Design offline sync', 'Design', formatDayTime(parseTime(first.start)), '2 h 44', '0.5']);
     await expect(within(rows[4]).getByRole('link', { name: HTML_TEXT })).toHaveAttribute('href', `/work?view=sessions&session=${fifth.key}`);
     await expect(canvasElement.querySelector('img')).toBeNull();
     await expectNoJoined(table);
@@ -48,13 +48,13 @@ export const Full: Story = {
       return openedRow(toggle);
     };
     const firstOpened = await open(first.title);
-    await expect(visibleTerms(firstOpened)).toEqual(['Started by', 'Model']);
-    await expect(visibleValues(firstOpened)).toEqual(['–started by you', 'Fable 5.2']);
-    await expect(visibleValues(await open(second.title))[0]).toBe(second.startedBy!.title);
+    await expect(visibleTerms(firstOpened)).toEqual(['Fable (%)', 'Started by', 'Model']);
+    await expect(visibleValues(firstOpened)).toEqual(['0.3', '–started by you', 'Fable 5.2']);
+    await expect(visibleValues(await open(second.title))[1]).toBe(second.startedBy!.title);
     await expect(third.startedBy).toEqual({ key: null, title: null });
-    await expect(visibleValues(await open(third.title))[0]).toBe('Another session');
+    await expect(visibleValues(await open(third.title))[1]).toBe('Another session');
     const fourthOpened = await open(fourth.title);
-    await expect(visibleTerms(fourthOpened)).toEqual(['Started by', 'Model', 'Run']);
+    await expect(visibleTerms(fourthOpened)).toEqual(['Fable (%)', 'Started by', 'Model', 'Run']);
     await expect(within(fourthOpened).getByRole('link', { name: fourth.run!.title! })).toHaveAttribute('href', `/runs/${fourth.run!.key}`);
   },
 };
@@ -70,23 +70,23 @@ export const WithChange: Story = {
     const toggle = canvas.getByRole('button', { name: `Details of ${first.title}` });
     await userEvent.click(toggle);
     const opened = openedRow(toggle);
-    await expect(visibleTerms(opened)).toEqual(['Change', 'Started by', 'Model']);
+    await expect(visibleTerms(opened)).toEqual(['Fable (%)', 'Change', 'Started by', 'Model']);
     await expect(within(opened).getByRole('link', { name: changeFull.title })).toHaveAttribute('href', `/work/changes/${changeFull.key}`);
   },
 };
 
-/** Narrow: under 768 px the list keeps Session, Step and Length; Started and the cost open first under a row. */
+/** Narrow: under 768 px the list keeps Session, Step and Length; Started and All models open first under a row. */
 export const Narrow: Story = {
   args: { change: true },
   decorators: [width(375)],
   play: async ({ canvas, userEvent }) => {
     const head = canvas.getAllByRole('row')[0];
     for (const name of ['Session', 'Step', 'Length']) await expect(within(head).getByRole('columnheader', { name })).toBeVisible();
-    for (const name of ['Started', 'Est. cost ($)']) await expect(within(head).getByText(name).closest('th')).not.toBeVisible();
+    for (const name of ['Started', 'All models (%)']) await expect(within(head).getByText(name).closest('th')).not.toBeVisible();
     const first = changeFull.sessions[0];
     const toggle = canvas.getByRole('button', { name: `Details of ${first.title}` });
     await userEvent.click(toggle);
-    await expect(visibleTerms(openedRow(toggle))).toEqual(['Started', 'Est. cost ($)', 'Change', 'Started by', 'Model']);
+    await expect(visibleTerms(openedRow(toggle))).toEqual(['Started', 'All models (%)', 'Fable (%)', 'Change', 'Started by', 'Model']);
   },
 };
 

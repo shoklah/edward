@@ -152,7 +152,6 @@ export const fullHome: HomeResponse = {
       sessionId: null,
       findings: { total: 6, actedOn: 5, notActedOn: 1, open: 0 },
       minutes: 130,
-      cost: 7.1,
       allPct: 1.12,
     },
     {
@@ -167,7 +166,6 @@ export const fullHome: HomeResponse = {
       sessionId: '3f9a0c1e-5b7d-4e2f-8a6c-9d0b1e2f3a4b',
       findings: null,
       minutes: null,
-      cost: null,
       allPct: null,
     },
     {
@@ -182,7 +180,6 @@ export const fullHome: HomeResponse = {
       sessionId: null,
       findings: null,
       minutes: null,
-      cost: null,
       allPct: null,
     },
     {
@@ -197,7 +194,6 @@ export const fullHome: HomeResponse = {
       sessionId: null,
       findings: { total: 1, actedOn: 1, notActedOn: 0, open: 0 },
       minutes: 25,
-      cost: 1.2,
       allPct: null,
     },
   ],

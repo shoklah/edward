@@ -24,7 +24,6 @@ export type ChangeRow = {
   runs: number;
   sessions: number;
   findings: number | null;
-  cost: number | null;
   estimates: Estimates;
 };
 
@@ -37,7 +36,6 @@ export type GoalSection = {
   changes: number;
   runs: number;
   sessions: number;
-  cost: number | null;
   estimates: Estimates;
   lastActivity: string | null;
   rows: ChangeRow[];
@@ -97,7 +95,7 @@ export type SessionGraphData = {
  */
 export type WorkSessionRow = Pick<
   SessionRow,
-  'key' | 'title' | 'start' | 'end' | 'minutes' | 'models' | 'cost' | 'allPct' | 'fablePct'
+  'key' | 'title' | 'start' | 'end' | 'minutes' | 'models' | 'allPct' | 'fablePct'
 > & {
   step: WorkStep;
   startedBy: { key: string | null; title: string | null } | null;
@@ -130,7 +128,6 @@ export type GoalResponse = {
   runCount: number;
   sessionCount: number;
   findings: number | null;
-  cost: number | null;
   estimates: Estimates;
   graph: SessionGraphData;
   changes: ChangeRow[];

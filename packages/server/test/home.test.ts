@@ -254,7 +254,6 @@ describe('the feed', () => {
       sessionId: null,
       findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 },
       minutes: 30,
-      cost: 0.71,
       allPct: 0.06,
     });
   });

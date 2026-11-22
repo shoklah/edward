@@ -1,16 +1,37 @@
 import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
-import type { ChangeResponse } from '@cwd/shared';
+import type { ChangeResponse, Estimates } from '@cwd/shared';
 import { ApiError, useLiveQuery } from '../api.ts';
 import { GoalLink } from '../components/GoalLink.tsx';
 import { Unknown } from '../components/Num.tsx';
 import { LINK, PageTitle, Pairs, Section, State } from '../components/Panel.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { STAGE_LABELS, formatCost, formatWhole, otherProjectsLabel, pathLabel, projectLabel } from '../lib/format.ts';
+import {
+  STAGE_LABELS,
+  formatUsagePercent,
+  formatWhole,
+  otherProjectsLabel,
+  pathLabel,
+  plural,
+  projectLabel,
+} from '../lib/format.ts';
 import { RunsTable } from '../runs/RunsTable.tsx';
 import { SessionGraph } from './SessionGraph.tsx';
 import { SessionsByWork } from './SessionsByWork.tsx';
+
+/** A change's or goal's usage facts on the backdrop: its all-models and Fable sums, each the dash when none is known,
+ * then the units it left out, left out at 0. */
+export function estimateFacts(estimates: Estimates): [string, ReactNode][] {
+  const usage = (value: number | null) => (value === null ? <Unknown backdrop /> : formatUsagePercent(value));
+  return [
+    ['All-models usage', usage(estimates.all)],
+    ['Fable usage', usage(estimates.fable)],
+    ...(estimates.notEstimated > 0
+      ? [['Not estimated', plural(estimates.notEstimated, 'unit')] as [string, ReactNode]]
+      : []),
+  ];
+}
 
 /** The change's facts, each a term over its value on the backdrop: Other projects and Spec only when it has them. */
 function Facts({ change }: { change: ChangeResponse }) {
@@ -34,7 +55,7 @@ function Facts({ change }: { change: ChangeResponse }) {
     ['Last activity', time(change.lastActivity)],
     ['Sessions', formatWhole(change.sessionCount)],
     ['Runs', formatWhole(change.runCount)],
-    ['Est. cost', change.cost === null ? <Unknown backdrop /> : formatCost(change.cost)],
+    ...estimateFacts(change.estimates),
     ...(change.spec ? [['Spec', change.spec] as [string, ReactNode]] : []),
   ];
   return <Pairs inline="over" backdrop className="gap-x-10 gap-y-3" pairs={pairs} />;

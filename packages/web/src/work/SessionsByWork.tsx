@@ -4,8 +4,8 @@ import { Num, Unknown } from '../components/Num.tsx';
 import { RunLink } from '../components/RunLink.tsx';
 import { SessionLink } from '../components/SessionLink.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
-import { STAGE_LABELS, formatDollars, formatLength, sessionName } from '../lib/format.ts';
-import { CHANGE_FACT } from '../runs/RunsTable.tsx';
+import { STAGE_LABELS, formatLength, formatUsage, sessionName } from '../lib/format.ts';
+import { CHANGE_FACT, FABLE_FACT } from '../runs/RunsTable.tsx';
 import { ALIGNED } from './ChangesTable.tsx';
 import { MODEL_FACT } from '../sessions/SessionsTable.tsx';
 
@@ -36,26 +36,28 @@ const COLUMNS: ListColumn<WorkSessionRow>[] = [
   },
   { id: 'length', header: 'Length', num: true, width: ALIGNED.count, value: (s) => s.minutes, cell: (s) => <Num value={s.minutes} format={formatLength} /> },
   {
-    id: 'cost',
-    header: 'Est. cost ($)',
+    id: 'usage',
+    header: 'All models (%)',
     num: true,
     fold: true,
-    value: (s) => s.cost,
-    cell: (s) => <Num value={s.cost} format={formatDollars} />,
+    value: (s) => s.allPct,
+    cell: (s) => <Num value={s.allPct} format={formatUsage} />,
   },
 ];
 
-const FACTS: ListFact<WorkSessionRow>[] = [
+/** Who started it, its models and its held run, after its Fable usage (and, on a goal's page, its change). */
+const SESSION_FACTS: ListFact<WorkSessionRow>[] = [
   ['Started by', (s) => <StartedBy by={s.startedBy} />],
   MODEL_FACT,
   ['Run', (s) => (s.run ? <RunLink runKey={s.run.key} branch={s.run.branch} title={s.run.title} /> : null)],
 ];
-/** On a goal's page, its change first, linking to the change's page, as the Runs and Sessions lists show it. */
-const GOAL_FACTS: ListFact<WorkSessionRow>[] = [CHANGE_FACT, ...FACTS];
+const FACTS: ListFact<WorkSessionRow>[] = [FABLE_FACT, ...SESSION_FACTS];
+/** On a goal's page, its change after its Fable usage, linking to the change's page, as the Runs and Sessions lists show it. */
+const GOAL_FACTS: ListFact<WorkSessionRow>[] = [FABLE_FACT, CHANGE_FACT, ...SESSION_FACTS];
 
 /** A change's or goal's Sessions list, as the API orders them: each title linking to the session in the Sessions
- * view, its step, start, length and cost, a row opening to (with `change`) its change, its starter, models and held
- * run. */
+ * view, its step, start, length and all-models usage, a row opening to its Fable usage, (with `change`) its change, its
+ * starter, models and held run. */
 export function SessionsByWork({ sessions, change }: { sessions: WorkSessionRow[]; change: boolean }) {
   return (
     <DataList

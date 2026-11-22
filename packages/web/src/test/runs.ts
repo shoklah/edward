@@ -292,10 +292,10 @@ export const runStopped: RunPageResponse = { ...runFull, facts: { ...fullRun, st
 /** The full run handed off to a stored session. */
 export const runHandedOff: RunPageResponse = { ...runFull, handoffTo: { title: 'Search page polish', sessionId: '7a6b5c4d-3e2f-4a1b-9c8d-7e6f5a4b3c2d' } };
 
-/** The full run alone: no time, cost, session, context, related run or later fix. */
+/** The full run alone: no time, cost, usage, session, context, related run or later fix. */
 export const runAlone: RunPageResponse = {
   ...runFull,
-  facts: { ...fullRun, startedAt: null, finishedAt: null, minutes: null, cost: null },
+  facts: { ...fullRun, startedAt: null, finishedAt: null, minutes: null, cost: null, allPct: null, fablePct: null },
   timeline: runFull.timeline.map((g) => (g.kind === 'start' || g.kind === 'end' ? { ...g, at: null } : g)),
   session: null,
   context: null,

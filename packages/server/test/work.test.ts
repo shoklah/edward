@@ -187,16 +187,13 @@ describe('levels', () => {
     expect(levelsOf('report-work').changeOf.get(TIDY_RUN)!.stage).toBe('implementation');
   });
 
-  test("a change's totals: cost, found findings, start and last activity", () => {
+  test("a change's totals: found findings, start and last activity", () => {
     const change = levelsOf('report-work').changeOf.get(OFFLINE_RUN)!;
-    // 13.795 (the full run) + 1.05 (7d1e…) + 0.41 (2e8d…); the plan record has no priced model.
-    expect(change.cost).toBeCloseTo(15.255, 6);
     expect(change.findings).toBe(17);
     expect(change.start).toBe('2026-11-09T13:40:12.551Z');
     expect(change.last).toBe('2026-11-10T16:47:31.880Z');
-    const unpriced = levelsOf('report-work').changeOf.get(TIDY_RUN)!;
-    expect(unpriced.cost).toBeNull();
-    expect(unpriced.start).toBe('2026-11-03T09:55:00Z');
+    const tidy = levelsOf('report-work').changeOf.get(TIDY_RUN)!;
+    expect(tidy.start).toBe('2026-11-03T09:55:00Z');
   });
 
   test("a change's estimates sum its runs' and sessions'", () => {
@@ -325,7 +322,6 @@ describe('workView', () => {
       runs: 2,
       sessions: 2,
       findings: 17,
-      cost: expect.closeTo(15.255, 6),
       estimates: { all: expect.closeTo(1.27, 6), fable: expect.closeTo(0.74, 6), notEstimated: 1 },
     });
   });
@@ -354,16 +350,15 @@ describe('workView', () => {
       expect(section.changes).toBe(section.rows.length);
       expect(section.runs).toBe(sum((r) => r.runs));
       expect(section.sessions).toBe(sum((r) => r.sessions) ?? 0);
-      expect(section.cost).toBeCloseTo(sum((r) => r.cost) ?? NaN, 6);
       expect(section.estimates.all).toBeCloseTo(sum((r) => r.estimates.all) ?? NaN, 6);
       expect(section.estimates.fable).toBeCloseTo(sum((r) => r.estimates.fable) ?? NaN, 6);
       expect(section.estimates.notEstimated).toBe(sum((r) => r.estimates.notEstimated));
     }
   });
 
-  test('a filter never cuts a change: one week keeps its whole cost', async () => {
+  test('a filter never cuts a change: one week keeps its whole usage', async () => {
     const body = await work('?weeks=1');
-    expect(rowOf(body, OFFLINE_CHANGE).cost).toBeCloseTo(15.255, 6);
+    expect(rowOf(body, OFFLINE_CHANGE).estimates.all).toBeCloseTo(1.27, 6);
     expect(rowKeys(body)).not.toContain(TIDY_RUN);
     expect(rowKeys(body)).not.toContain(RETRY_RUN);
   });
@@ -395,7 +390,7 @@ describe('workView', () => {
     const offline = rowOf(body, OFFLINE_CHANGE);
     expect(offline.otherProjects).toEqual([]);
     expect(offline.otherCount).toBe(1);
-    expect(offline.cost).toBeCloseTo(15.255, 6);
+    expect(offline.estimates.all).toBeCloseTo(1.27, 6);
     expect(body.goalOptions.map((g) => g.name)).toEqual(['Offline sync']);
 
     const raw = fixture('report-work');
@@ -546,7 +541,7 @@ describe('changeView', () => {
       sessionCount: 2,
       runCount: 2,
     });
-    expect(change.cost).toBeCloseTo(15.255, 6);
+    expect(change.estimates).toEqual({ all: expect.closeTo(1.27, 6), fable: expect.closeTo(0.74, 6), notEstimated: 1 });
     expect(change.graph.lanes).toEqual([
       { key: OFFLINE_CHANGE, title: 'Plan the offline queue and replay', kind: 'change' },
       { key: null, title: 'Other changes', kind: 'other' },
@@ -582,7 +577,7 @@ describe('changeView', () => {
     expect(build.change).toEqual({ key: OFFLINE_CHANGE, title: 'Plan the offline queue and replay' });
   });
 
-  test("a session row's length, models and cost are the Sessions view's", async () => {
+  test("a session row's length, models and usage are the Sessions view's", async () => {
     const change = (await changePage(OFFLINE_CHANGE)).body as ChangeResponse;
     const sessions = (await api('/api/sessions?weeks=4')).body.sessions as SessionRow[];
     for (const row of change.sessions) {
@@ -593,7 +588,6 @@ describe('changeView', () => {
         end: listed.end,
         minutes: listed.minutes,
         models: listed.models,
-        cost: listed.cost,
         allPct: listed.allPct,
         fablePct: listed.fablePct,
       });
@@ -694,7 +688,7 @@ describe('goalView', () => {
       runCount: 3,
       sessionCount: 2,
     });
-    expect(goal.cost).toBeCloseTo(15.255, 6);
+    expect(goal.estimates.all).toBeCloseTo(1.27, 6);
     expect(goal.graph.lanes).toEqual([{ key: OFFLINE_CHANGE, title: 'Plan the offline queue and replay', kind: 'change' }]);
     expect(lanesOf(goal.graph)).toEqual([[S_2E8D, S_7D1E]]);
     expect(goal.graph.edges).toEqual([]);
@@ -713,7 +707,7 @@ describe('goalView', () => {
     expect(lanesOf(goal.graph)).toEqual([[S_6B1F], [S_2E8D, S_7D1E]]);
   });
 
-  test("a loose session of the goal has the No change lane, and its cost counts in the goal's", async () => {
+  test("a loose session of the goal has the No change lane, and its usage counts in the goal's", async () => {
     const goal = (
       await goalPage('Offline sync', undefined, (raw) => {
         sessionOf(raw, S_6B1F).goal = 'Offline sync';
@@ -728,7 +722,6 @@ describe('goalView', () => {
     const loose = goal.sessions.find((s) => s.key === S_6B1F)!;
     expect(loose.change).toBeNull();
     expect(goal.sessionCount).toBe(3);
-    expect(goal.cost).toBeCloseTo(15.255 + loose.cost!, 6);
     // The offline change (1.27, 0.74, one not estimated), tidy-imports (not estimated) and 6b1f… (0.01, 0).
     expect(goal.estimates.all).toBeCloseTo(1.28, 6);
     expect(goal.estimates.fable).toBeCloseTo(0.74, 6);
@@ -759,7 +752,6 @@ describe('the change and goal pages in showing mode', () => {
     expect(change.sessions.map((s) => s.key)).toEqual([S_7D1E]);
     expect(change.runs.map((r) => r.key)).toEqual([OFFLINE_RUN, PLAN_RECORD]);
     expect(change.sessionCount).toBe(2);
-    expect(change.cost).toBeCloseTo(15.255, 6);
     // Whole totals: 2e8d…, in tidepool-api, still counts.
     expect(change.estimates.all).toBeCloseTo(1.27, 6);
     expect(change.otherProjects).toEqual([]);
@@ -793,7 +785,7 @@ describe('the change and goal pages in showing mode', () => {
     expect(goal.sessions.map((s) => s.key)).toEqual([S_7D1E]);
     expect(goal.changes.map((c) => c.key)).toEqual([TIDY_RUN, OFFLINE_CHANGE]);
     expect(goal).toMatchObject({ changeCount: 3, runCount: 3, sessionCount: 3, findings: all.findings });
-    expect(goal.cost).toBeCloseTo(all.cost!, 6);
+    expect(goal.estimates).toEqual(all.estimates);
     const { forbidden, shown } = forbiddenFor([LANTERN]);
     expect(leaks(goal, forbidden, shown)).toEqual([]);
   });

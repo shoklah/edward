@@ -41,11 +41,11 @@ export const Full: Story = {
       'Project',
       'Started',
       'Length',
-      'Est. cost ($)',
+      'All models (%)',
       'Warnings',
     ]);
     for (const th of headers) await expect(th).toBeVisible();
-    for (const name of ['Length', 'Est. cost ($)', 'Warnings']) {
+    for (const name of ['Length', 'All models (%)', 'Warnings']) {
       await expect(canvas.getByRole('columnheader', { name })).toHaveClass('text-right', 'tabular-nums');
     }
 
@@ -61,7 +61,10 @@ export const Full: Story = {
     ] as const) {
       await expect(row.getByText(length).closest('td')).toHaveClass('text-right', 'tabular-nums');
     }
-    await expect(two.getByText('1.05')).toBeVisible();
+    // Usage in percent of the weekly limit, one decimal; a known value under 0.05 reads "<0.1"; no cost.
+    await expect(two.getAllByRole('cell')[4]).toHaveTextContent('0.1');
+    await expect(other.getAllByRole('cell')[4]).toHaveTextContent('<0.1');
+    await expect(canvas.queryByRole('columnheader', { name: /cost/i })).toBeNull();
     await expect(other.getByText('Other project')).toBeVisible();
     // A non-zero Warnings count is orange.
     await expect(two.getAllByRole('cell')[5].firstElementChild).toHaveClass('text-warning-ink');
@@ -78,6 +81,7 @@ export const Full: Story = {
     // Open: its facts, in words and counts, Startup in words and a non-zero Never loaded orange.
     const opened = openedRow(toggle);
     await expect(visibleTerms(opened)).toEqual([
+      'Fable (%)',
       'Change',
       'Goal',
       'ID',
@@ -89,7 +93,8 @@ export const Full: Story = {
       'Runs',
       'Startup',
     ]);
-    // Its change links to the change's page and its goal is named.
+    // Its Fable usage first, a known 0 written "0.0"; its change links to the change's page and its goal is named.
+    await expect(visibleFact(opened, 'Fable (%)').textContent).toBe('0.0');
     await expect(within(visibleFact(opened, 'Change')).getByRole('link', { name: twoRunSession.change!.title })).toHaveAttribute(
       'href',
       `/work/changes/${twoRunSession.change!.key}`,
@@ -143,7 +148,7 @@ export const Full: Story = {
     await userEvent.click(otherToggle);
     const otherOpened = openedRow(otherToggle);
     // No change or goal: both left out.
-    await expect(visibleTerms(otherOpened).slice(0, 1)).toEqual(['ID']);
+    await expect(visibleTerms(otherOpened).slice(0, 2)).toEqual(['Fable (%)', 'ID']);
     await expect(visibleFact(otherOpened, 'Startup').firstElementChild).toHaveClass('text-warning-ink');
     await expect(visibleFact(otherOpened, 'Startup').textContent).toBe('Missing');
     await expect(visibleFact(otherOpened, 'Never loaded').firstElementChild).not.toHaveClass('text-warning-ink');

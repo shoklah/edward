@@ -34,7 +34,6 @@ export type FeedItem = {
   sessionId: string | null;
   findings: FindingSplit | null;
   minutes: number | null;
-  cost: number | null;
   allPct: number | null;
 };
 

@@ -32,45 +32,46 @@ export const Full: Story = {
       'Path',
       'Finished',
       'Found',
-      'Est. cost ($)',
+      'All models (%)',
       'Warnings',
     ]);
     for (const th of within(head).getAllByRole('columnheader')) await expect(th).toBeVisible();
     await expect(rows).toHaveLength(3);
     await expect(canvas.getByRole('region', { name: 'Runs table' })).toHaveAttribute('tabindex', '0');
 
-    // Run, Project, Path, Finished, Found, Cost, Warnings; a run with a title is named by it.
+    // Run, Project, Path, Finished, Found, All models, Warnings; a run with a title is named by it.
     const full = cells(rows[1]);
     await expect(within(rows[1]).getByRole('link', { name: fullRun.headline! })).toHaveAttribute('href', `/runs/${fullRun.key}`);
     await expect(within(rows[1]).queryByRole('link', { name: 'feat/search' })).toBeNull();
     await expect(full[1]).toBe('atlas');
     await expect(full[2]).toBe('Full');
-    await expect(full.slice(4)).toEqual(['6', '7.10', '1']);
+    await expect(full.slice(4)).toEqual(['6', '0.6', '1']);
+    await expect(within(head).queryByText(/cost/i)).toBeNull();
 
     // Before steps: muted text, not a badge; what it can't give is the dash, read as "not known".
     const old = within(rows[2]);
     const mark = old.getByText('before steps');
     await expect(mark).toHaveClass('text-muted-foreground');
-    const cost = rows[2].querySelectorAll('td')[5];
-    await expect(cost).toHaveTextContent('–');
-    await expect(within(cost).getByText('not known')).toBeInTheDocument();
+    const usage = rows[2].querySelectorAll('td')[5];
+    await expect(usage).toHaveTextContent('–');
+    await expect(within(usage).getByText('not known')).toBeInTheDocument();
 
     // One value per cell.
     await expectNoJoined(canvasElement);
 
-    // The first run, with no title, is named by its branch, so it opens to its other counts without the branch again,
-    // no change or goal left out; the time is whole minutes.
+    // The first run, with no title, is named by its branch, so it opens to its Fable usage first (a known 0 shows
+    // "0.0"), then its other counts without the branch again, no change or goal left out; the time is whole minutes.
     await userEvent.click(canvas.getByRole('button', { name: `Details of ${HTML_TEXT}` }));
     const opened = canvas.getAllByRole('row')[2];
-    await expect(visibleTerms(opened)).toEqual(['Time (min)', 'Tasks', 'Waves', 'Closed findings', 'Stops']);
-    await expect(visibleValues(opened)).toEqual(['25', '1', '0', '1', '0']);
+    await expect(visibleTerms(opened)).toEqual(['Fable (%)', 'Time (min)', 'Tasks', 'Waves', 'Closed findings', 'Stops']);
+    await expect(visibleValues(opened)).toEqual(['0.0', '25', '1', '0', '1', '0']);
 
     // A titled run's chevron reads its title, and its opened row its change, linking to the change's page, goal and
     // branch.
     await userEvent.click(canvas.getByRole('button', { name: `Details of ${fullRun.headline}` }));
     const fullOpened = canvas.getAllByRole('row')[4];
-    await expect(visibleTerms(fullOpened).slice(0, 3)).toEqual(['Change', 'Goal', 'Branch']);
-    await expect(visibleValues(fullOpened).slice(0, 3)).toEqual([fullRun.change!.title, fullRun.goal!.name, 'feat/search']);
+    await expect(visibleTerms(fullOpened).slice(0, 4)).toEqual(['Fable (%)', 'Change', 'Goal', 'Branch']);
+    await expect(visibleValues(fullOpened).slice(0, 4)).toEqual(['0.3', fullRun.change!.title, fullRun.goal!.name, 'feat/search']);
     await expect(within(fullOpened).getByRole('link', { name: fullRun.change!.title })).toHaveAttribute(
       'href',
       `/work/changes/${fullRun.change!.key}`,
@@ -85,7 +86,7 @@ export const Full: Story = {
   },
 };
 
-/** Narrow: under 768 px the list keeps Run, Found and Warnings; Project, Path, Finished and the cost open first
+/** Narrow: under 768 px the list keeps Run, Found and Warnings; Project, Path, Finished and All models open first
  * under a row, so a record from before steps with no title opens to them alone. */
 export const Narrow: Story = {
   args: { runs: [fullRun, oldRun] },
@@ -94,14 +95,15 @@ export const Narrow: Story = {
     const head = canvas.getAllByRole('row')[0];
     for (const name of ['Run', 'Found', 'Warnings'])
       await expect(within(head).getByRole('columnheader', { name })).toBeVisible();
-    for (const name of ['Project', 'Path', 'Finished', 'Est. cost ($)'])
+    for (const name of ['Project', 'Path', 'Finished', 'All models (%)'])
       await expect(within(head).getByText(name).closest('th')).not.toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: `Details of ${fullRun.headline}` }));
     await expect(visibleTerms(canvas.getAllByRole('row')[2])).toEqual([
       'Project',
       'Path',
       'Finished',
-      'Est. cost ($)',
+      'All models (%)',
+      'Fable (%)',
       'Change',
       'Goal',
       'Branch',
@@ -112,7 +114,7 @@ export const Narrow: Story = {
       'Stops',
     ]);
     await userEvent.click(canvas.getByRole('button', { name: 'Details of feat/import' }));
-    await expect(visibleTerms(canvas.getAllByRole('row').at(-1)!)).toEqual(['Project', 'Path', 'Finished', 'Est. cost ($)']);
+    await expect(visibleTerms(canvas.getAllByRole('row').at(-1)!)).toEqual(['Project', 'Path', 'Finished', 'All models (%)']);
   },
 };
 
@@ -139,14 +141,14 @@ export const OfAChange: Story = {
       'Path',
       'Finished',
       'Found',
-      'Est. cost ($)',
+      'All models (%)',
     ]);
     const rows = canvas.getAllByRole('row').slice(1);
     await expect(cells(rows[0]).slice(1, 3)).toEqual(['atlas', 'Full']);
     await expect(cells(rows[1])[2]).toBe('Plan');
-    await expect(cells(rows[0]).slice(4)).toEqual(['6', '7.10']);
+    await expect(cells(rows[0]).slice(4)).toEqual(['6', '0.6']);
     await userEvent.click(canvas.getByRole('button', { name: `Details of ${fullRun.headline}` }));
-    await expect(visibleTerms(canvas.getAllByRole('row')[2])).toEqual(['Branch', 'Time (min)', 'Tasks', 'Closed findings']);
+    await expect(visibleTerms(canvas.getAllByRole('row')[2])).toEqual(['Fable (%)', 'Branch', 'Time (min)', 'Tasks', 'Closed findings']);
   },
 };
 
