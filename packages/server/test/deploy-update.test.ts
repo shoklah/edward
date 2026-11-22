@@ -66,6 +66,8 @@ function setup() {
   compose*' stop edward') [ -e "$T/fail-stop" ] && exit 1 ;;
   run*' cp -a /data '*) [ -e "$T/fail-copy" ] && exit 1 ;;
   run*' cp -a /backups/'*) [ -e "$T/fail-restore" ] && exit 1 ;;
+  'tag edward-hosted edward-hosted:previous') [ -e "$T/fail-tag" ] && exit 1 ;;
+  'image prune -f') [ -e "$T/fail-prune" ] && exit 1 ;;
 esac
 exit 0
 `,
@@ -340,5 +342,65 @@ describe('update.sh', () => {
     expect(calls.some((call) => call.includes(' cp '))).toBe(false);
     expect(t.state('deploying')).toBeNull();
     expect(t.state('refused')).toBe(sha);
+  });
+
+  test('refuses to deploy over local changes in the checkout', () => {
+    const t = setup();
+    const old = t.head();
+    t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    const edited = join(t.deploy, 'compose.example.yml');
+    writeFileSync(edited, 'services: { local: {} }\n');
+    const { status, stdout, calls } = t.run();
+    expect(stdout.endsWith('local changes in the checkout, not deploying\n')).toBe(true);
+    expect(status).toBe(1);
+    expect(docker(calls)).toEqual([]);
+    expect(t.head()).toBe(old);
+    expect(readFileSync(edited, 'utf8')).toBe('services: { local: {} }\n');
+    expect(t.state('refused')).toBeNull();
+  });
+
+  test('a failed checkout restores the tag and refuses the commit', () => {
+    const t = setup();
+    const old = t.head();
+    const sha = t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    // An untracked file at the path the new commit adds makes the merge refuse.
+    writeFileSync(join(t.edward, 'change.txt'), 'untracked\n');
+    const { status, stdout, calls } = t.run();
+    expect(stdout.endsWith(`checkout failed for ${short(sha)}\n`)).toBe(true);
+    expect(status).toBe(1);
+    expect(t.head()).toBe(old);
+    expect(docker(calls).at(-1)).toBe('docker tag edward-hosted:previous edward-hosted');
+    expect(calls.some((call) => call.endsWith(' build') || call.includes(' stop '))).toBe(false);
+    expect(t.state('refused')).toBe(sha);
+    expect(t.state('deploying')).toBeNull();
+  });
+
+  test('a failed tag stops before anything is written', () => {
+    const t = setup();
+    const old = t.head();
+    const sha = t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    t.flag('fail-tag');
+    const { status, stdout, calls } = t.run();
+    expect(stdout.endsWith(`tag failed for ${short(sha)}\n`)).toBe(true);
+    expect(status).toBe(1);
+    expect(t.head()).toBe(old);
+    expect(calls.some((call) => call.endsWith(' build'))).toBe(false);
+    expect(t.state('deploying')).toBeNull();
+    expect(t.state('refused')).toBeNull();
+  });
+
+  test('a failed prune after a healthy deploy still exits 0', () => {
+    const t = setup();
+    const sha = t.push();
+    t.checks({ status: 'completed', conclusion: 'success' });
+    t.flag('health', '200\n');
+    t.flag('fail-prune');
+    const { status, stdout, calls } = t.run();
+    expect(stdout.endsWith(`deployed ${short(sha)}\n`)).toBe(true);
+    expect(calls).toContain('docker image prune -f');
+    expect(status).toBe(0);
   });
 });

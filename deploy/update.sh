@@ -111,11 +111,25 @@ if [ "$verdict" = failed ]; then
   exit 1
 fi
 
+if ! git diff --quiet HEAD; then
+  echo "local changes in the checkout, not deploying"
+  exit 1
+fi
+
+if ! docker tag "$IMAGE" "$IMAGE:previous"; then
+  echo "tag failed for ${new:0:7}"
+  exit 1
+fi
 mkdir -p state backups
 name="$(date -u +%Y%m%dT%H%M%SZ)-${old:0:7}"
-docker tag "$IMAGE" "$IMAGE:previous"
 deploying building
-git merge -q --ff-only "$new"
+if ! git merge -q --ff-only "$new"; then
+  docker tag "$IMAGE:previous" "$IMAGE"
+  rm -f state/deploying
+  refuse "$new"
+  echo "checkout failed for ${new:0:7}"
+  exit 1
+fi
 echo "building ${new:0:7}"
 if ! compose build; then
   git reset -q --hard "$old"
@@ -142,3 +156,4 @@ fi
 echo "deployed ${new:0:7}"
 rm -f state/deploying
 docker image prune -f
+exit 0
