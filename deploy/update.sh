@@ -66,18 +66,20 @@ prune_copies() {
   done
 }
 
-# Puts the old commit's checkout, image and container back.
+# Puts the old commit's checkout, image and container back; fails when any step does.
 restart_old() {
-  git reset -q --hard "$old"
-  docker tag "$IMAGE:previous" "$IMAGE"
-  compose up -d --no-build edward
+  git reset -q --hard "$old" && docker tag "$IMAGE:previous" "$IMAGE" && compose up -d --no-build edward
 }
 
-# The stop or the copy failed: the old version is started again and the new commit refused.
+# The stop or the copy failed: the new commit is refused and the old version started again. If it can't be,
+# state/deploying keeps its building or stopped phase (a failed write leaves the earlier one), whose resume retries.
 backup_failed() {
   as_root rm -rf "/backups/$name"
-  restart_old
   refuse "$new"
+  if ! restart_old; then
+    echo "backup failed, restart of ${old:0:7} failed, will retry"
+    exit 1
+  fi
   rm -f state/deploying
   echo "backup failed, ${old:0:7} restarted"
   exit 1
@@ -136,7 +138,10 @@ resume() {
     building|stopped)
       # data/ was never touched, so the old version comes back and the tick after retries.
       as_root rm -rf "/backups/$name"
-      restart_old
+      if ! restart_old; then
+        echo "restart of ${old:0:7} failed, will retry"
+        exit 1
+      fi
       rm -f state/deploying
       echo "abandoned ${new:0:7} after an interrupted run"
       exit 0 ;;
@@ -172,6 +177,10 @@ fi
 
 verdict=$(ci "$new") || { echo "GitHub API error"; exit 1; }
 [ "$verdict" = pending ] && exit 0
+case "$verdict" in
+  passed|failed) ;;
+  *) echo "GitHub API error"; exit 1 ;;
+esac
 echo "new commit ${new:0:7}"
 if [ "$verdict" = failed ]; then
   refuse "$new"
@@ -205,9 +214,13 @@ if ! git merge -q --ff-only "$new"; then
 fi
 echo "building ${new:0:7}"
 if ! compose build; then
-  git reset -q --hard "$old"
-  docker tag "$IMAGE:previous" "$IMAGE"
   refuse "$new"
+  # The building phase stays, so the next run's resume puts the old commit back.
+  if ! git reset -q --hard "$old"; then
+    echo "build failed for ${new:0:7}, checkout reset failed, will retry"
+    exit 1
+  fi
+  docker tag "$IMAGE:previous" "$IMAGE"
   rm -f state/deploying
   echo "build failed for ${new:0:7}"
   exit 1

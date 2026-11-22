@@ -63,7 +63,10 @@ function setup() {
     join(bin, 'docker'),
     `${t}[ -e state/deploying ] && echo "state $(cat state/deploying)" >> "$T/calls.log"
 case "$*" in
-  compose*' build') [ -e "$T/fail-build" ] && exit 1 ;;
+  compose*' build')
+    # lock-index makes the checkout's reset after the failed build fail too.
+    [ -e "$T/fail-build" ] && { [ -e "$T/lock-index" ] && touch ../.git/index.lock; exit 1; } ;;
+  compose*' up -d --no-build edward') [ -e "$T/fail-up" ] && exit 1 ;;
   compose*' stop edward') [ -e "$T/fail-stop" ] && exit 1 ;;
   run*' cp -a /data '*) [ -e "$T/fail-copy" ] && exit 1 ;;
   run*' cp -a /backups/'*) [ -e "$T/fail-restore" ] && exit 1 ;;
@@ -218,6 +221,18 @@ describe('update.sh', () => {
     expect(t.state('refused')).toBeNull();
   });
 
+  test('logs a GitHub API error for a check-runs body that reads to no verdict', () => {
+    const t = setup();
+    const old = t.head();
+    t.push();
+    writeFileSync(join(t.dir, 'check-runs.json'), '');
+    const { status, stdout, calls } = t.run();
+    expect(stdout).toBe('GitHub API error\n');
+    expect(status).toBe(1);
+    expect(docker(calls)).toEqual([]);
+    expect(t.head()).toBe(old);
+  });
+
   test('refuses to deploy when HEAD is not behind origin/main', () => {
     const t = setup();
     t.push();
@@ -361,6 +376,41 @@ describe('update.sh', () => {
     expect(calls.some((call) => call.includes(' cp '))).toBe(false);
     expect(t.state('deploying')).toBeNull();
     expect(t.state('refused')).toBe(sha);
+  });
+
+  test('a failed restart after a failed copy keeps the deploy state for the next run', () => {
+    const t = setup();
+    const old = t.head();
+    const sha = t.push();
+    t.checks(PASSED);
+    t.flag('fail-copy');
+    t.flag('fail-up');
+    const first = t.run();
+    expect(first.stdout.endsWith(`backup failed, restart of ${short(old)} failed, will retry\n`)).toBe(true);
+    expect(first.status).toBe(1);
+    expect(t.state('refused')).toBe(sha);
+    expect(t.state('deploying')?.split(' ')[3]).toBe('stopped');
+
+    rmSync(join(t.dir, 'fail-up'));
+    const second = t.run();
+    expect(second.stdout).toBe(`abandoned ${short(sha)} after an interrupted run\n`);
+    expect(second.status).toBe(0);
+    expect(docker(second.calls).at(-1)).toBe('docker compose -f compose.example.yml up -d --no-build edward');
+    expect(t.head()).toBe(old);
+    expect(t.state('deploying')).toBeNull();
+  });
+
+  test('a failed build whose checkout reset fails keeps the deploy state for the next run', () => {
+    const t = setup();
+    const sha = t.push();
+    t.checks(PASSED);
+    t.flag('fail-build');
+    t.flag('lock-index');
+    const { status, stdout } = t.run();
+    expect(stdout.endsWith(`build failed for ${short(sha)}, checkout reset failed, will retry\n`)).toBe(true);
+    expect(status).toBe(1);
+    expect(t.state('refused')).toBe(sha);
+    expect(t.state('deploying')?.split(' ')[3]).toBe('building');
   });
 
   test('refuses to deploy over local changes in the checkout', () => {
@@ -601,6 +651,16 @@ describe('update.sh', () => {
       expect(t.head()).toBe(old);
       expect(t.state('refused')).toBeNull();
       expect(t.state('deploying')).toBeNull();
+    });
+
+    test(`retries the abandon of phase ${phase} when the restart fails`, () => {
+      const t = setup();
+      const { old, sha, name } = t.interrupted(phase);
+      t.flag('fail-up');
+      const { status, stdout } = t.run();
+      expect(stdout).toBe(`restart of ${short(old)} failed, will retry\n`);
+      expect(status).toBe(1);
+      expect(t.state('deploying')).toBe(`${old} ${sha} ${name} ${phase}`);
     });
   }
 });
