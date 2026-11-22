@@ -240,6 +240,8 @@ const plannedRun = {
   finishedAt: '2026-11-04T13:00:00Z',
   minutes: 120,
   cost: null,
+  allPct: 0.42,
+  fablePct: 0.2,
   findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 },
   warnings: 0,
   stops: null,

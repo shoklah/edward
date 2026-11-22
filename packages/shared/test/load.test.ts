@@ -207,6 +207,14 @@ describe('reporterTotals', () => {
     expect(totals?.health?.info).toHaveLength(3);
   });
 
+  test("parses the weekly usage calibration, a borrowed week included, and the units' estimates", () => {
+    const report = loadReport(fixture('report-work'));
+    if (!report.ok) throw new Error('the work fixture does not load');
+    const usage = report.report.totals.usage ?? [];
+    expect(usage.some((row) => row.fable?.borrowed_from != null || row.all?.borrowed_from != null)).toBe(true);
+    expect(report.report.runs.some((run) => run.all_pct != null)).toBe(true);
+  });
+
   test('is null with no import, or for totals the schema rejects', () => {
     expect(reporterTotals(undefined)).toBeNull();
     expect(reporterTotals(null)).toBeNull();

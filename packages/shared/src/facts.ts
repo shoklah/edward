@@ -14,6 +14,8 @@ export type RunFacts = {
   finishedAt: string | null;
   minutes: number | null;
   cost: number | null;
+  allPct: number | null;
+  fablePct: number | null;
   findings: FindingSplit;
   warnings: number;
   stops: number | null;
@@ -69,6 +71,21 @@ export const addKnown = (sum: number | null, value: number | null | undefined) =
  * cost. */
 export function modelsCost(models: RunEntry['models']): number | null {
   return models ? Object.values(models).reduce<number | null>((sum, m) => addKnown(sum, m.cost), null) : null;
+}
+
+/** A total of units' usage estimates: each limit's known values summed (null when none is known), and the units
+ * with either estimate unknown. */
+export type Estimates = { all: number | null; fable: number | null; notEstimated: number };
+
+/** Units' usage estimates summed, as the reporter's week_rows sums them (`pct_unknown` its `notEstimated`). */
+export function estimateSum(units: { all_pct?: number | null; fable_pct?: number | null }[]): Estimates {
+  const sum: Estimates = { all: null, fable: null, notEstimated: 0 };
+  for (const unit of units) {
+    sum.all = addKnown(sum.all, unit.all_pct);
+    sum.fable = addKnown(sum.fable, unit.fable_pct);
+    if (unit.all_pct == null || unit.fable_pct == null) sum.notEstimated += 1;
+  }
+  return sum;
 }
 
 /** A unit's or a week's tool results summed over every class, 0 when the map is null. */
@@ -130,6 +147,9 @@ export function runFacts(run: RunEntry): Omit<RunFacts, 'key' | 'projectKey'> {
     minutes: run.minutes ?? null,
     // cost: modelsCost, null with no models (no window) or no priced model.
     cost: modelsCost(run.models),
+    // allPct, fablePct: the reporter's usage estimates, in percent of the weekly limits.
+    allPct: run.all_pct ?? null,
+    fablePct: run.fable_pct ?? null,
     findings: splitFindings(run.steps ?? []),
     // warnings: the number of the run's warns.
     warnings: run.warns?.length ?? 0,

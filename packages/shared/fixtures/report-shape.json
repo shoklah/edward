@@ -46,6 +46,8 @@
       "waves": [],
       "fable_points": null,
       "all_points": null,
+      "fable_pct": null,
+      "all_pct": null,
       "minutes": 135,
       "window": null,
       "warns": [],
@@ -286,6 +288,8 @@
       "waves": [],
       "fable_points": 2,
       "all_points": 1,
+      "fable_pct": null,
+      "all_pct": null,
       "minutes": 150,
       "window": null,
       "warns": [
@@ -577,6 +581,8 @@
       "waves": [],
       "fable_points": 2,
       "all_points": 1,
+      "fable_pct": 0.02,
+      "all_pct": 0.07,
       "minutes": 45,
       "window": {
         "transcript": "/Users/example/.claude/projects/-Users-example-Work-lantern-notes/2b8e5c71-9d4f-4a3b-8e6c-5f1a7d2c9b04.jsonl",
@@ -860,6 +866,8 @@
       "waves": [],
       "fable_points": 4,
       "all_points": 2,
+      "fable_pct": null,
+      "all_pct": null,
       "minutes": 80,
       "window": {
         "transcript": "/Users/example/.claude/projects/-Users-example-Work-lantern-notes/5a9d3f12-6e8b-4c7a-9f2d-3b1e0c8a4d56.jsonl",
@@ -1423,6 +1431,8 @@
       ],
       "fable_points": 7,
       "all_points": 5,
+      "fable_pct": 0.74,
+      "all_pct": 1.15,
       "minutes": 460,
       "window": {
         "transcript": "/Users/example/.claude/projects/-Users-example-Work-lantern-notes/7d1e4b90-3c2a-4f6e-8b5d-1a9c0e2f6b47.jsonl",
@@ -1594,6 +1604,8 @@
           "cost": 1.05
         }
       },
+      "fable_pct": 0,
+      "all_pct": 0.09,
       "efforts": {
         "claude-opus-5-5": {
           "medium": 12
@@ -1627,6 +1639,8 @@
           "cost": 0.309
         }
       },
+      "fable_pct": 0,
+      "all_pct": 0.03,
       "efforts": {
         "claude-opus-5-5": {
           "medium": 6
@@ -1657,6 +1671,9 @@
         "fable_points": null,
         "all_points": null,
         "cost": null,
+        "fable_pct": null,
+        "all_pct": null,
+        "pct_unknown": 1,
         "minutes_per_run": 135,
         "later_fixes": 0
       },
@@ -1677,6 +1694,9 @@
         "fable_points": 2,
         "all_points": 1,
         "cost": null,
+        "fable_pct": null,
+        "all_pct": null,
+        "pct_unknown": 1,
         "minutes_per_run": 150,
         "later_fixes": 0
       },
@@ -1697,6 +1717,9 @@
         "fable_points": 2,
         "all_points": 1,
         "cost": 0.7929999999999999,
+        "fable_pct": 0.02,
+        "all_pct": 0.07,
+        "pct_unknown": 0,
         "minutes_per_run": 45,
         "later_fixes": 0
       },
@@ -1718,6 +1741,9 @@
         "fable_points": 11,
         "all_points": 7,
         "cost": 13.795,
+        "fable_pct": 0.74,
+        "all_pct": 1.15,
+        "pct_unknown": 1,
         "minutes_per_run": 270,
         "later_fixes": 0
       }

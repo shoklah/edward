@@ -96,6 +96,24 @@ describe('mergeKnown', () => {
     expect(merged.spec).toBeNull();
   });
 
+  test("a read transcript's usage estimates replace the stored ones, null included", () => {
+    const merged = mergeKnown(
+      { all_pct: 3, fable_pct: 1, tool_results: toolResults },
+      { all_pct: null, fable_pct: 2, tool_results: zero },
+    ) as Record<string, unknown>;
+    expect(merged.all_pct).toBeNull();
+    expect(merged.fable_pct).toBe(2);
+  });
+
+  test('an unread transcript keeps the stored usage estimates', () => {
+    const merged = mergeKnown({ all_pct: 3, fable_pct: 1, tool_results: toolResults }, { tool_results: null }) as Record<
+      string,
+      unknown
+    >;
+    expect(merged.all_pct).toBe(3);
+    expect(merged.fable_pct).toBe(1);
+  });
+
   test('an unread transcript keeps the stored goal and spec', () => {
     const prev = { goal: 'Offline sync', spec, tool_results: toolResults };
     expect(mergeKnown(prev, { goal: null, spec: null, tool_results: null })).toEqual(prev);
