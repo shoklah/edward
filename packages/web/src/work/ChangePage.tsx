@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
-import type { ChangeResponse } from '@cwd/shared';
+import type { ChangeResponse, Estimates } from '@cwd/shared';
 import { ApiError, useLiveQuery } from '../api.ts';
 import { GoalLink } from '../components/GoalLink.tsx';
 import { Unknown } from '../components/Num.tsx';
@@ -9,15 +9,33 @@ import { LINK, PageTitle, Pairs, Section, State } from '../components/Panel.tsx'
 import { Time } from '../layout/StatusBanner.tsx';
 import {
   STAGE_LABELS,
+  formatUsagePercent,
   formatWhole,
   otherProjectsLabel,
   pathLabel,
+  plural,
   projectLabel,
 } from '../lib/format.ts';
 import { RunsTable } from '../runs/RunsTable.tsx';
 import { SessionGraph } from './SessionGraph.tsx';
 import { SessionsByWork } from './SessionsByWork.tsx';
-import { estimateFacts } from './estimates.tsx';
+
+/** A usage sum on the backdrop: the dash when none is known. */
+export function backdropUsage(value: number | null): ReactNode {
+  return value === null ? <Unknown backdrop /> : formatUsagePercent(value);
+}
+
+/** A change's or goal's usage facts on the backdrop: its all-models and Fable sums, then the units it left out, left
+ * out at 0. */
+export function estimateFacts(estimates: Estimates): [string, ReactNode][] {
+  return [
+    ['All-models usage', backdropUsage(estimates.all)],
+    ['Fable usage', backdropUsage(estimates.fable)],
+    ...(estimates.notEstimated > 0
+      ? [['Not estimated', plural(estimates.notEstimated, 'unit')] as [string, ReactNode]]
+      : []),
+  ];
+}
 
 /** The change's facts, each a term over its value on the backdrop: Other projects and Spec only when it has them. */
 function Facts({ change }: { change: ChangeResponse }) {

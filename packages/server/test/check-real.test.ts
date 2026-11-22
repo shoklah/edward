@@ -20,7 +20,7 @@ const OLD_TOTALS = ['run time', 'steps', 'rules', 'skills', 'models', 'units', '
   .map((name) => `${name}: not in the export\n`)
   .join('');
 
-// An export with none of the Work facts: its costs still add up the same by change and by goal.
+// An export with none of the Work facts: its usage estimates still add up the same by change and by goal.
 const WORK = 'work: 2 compared, 0 differ\nwork facts: 0 headline, 0 goal, 0 spec, 0 started_by, 0 starters not stored\n';
 
 /** Writes a changed copy of a fixture to a temp file and returns its path. */
@@ -221,7 +221,7 @@ describe('check:real', () => {
     expect(checkReal(['cat', fixturePath('report-v6')]).stdout).toContain('\nphases: not in the export\n' + WORK + 'showing: pass\n');
   });
 
-  test("compares the units' cost with the changes' and the goals', counts the Work facts and checks the Work routes", () => {
+  test("compares the units' usage estimates with the changes' and the goals', counts the Work facts and checks the Work routes", () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-work')]);
     expect(stdout).toContain(
       '\nphases: 9 compared, 0 differ\nwork: 2 compared, 0 differ\n' +

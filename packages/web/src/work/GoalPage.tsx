@@ -10,7 +10,7 @@ import { formatWhole, projectLabel } from '../lib/format.ts';
 import { ChangesTable } from './ChangesTable.tsx';
 import { SessionGraph } from './SessionGraph.tsx';
 import { SessionsByWork } from './SessionsByWork.tsx';
-import { estimateFacts } from './estimates.tsx';
+import { estimateFacts } from './ChangePage.tsx';
 
 /** The goal's facts, each a term over its value on the backdrop: its one project, else "Several projects". */
 function Facts({ goal }: { goal: GoalResponse }) {

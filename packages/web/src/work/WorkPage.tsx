@@ -14,7 +14,7 @@ import { formatWhole, hiddenLabel, looseSessionsLabel, notEstimatedLabel } from 
 import { ListFilters, RunsPage, listPath, useProjects } from '../runs/RunsPage.tsx';
 import { SessionsPage } from '../sessions/SessionsPage.tsx';
 import { ChangesTable } from './ChangesTable.tsx';
-import { backdropUsage } from './estimates.tsx';
+import { backdropUsage } from './ChangePage.tsx';
 
 /** The Work page's views, as the URL's `view` names them (none for Changes). */
 export type WorkView = 'runs' | 'sessions';

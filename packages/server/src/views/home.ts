@@ -245,11 +245,10 @@ export function homeView(input: {
 
   function weekNumbers(week: string, inWeek: Run[]): WeekNumbers {
     const sum = sums.get(week);
-    // A limit's estimate per run: the known estimates over the runs that have one.
-    const perRun = (of: (facts: RunFacts) => number | null) => {
-      const known = inWeek.flatMap((r) => of(r.facts) ?? []);
-      return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
-    };
+    // A limit's estimate per run: the week's runs' sum (estimateSum) over the runs with a known one.
+    const runSum = estimateSum(inWeek.map((r) => r.unit.merged));
+    const perRun = (total: number | null, of: (facts: RunFacts) => number | null) =>
+      total === null ? null : total / inWeek.filter((r) => of(r.facts) !== null).length;
     const sessionWarnings = warnings.filter((w) => w.kind === 'session' && weekOf(w.firstSeenAt) === week);
     const newRunWarnings = warnings.filter(
       (w) => w.kind === 'run' && isNew(w.firstSeenAt) && inWeek.some((r) => r.unit.key === w.key),
@@ -260,7 +259,7 @@ export function homeView(input: {
       findings: splitFindings(stepsOf(inWeek)),
       // estimates: the week's runs' and sessions' (weekSums).
       estimates: sum?.estimates ?? estimateSum([]),
-      perRun: { all: perRun((f) => f.allPct), fable: perRun((f) => f.fablePct) },
+      perRun: { all: perRun(runSum.all, (f) => f.allPct), fable: perRun(runSum.fable, (f) => f.fablePct) },
       // warnings: the week's runs' RunFacts.warnings (their latest warns), plus the session warnings first seen in the
       // week; newWarnings: those of them first seen after seenAt.
       warnings: inWeek.reduce((n, r) => n + r.facts.warnings, 0) + sessionWarnings.length,

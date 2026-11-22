@@ -177,7 +177,7 @@ export const NotEstimated: Story = {
     const marker = within(sync).getByText('2 units not estimated');
     await expect(marker).toHaveClass('sr-only');
     await expect(within(search).queryByText(/not estimated/)).toBeNull();
-    // Primary ink: the row sits on the backdrop.
+    // The icon is decoration; its trigger's tooltip names the count.
     const trigger = marker.closest('[tabindex="0"]')!;
     await expect(trigger.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     await userEvent.hover(trigger);
