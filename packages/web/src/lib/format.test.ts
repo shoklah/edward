@@ -170,7 +170,7 @@ describe('outcomeWarns', () => {
     expect(outcomeWarns('open')).toBe(true);
     expect(outcomeWarns('none')).toBe(true);
     expect(outcomeWarns(null)).toBe(true);
-    for (const outcome of ['fixed', 'applied', 'ruled', 'declined', 'deferred', 'to_owner'] as const) expect(outcomeWarns(outcome)).toBe(false);
+    for (const outcome of ['fixed', 'applied', 'ruled', 'declined', 'deferred', 'to_owner', 'not_built'] as const) expect(outcomeWarns(outcome)).toBe(false);
   });
 });
 

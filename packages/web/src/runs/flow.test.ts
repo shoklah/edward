@@ -99,10 +99,10 @@ describe('leftOf and stuck', () => {
     const [stage] = stagesOf([
       group({
         kind: 'task',
-        tasks: [{ task: 1, steps: [step({ step: 'task_review', findings: [null, 'ruled', 'open', 'deferred', 'open'].map((outcome) => ({ ...runFull.findings[0], outcome: outcome as never })) })] }],
+        tasks: [{ task: 1, steps: [step({ step: 'task_review', findings: [null, 'ruled', 'open', 'not_built', 'deferred', 'open'].map((outcome) => ({ ...runFull.findings[0], outcome: outcome as never })) })] }],
       }),
     ]);
-    expect(leftOf(stage.then[0])).toEqual([['deferred', 1], ['open', 2], ['ruled', 1], ['none', 1]]);
+    expect(leftOf(stage.then[0])).toEqual([['deferred', 1], ['open', 2], ['ruled', 1], ['not_built', 1], ['none', 1]]);
   });
 
   it('counts a last round that left a finding not proportionate as stuck', () => {

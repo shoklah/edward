@@ -52,8 +52,8 @@ export function Verdict({ verdict, children }: { verdict: string; children: Reac
   return <span className={cn('whitespace-nowrap', verdict !== 'fixed' && WARNING_INK)}>{children}</span>;
 }
 
-/** How a finding ended, as a chip: Open and No outcome in the warning ink, Fixed and Applied with a green edge, Ruled and
- * Declined muted. */
+/** How a finding ended, as a chip: Open and No outcome in the warning ink, Fixed and Applied with a green edge, Ruled,
+ * Declined and Not built muted. */
 function Ended({ finding }: { finding: FindingRow }) {
   const outcome = finding.outcome ?? 'none';
   return (
@@ -63,7 +63,7 @@ function Ended({ finding }: { finding: FindingRow }) {
         MARK_LINE,
         outcomeWarns(outcome) && cn(WARNING_BORDER, WARNING_INK),
         (outcome === 'fixed' || outcome === 'applied') && 'border-success-edge',
-        (outcome === 'ruled' || outcome === 'declined') && 'text-muted-foreground',
+        (outcome === 'ruled' || outcome === 'declined' || outcome === 'not_built') && 'text-muted-foreground',
       )}
     >
       {outcomeLabel(outcome)}

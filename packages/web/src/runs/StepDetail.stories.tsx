@@ -2,12 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { WARNING_INK } from '../lib/format.ts';
 import { cells } from '../test/table.ts';
-import { finding, runFull } from '../test/runs.ts';
+import { finding, runFull, runPlan } from '../test/runs.ts';
 import { stagesOf, unitsOf, type Unit } from './flow.ts';
 import { StepDetail } from './StepDetail.tsx';
 
-const units = unitsOf(stagesOf(runFull.timeline));
-const unit = (id: string) => units.find((u) => u.id === id)!;
+const unit = (id: string, timeline = runFull.timeline) => unitsOf(stagesOf(timeline)).find((u) => u.id === id)!;
 /** Task 1: a review and one fix round by `fix-checker` on Opus. */
 const task1 = unit('t1');
 
@@ -103,6 +102,22 @@ export const Fixed: Story = {
     await expect(cells(row2)).toEqual(['Found', '', '', 'Deferred']);
     // The skipped rounds: a dashed rule across each.
     for (const cell of f2.slice(1, 3)) await expect(cell.querySelector('.border-dashed')).not.toBeNull();
+  },
+};
+
+/** A plan pair's review of the plan it did not build: its finding ended Not built, closed with nothing to do, muted. */
+export const NotBuilt: Story = {
+  args: {
+    unit: {
+      ...unit('plan_review', runPlan.timeline),
+      findings: [finding({ id: 'F3', step: 'plan_review', severity: 'important', summary: 'Task 4 has no failing test', outcome: 'not_built' })],
+    },
+  },
+  play: async ({ canvas }) => {
+    const table = canvas.getByRole('table', { name: 'Plan review' });
+    const ended = within(rowOf(table, 'F3')).getByText('Not built');
+    await expect(ended).toHaveClass('text-muted-foreground');
+    await expect(ended).not.toHaveClass(WARNING_INK);
   },
 };
 
