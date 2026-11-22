@@ -1,0 +1,10 @@
+# Runs edward-deploy.service 2 minutes after boot, then 5 minutes after each run starts.
+[Unit]
+Description=Update hosted edward from main every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

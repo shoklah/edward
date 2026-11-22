@@ -68,6 +68,50 @@ A hosted edward serves several accounts, each signing in with GitHub (invite-onl
 
 The `/data` volume (`data/` on the server) holds the accounts database and every account's file, and is their only copy: put it in the server's backups.
 
+### Updates
+
+Once step 4 has started edward, a systemd timer can keep it on `main`: every 5 minutes it runs `deploy/update.sh`, which deploys a new commit on `main` once its GitHub Actions checks pass:
+
+1. it builds the commit, keeping the running image as `edward-hosted:previous`;
+2. stops edward and copies `data/` to `backups/<time>-<old commit>`;
+3. starts the new version;
+4. checks that `/signin` answers within 60 seconds;
+5. and if it doesn't, puts back the copy of `data/` and the old version, and refuses the commit.
+
+A run with nothing to do (no new commit, CI still running, a refused commit) logs nothing.
+
+It needs `jq` and `curl` on the server (without `jq` every run logs `GitHub API error`), and the deploying user in the `docker` group. Install it once, from `deploy/`, with your public hostname:
+```sh
+host=<host>
+for f in edward-deploy.service edward-deploy.timer; do
+  sed -e "s|<user>|$USER|" -e "s|<checkout>|${PWD%/deploy}|" -e "s|<host>|$host|" "$f" | sudo tee "/etc/systemd/system/$f" > /dev/null
+done
+sudo systemctl daemon-reload && sudo systemctl enable --now edward-deploy.timer
+```
+
+Read the runs with `journalctl -u edward-deploy` (`docker compose`'s build, start and prune output lands there too), and the last one with `systemctl status edward-deploy`. A run logs:
+- `new commit`, `building`, `backed up data to`, `started` and `deployed`: a deploy going well.
+- `CI failed on`, `build failed for`, `checkout failed for`, `state write failed for`, `backup failed, <old> restarted` and `rolled back <new> to <old>`: the commit is refused and the old version runs. A refused commit waits for the next one on `main`; `rm deploy/state/refused` retries it.
+- `rollback to <old> failed its health check too`: the old version runs on the restored data but doesn't answer; look at `docker compose logs edward`.
+- `resuming`, `resuming the rollback of` and `abandoned <new> after an interrupted run`: a killed run is picked up where it stopped.
+- `fetch failed`, `GitHub API error` and `tag failed for` (no `edward-hosted` image to keep, so step 4 hasn't run): nothing changed, and the next run tries again.
+- `local changes in the checkout, not deploying` and `not a fast-forward of <old>, not deploying`: the checkout differs from `main`; put it back on a commit of `main` with no changes (`git status`).
+- `unreadable deploy state, not deploying`: `deploy/state/deploying` is damaged; check which version runs, then remove it.
+- `restore failed: data copy in backups/<copy>`: the rollback couldn't put `data/` back, and every later run logs `halted: …` and does nothing. Restore the copy and the old version (the commit the copy's name ends in), from `deploy/`, then remove the halt:
+  ```sh
+  docker compose -f compose.example.yml stop edward
+  docker run --rm -u 0 -v "$PWD/data:/data" -v "$PWD/backups:/backups" edward-hosted:previous find /data -mindepth 1 -delete
+  docker run --rm -u 0 -v "$PWD/data:/data" -v "$PWD/backups:/backups" edward-hosted:previous cp -a /backups/<copy>/. /data/
+  git reset --hard <old commit>
+  docker tag edward-hosted:previous edward-hosted
+  docker compose -f compose.example.yml up -d --no-build edward
+  rm state/halted
+  ```
+
+`backups/` keeps the three newest copies. They guard a deploy only, and are no replacement for the server's backups.
+
+Never run `update.sh` by hand while the timer is active: it reads the live run's state. To deploy by hand, stop the timer (`sudo systemctl stop edward-deploy.timer`), run step 4's command, then start it again (`sudo systemctl start edward-deploy.timer`).
+
 ### Moving a local history into an account
 
 A local edward's `dashboard.sqlite` (its imports, finding labels, cursor and showing mode) can become an account's data, once that account has signed in and while it holds none:
