@@ -21,10 +21,14 @@ as_root() {
   docker run --rm -u 0 -v "$PWD/data:/data" -v "$PWD/backups:/backups" "$IMAGE:previous" "$@"
 }
 
+# Prints /signin's status as the public host sees it, asked from inside the container: the host may not reach the
+# published port (a firewall between the host and Docker's bridge). Prints nothing when it can't connect in 5 seconds.
+PROBE='const r = require("http").get({ host: "127.0.0.1", port: 4317, path: "/signin", headers: { Host: process.argv[1] } }, (res) => { console.log(res.statusCode); process.exit(0); }); r.on("error", () => process.exit(1)); setTimeout(() => process.exit(1), 5000);'
+
 healthy() {
   local i=0 code
   while [ "$i" -lt "$HEALTH_SECONDS" ]; do
-    code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' -H "Host: $EDWARD_PUBLIC_HOST" http://127.0.0.1:4317/signin)
+    code=$(compose exec -T edward node -e "$PROBE" "$EDWARD_PUBLIC_HOST" 2>/dev/null)
     [ "$code" = 200 ] && return 0
     i=$((i + 1))
     sleep 1

@@ -75,7 +75,7 @@ Once step 4 has started edward, a systemd timer can keep it on `main`: every 5 m
 1. it builds the commit, keeping the running image as `edward-hosted:previous`;
 2. stops edward and copies `data/` to `backups/<time>-<old commit>`;
 3. starts the new version;
-4. checks that `/signin` answers within 60 seconds;
+4. checks that `/signin` answers within 60 tries, asked from inside the container;
 5. and if it doesn't, puts back the copy of `data/` and the old version, and refuses the commit.
 
 A run with nothing to do (no new commit, CI still running, a refused commit) logs nothing.

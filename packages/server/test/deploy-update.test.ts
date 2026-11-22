@@ -72,6 +72,12 @@ case "$*" in
   run*' cp -a /backups/'*) [ -e "$T/fail-restore" ] && exit 1 ;;
   'tag edward-hosted edward-hosted:previous') [ -e "$T/fail-tag" ] && exit 1 ;;
   'image prune -f') [ -e "$T/fail-prune" ] && exit 1 ;;
+  compose*' exec -T edward node '*)
+    if [ -s "$T/health" ]; then
+      head -n 1 "$T/health"; tail -n +2 "$T/health" > "$T/health.next"; mv "$T/health.next" "$T/health"
+    else
+      echo 0
+    fi ;;
 esac
 exit 0
 `,
@@ -80,12 +86,6 @@ exit 0
     join(bin, 'curl'),
     `${t}case "$*" in
   *check-runs*) [ -e "$T/fail-api" ] && exit 22; cat "$T/check-runs.json" ;;
-  */signin*)
-    if [ -s "$T/health" ]; then
-      head -n 1 "$T/health"; tail -n +2 "$T/health" > "$T/health.next"; mv "$T/health.next" "$T/health"
-    else
-      printf 000
-    fi ;;
 esac
 exit 0
 `,
@@ -256,12 +256,11 @@ describe('update.sh', () => {
     const { status, stdout, calls } = t.run();
     expect(status).toBe(0);
 
-    const health = calls.filter((call) => call.startsWith('curl ') && call.includes('/signin'));
+    // Asked from inside the container, since the host may not reach its published port.
+    expect(calls.some((call) => call.startsWith('curl ') && call.includes('/signin'))).toBe(false);
+    const health = calls.filter((call) => call.startsWith('docker compose ') && call.includes(' exec -T edward node '));
     expect(health).toHaveLength(3);
-    for (const call of health) {
-      expect(call).toContain(`-H Host: ${HOST}`);
-      expect(call).toContain('http://127.0.0.1:4317/signin');
-    }
+    for (const call of health) expect(call.endsWith(` ${HOST}`)).toBe(true);
 
     const lines = stdout.trim().split('\n');
     expect(lines).toHaveLength(5);
