@@ -60,7 +60,7 @@ A fourth question, how a broken account file is caught, had three answers: open 
 5. Build the new image while the old container keeps serving: `docker tag edward-hosted edward-hosted:previous`, then check out the new commit (`git merge --ff-only`) and `docker compose … build`. A failed build: reset the checkout to the old commit, restore the tag, record the commit as refused, log, exit. The site never stopped.
 6. Stop the container (`docker compose … stop edward`), so no SQLite file is copied mid-write, and copy `data/` to `backups/<time>-<old sha7>/` (time first, so a name sort is a time sort) in a one-off container as root (`-u 0`, the `previous` image, `cp -a`), keeping the three newest copies. A failed copy: start the old container again, reset, log, exit without deploying.
 7. Start the new one: `docker compose … up -d --no-build edward`.
-8. Health check: for up to 60 seconds, `curl` `http://127.0.0.1:4317/signin` with `Host: <host>` (the public host read from `data/…/.env` is not readable by `<user>`, so the script takes it from its environment, `EDWARD_PUBLIC_HOST`, set in the service unit) until it answers 200.
+8. Health check: for up to 60 tries, ask `http://127.0.0.1:4317/signin` with `Host: <host>` from inside the container (`docker compose exec -T edward node -e …`), since a firewall between the host and Docker's bridge can leave the published port unreachable from the host (the public host read from `data/…/.env` is not readable by `<user>`, so the script takes it from its environment, `EDWARD_PUBLIC_HOST`, set in the service unit) until it answers 200.
 9. Healthy: log `deployed <sha7>` and remove dangling images (`docker image prune -f`). Unhealthy: roll back.
 
 ### Every account's file at start
