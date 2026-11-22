@@ -275,10 +275,21 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     return c.json(findingsView({ runs, labels, list, query: periodQuery(c), now, scope: scopeFor(c, runs), labeller }));
   });
 
-  // Slice 2b, task 2: the Weeks page.
+  // Slice 2b, task 2: the Weeks page, with its weeks' usage estimates over runs and sessions and the reporter's
+  // calibration from the last good import.
   app.get('/api/weeks', (c) => {
     const runs = listUnits(c.var.db, 'run');
-    return c.json(weeksView({ runs, query: periodQuery(c), now: deps.now(), scope: scopeFor(c, runs) }));
+    const sessions = listUnits(c.var.db, 'session');
+    return c.json(
+      weeksView({
+        runs,
+        sessions,
+        totals: lastGoodImport(c.var.db)?.totals,
+        query: periodQuery(c),
+        now: deps.now(),
+        scope: scopeFor(c, runs, sessions),
+      }),
+    );
   });
 
   // Slice 2b, task 3: the Steps and rules page, its refusals, startup and advisor over runs and sessions (2c, task 4).

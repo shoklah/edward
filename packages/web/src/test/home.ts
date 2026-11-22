@@ -31,6 +31,8 @@ export const emptyWeek: WeekNumbers = {
   findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 },
   cost: null,
   costPerRun: null,
+  estimates: { all: null, fable: null, notEstimated: 0 },
+  perRun: { all: null, fable: null },
   warnings: 0,
   newWarnings: 0,
 };
@@ -90,6 +92,8 @@ export const fullHome: HomeResponse = {
     findings: { total: 19, actedOn: 13, notActedOn: 5, open: 1 },
     cost: 21,
     costPerRun: 3.5,
+    estimates: { all: 3.4, fable: 2.1, notEstimated: 1 },
+    perRun: { all: 0.48, fable: 0.31 },
     warnings: 12,
     newWarnings: 3,
   },
@@ -98,6 +102,8 @@ export const fullHome: HomeResponse = {
     findings: { total: 15, actedOn: 12, notActedOn: 3, open: 0 },
     cost: 27.25,
     costPerRun: 3.41,
+    estimates: { all: 4.2, fable: 2.6, notEstimated: 0 },
+    perRun: { all: 0.46, fable: 0.29 },
     warnings: 9,
     newWarnings: 0,
   },
@@ -126,6 +132,11 @@ export const fullHome: HomeResponse = {
       kit_review: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     },
     cost: [null, null, null, null, null, null, 18.4, 24.1, 15.9, 31.2, 27.25, 21],
+    estimates: [null, null, null, null, null, null, 2.9, 3.8, 2.5, 4.9, 4.2, 3.4].map((all) => ({
+      all,
+      fable: all === null ? null : Math.round(all * 6) / 10,
+      notEstimated: all === null ? 0 : 1,
+    })),
     warnings: [0, 0, 0, 0, 0, 0, 7, 11, 6, 8, 9, 12],
   },
   feed: [
@@ -142,6 +153,7 @@ export const fullHome: HomeResponse = {
       findings: { total: 6, actedOn: 5, notActedOn: 1, open: 0 },
       minutes: 130,
       cost: 7.1,
+      allPct: 1.12,
     },
     {
       at: '2026-11-12T10:10:00.000Z',
@@ -156,6 +168,7 @@ export const fullHome: HomeResponse = {
       findings: null,
       minutes: null,
       cost: null,
+      allPct: null,
     },
     {
       at: '2026-11-12T09:55:00.000Z',
@@ -170,6 +183,7 @@ export const fullHome: HomeResponse = {
       findings: null,
       minutes: null,
       cost: null,
+      allPct: null,
     },
     {
       at: '2026-11-12T08:30:00.000Z',
@@ -184,6 +198,7 @@ export const fullHome: HomeResponse = {
       findings: { total: 1, actedOn: 1, notActedOn: 0, open: 0 },
       minutes: 25,
       cost: 1.2,
+      allPct: null,
     },
   ],
   coverageFrom: '2026-10-05T09:30:00Z',
@@ -205,6 +220,7 @@ export const emptyHome: HomeResponse = {
       Object.keys(fullHome.charts.findingsByStep).map((kind) => [kind, zeros()]),
     ) as Record<StepKind, number[]>,
     cost: WEEKS.map(() => null),
+    estimates: WEEKS.map(() => ({ all: null, fable: null, notEstimated: 0 })),
     warnings: zeros(),
   },
   feed: [],

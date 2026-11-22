@@ -5,8 +5,17 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
-import { loadReport, projectRoot, STEP_KINDS, type HomeResponse, type UsageRow } from '@cwd/shared';
-import { fixture } from '../../shared/test/fixture.ts';
+import {
+  estimateSum,
+  loadReport,
+  parseTime,
+  projectRoot,
+  STEP_KINDS,
+  weekOf,
+  type HomeResponse,
+  type UsageRow,
+} from '@cwd/shared';
+import { fixture, reportFixtures } from '../../shared/test/fixture.ts';
 import { createApp } from '../src/app.ts';
 import { openDb, type Db } from '../src/db/open.ts';
 import { importReport } from '../src/db/import.ts';
@@ -246,6 +255,7 @@ describe('the feed', () => {
       findings: { total: 0, actedOn: 0, notActedOn: 0, open: 0 },
       minutes: 30,
       cost: 0.71,
+      allPct: 0.06,
     });
   });
 
@@ -446,7 +456,8 @@ test('coverageFrom is the earliest readable run', async () => {
 });
 
 test("weekSums matches the fixture's totals.weeks", () => {
-  for (const name of ['report-full', 'report-later']) {
+  // Every export fixture but report-shape, a deliberate shape failure.
+  for (const name of reportFixtures().filter((n) => n !== 'report-shape')) {
     const loaded = loadReport(fixture(name));
     if (!loaded.ok) throw new Error(`fixture ${name} does not load`);
     const sums = weekSums(loaded.report.runs);
@@ -458,8 +469,64 @@ test("weekSums matches the fixture's totals.weeks", () => {
       expect(sum?.runs).toEqual({ small: week.runs?.small ?? 0, full: week.runs?.full ?? 0, plan: week.runs?.plan ?? 0 });
       if (week.cost == null) expect(sum?.cost).toBeNull();
       else expect(sum?.cost).toBeCloseTo(week.cost, 10);
+      // Called with runs only, as check:real does, the estimates are the runs' alone, as the reporter's.
+      for (const [mine, theirs] of [['all', week.all_pct], ['fable', week.fable_pct]] as const) {
+        if (theirs == null) expect(sum?.estimates[mine]).toBeNull();
+        else expect(sum?.estimates[mine]).toBeCloseTo(theirs, 10);
+      }
+      expect(sum?.estimates.notEstimated).toBe(week.pct_unknown ?? 0);
     }
   }
+});
+
+test('a week with sessions and no runs has its estimates and no minutes', () => {
+  const session = { file: 'a.jsonl', start: '2026-11-15T09:00:00Z', all_pct: 0.2, fable_pct: 0.1 };
+  const row = weekSums([], [session]).get('2026-11-15');
+  expect(row?.estimates).toEqual({ all: 0.2, fable: 0.1, notEstimated: 0 });
+  expect(row?.minutesPerRun).toBeNull();
+  expect(row?.runs).toEqual({ small: 0, full: 0, plan: 0 });
+});
+
+describe('usage estimates', () => {
+  const thisWeek = (units: any[], time: (u: any) => string | undefined) =>
+    units.filter((u) => time(u) && weekOf(parseTime(time(u)!)) === '2026-11-08');
+
+  test("this week's estimates count its runs and its sessions", async () => {
+    const raw = fixture('report-work');
+    const body = await home(dbWith(raw));
+    const runs = thisWeek(raw.runs, (r) => r.record?.date);
+    const sessions = thisWeek(raw.sessions, (s) => s.start);
+    expect(sessions.length).toBeGreaterThan(0);
+    expect(body.thisWeek.estimates).toEqual(estimateSum([...runs, ...sessions]));
+  });
+
+  test("usage per run is the week's runs' known sum over the runs that have one", async () => {
+    const raw = fixture('report-work');
+    const body = await home(dbWith(raw));
+    const runs = thisWeek(raw.runs, (r) => r.record?.date);
+    const known = (key: 'all_pct' | 'fable_pct') => runs.filter((r) => r[key] != null);
+    expect(known('all_pct').length).toBeLessThan(runs.length);
+    const sum = (key: 'all_pct' | 'fable_pct') => known(key).reduce((n, r) => n + r[key], 0);
+    expect(body.thisWeek.perRun.all).toBeCloseTo(sum('all_pct') / known('all_pct').length, 10);
+    expect(body.thisWeek.perRun.fable).toBeCloseTo(sum('fable_pct') / known('fable_pct').length, 10);
+    // A week with no known estimate has none per run.
+    expect(body.lastWeek.perRun).toEqual({ all: null, fable: null });
+  });
+
+  test('a feed run carries its all-models estimate', async () => {
+    const db = dbWith(fixture('report-work'));
+    setSeenAt(db, new Date(0));
+    const runs = (await home(db)).feed.filter((i) => i.type === 'run');
+    const byKey = new Map(listUnits(db, 'run').map((u) => [u.key, u.merged.all_pct ?? null]));
+    expect(runs.some((i) => i.allPct !== null)).toBe(true);
+    for (const item of runs) expect(item.allPct).toBe(byKey.get(item.runKey!));
+  });
+
+  test('the charts have one estimate per week', async () => {
+    const { charts } = await home(dbWith(fixture('report-work')));
+    expect(charts.estimates).toHaveLength(charts.weeks.length);
+    expect(charts.estimates.at(-1)!.all).not.toBeNull();
+  });
 });
 
 test('a run date with no zone is UTC, so Sunday 07:00 starts its week', () => {
