@@ -58,7 +58,7 @@ function setup() {
   git(dir, 'clone', '-q', origin, work);
 
   mkdirSync(bin);
-  const t = `T='${dir}'\necho "$(basename "$0") $*" >> "$T/calls.log"\n`;
+  const t = `T='${dir}'\necho "\${0##*/} $*" >> "$T/calls.log"\n`;
   stub(
     join(bin, 'docker'),
     `${t}[ -e state/deploying ] && echo "state $(cat state/deploying)" >> "$T/calls.log"
@@ -149,6 +149,9 @@ exit 0
 const short = (sha: string) => sha.slice(0, 7);
 const docker = (calls: string[]) => calls.filter((call) => call.startsWith('docker '));
 const COPY_NAME = /^\d{8}T\d{6}Z-[0-9a-f]{7}$/;
+const PASSED = { status: 'completed', conclusion: 'success' } as const;
+/** The copy's name, from the run's third log line, `backed up data to backups/<name>`. */
+const copyName = (stdout: string) => stdout.split('\n')[2].replace('backed up data to backups/', '');
 
 describe('update.sh', () => {
   test('exits silently when the checkout is on origin/main', () => {
@@ -222,7 +225,7 @@ describe('update.sh', () => {
     git(t.edward, 'add', '.');
     git(t.edward, 'commit', '-q', '-m', 'local');
     const head = t.head();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     const { status, stdout, calls } = t.run();
     expect(stdout).toContain(`not a fast-forward of ${short(head)}, not deploying\n`);
     expect(status).toBe(1);
@@ -249,7 +252,7 @@ describe('update.sh', () => {
     expect(lines).toHaveLength(5);
     expect(lines[0]).toBe(`new commit ${short(sha)}`);
     expect(lines[1]).toBe(`building ${short(sha)}`);
-    const name = lines[2].replace('backed up data to backups/', '');
+    const name = copyName(stdout);
     expect(name).toMatch(COPY_NAME);
     expect(name.endsWith(`-${short(old)}`)).toBe(true);
     expect(lines[3]).toBe(`started ${short(sha)}`);
@@ -277,7 +280,7 @@ describe('update.sh', () => {
   test('passes the proxy override when it exists', () => {
     const t = setup();
     t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('health', '200\n');
     writeFileSync(join(t.deploy, 'compose.proxy.local.yml'), 'services: {}\n');
     const { status, calls } = t.run();
@@ -290,7 +293,7 @@ describe('update.sh', () => {
   test('keeps the three newest copies', () => {
     const t = setup();
     t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('health', '200\n');
     const earlier = ['20250101T000000Z-aaaaaaa', '20250102T000000Z-bbbbbbb', '20250103T000000Z-ccccccc', '20250104T000000Z-ddddddd'];
     for (const name of earlier) mkdirSync(join(t.deploy, 'backups', name), { recursive: true });
@@ -306,7 +309,7 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('fail-build');
     const { status, stdout, calls } = t.run();
     expect(status).toBe(1);
@@ -322,7 +325,7 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('fail-copy');
     const { status, stdout, calls } = t.run();
     expect(status).toBe(1);
@@ -345,7 +348,7 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('fail-stop');
     const { status, stdout, calls } = t.run();
     expect(status).toBe(1);
@@ -364,7 +367,7 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     const edited = join(t.deploy, 'compose.example.yml');
     writeFileSync(edited, 'services: { local: {} }\n');
     const { status, stdout, calls } = t.run();
@@ -380,7 +383,7 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     // An untracked file at the path the new commit adds makes the merge refuse.
     writeFileSync(join(t.edward, 'change.txt'), 'untracked\n');
     const { status, stdout, calls } = t.run();
@@ -397,7 +400,7 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('fail-tag');
     const { status, stdout, calls } = t.run();
     expect(stdout.endsWith(`tag failed for ${short(sha)}\n`)).toBe(true);
@@ -411,7 +414,7 @@ describe('update.sh', () => {
   test('a failed prune after a healthy deploy still exits 0', () => {
     const t = setup();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('health', '200\n');
     t.flag('fail-prune');
     const { status, stdout, calls } = t.run();
@@ -447,12 +450,12 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('health', unhealthyThenHealthy);
     const { status, stdout, calls } = t.run();
     expect(status).toBe(1);
     const lines = stdout.trim().split('\n');
-    const name = lines[2].replace('backed up data to backups/', '');
+    const name = copyName(stdout);
     expect(lines.slice(-2)).toEqual([
       `health check failed for ${short(sha)}, rolling back`,
       `rolled back ${short(sha)} to ${short(old)}`,
@@ -463,12 +466,12 @@ describe('update.sh', () => {
   test('stops when the restore fails', () => {
     const t = setup();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     t.flag('health', unhealthyThenHealthy);
     t.flag('fail-restore');
     const { status, stdout, calls } = t.run();
     expect(status).toBe(1);
-    const name = stdout.split('\n')[2].replace('backed up data to backups/', '');
+    const name = copyName(stdout);
     expect(stdout.endsWith(`restore failed: data copy in backups/${name}\n`)).toBe(true);
     const ds = docker(calls);
     const restore = ds.findIndex((call) => call.includes(' cp -a /backups/'));
@@ -483,7 +486,7 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     mkdirSync(join(t.deploy, 'state'));
     writeFileSync(join(t.deploy, 'state', 'halted'), 'restore failed: data copy in backups/20260101T000000Z-aaaaaaa\n');
     const { status, stdout, calls } = t.run();
@@ -505,7 +508,7 @@ describe('update.sh', () => {
       const t = setup();
       const old = t.head();
       t.push();
-      t.checks({ status: 'completed', conclusion: 'success' });
+      t.checks(PASSED);
       mkdirSync(join(t.deploy, 'state'));
       writeFileSync(join(t.deploy, 'state', 'deploying'), text);
       const { status, stdout, calls } = t.run();
@@ -521,7 +524,7 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     // A folder where the temp state file goes makes the write fail.
     mkdirSync(join(t.deploy, 'state', 'deploying.tmp'), { recursive: true });
     const { status, stdout, calls } = t.run();
@@ -537,10 +540,10 @@ describe('update.sh', () => {
     const t = setup();
     const old = t.head();
     const sha = t.push();
-    t.checks({ status: 'completed', conclusion: 'success' });
+    t.checks(PASSED);
     const { status, stdout, calls } = t.run();
     expect(status).toBe(1);
-    const name = stdout.split('\n')[2].replace('backed up data to backups/', '');
+    const name = copyName(stdout);
     expect(stdout.endsWith(`rollback to ${short(old)} failed its health check too: data copy in backups/${name}\n`)).toBe(true);
     expect(calls.some((call) => call.includes(`rm -rf /backups/${name}`))).toBe(false);
     expect(t.state('deploying')).toBeNull();

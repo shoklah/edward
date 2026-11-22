@@ -66,12 +66,17 @@ prune_copies() {
   done
 }
 
-# The stop or the copy failed: the old version is started again and the new commit refused.
-backup_failed() {
-  as_root rm -rf "/backups/$name"
+# Puts the old commit's checkout, image and container back.
+restart_old() {
   git reset -q --hard "$old"
   docker tag "$IMAGE:previous" "$IMAGE"
   compose up -d --no-build edward
+}
+
+# The stop or the copy failed: the old version is started again and the new commit refused.
+backup_failed() {
+  as_root rm -rf "/backups/$name"
+  restart_old
   refuse "$new"
   rm -f state/deploying
   echo "backup failed, ${old:0:7} restarted"
@@ -86,13 +91,12 @@ rollback() {
     refuse "$new"
     # Every later run stops at state/halted, so no deploy backs up or prunes over the missing data. If it can't
     # be written, state/deploying stays and the next run redoes the rollback instead.
-    echo "restore failed: data copy in backups/$name" > state/halted && rm -f state/deploying
-    echo "restore failed: data copy in backups/$name"
+    local msg="restore failed: data copy in backups/$name"
+    echo "$msg" > state/halted && rm -f state/deploying
+    echo "$msg"
     exit 1
   fi
-  docker tag "$IMAGE:previous" "$IMAGE"
-  git reset -q --hard "$old"
-  compose up -d --no-build edward
+  restart_old
   refuse "$new"
   rm -f state/deploying
   if ! healthy; then
@@ -120,10 +124,8 @@ start_new() {
 # Picks up a deploy that a killed run left in state/deploying.
 resume() {
   [ -e state/deploying ] || return 0
+  # A missing field leaves phase empty, which reads as unreadable.
   read -r old new name phase < state/deploying
-  if [ -z "${old:-}" ] || [ -z "${new:-}" ] || [ -z "${name:-}" ]; then
-    phase=unreadable
-  fi
   case "$phase" in
     backed-up)
       echo "resuming ${new:0:7}"
@@ -134,9 +136,7 @@ resume() {
     building|stopped)
       # data/ was never touched, so the old version comes back and the tick after retries.
       as_root rm -rf "/backups/$name"
-      git reset -q --hard "$old"
-      docker tag "$IMAGE:previous" "$IMAGE"
-      compose up -d --no-build edward
+      restart_old
       rm -f state/deploying
       echo "abandoned ${new:0:7} after an interrupted run"
       exit 0 ;;
