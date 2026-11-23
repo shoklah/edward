@@ -1,4 +1,4 @@
-import type { FindingRow, Outcome, StrengthRow, TimelineGroup, TimelineStep } from '@cwd/shared';
+import { OUTCOME_GROUPS, type FindingRow, type Outcome, type StrengthRow, type TimelineGroup, type TimelineStep } from '@cwd/shared';
 import { STEP_LABELS, outcomeLabel, reviewerLabel } from '../lib/format.ts';
 
 /** One review with its fix rounds: a box of the graph. */
@@ -77,9 +77,9 @@ export function unitsOf(stages: Stage[]): Unit[] {
   return stages.flatMap((s) => [...s.parallel, ...s.then]);
 }
 
-const LEFT = ['deferred', 'to_owner', 'open', 'declined', 'ruled', 'not_built', 'none'] as const;
+const LEFT = (Object.keys(OUTCOME_GROUPS) as (Outcome | 'none')[]).filter((outcome) => OUTCOME_GROUPS[outcome] !== 'acted_on');
 
-/** A unit's findings that were not fixed or applied, by outcome (`none`: no outcome), the non-zero counts only. */
+/** A unit's findings outside the acted-on group, by outcome (`none`: no outcome), the non-zero counts only. */
 export function leftOf(unit: Unit): [Outcome | 'none', number][] {
   return LEFT.flatMap((key) => {
     const n = unit.findings.filter((f) => (f.outcome ?? 'none') === key).length;

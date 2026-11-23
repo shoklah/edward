@@ -1,14 +1,10 @@
 import type { ReactNode } from 'react';
 import { cn } from 'cn';
-import type { FindingRow, RunPageResponse } from '@cwd/shared';
+import { OUTCOME_GROUPS, type FindingRow, type RunPageResponse } from '@cwd/shared';
 import { Text } from '../components/Num.tsx';
 import { ColumnHead, Line, Panel, ScrollTable, Term } from '../components/Panel.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { LATER_FIXES_TERM, outcomeLabel, outcomeWarns, WARNING_INK } from '../lib/format.ts';
-
-// The outcomes a finding is left for later with: not fixed or applied, not closed by a decision (ruled, declined), and
-// not on a plan that was never built (not built).
-const LEFT_FOR_LATER = new Set<string | null>(['deferred', 'to_owner', 'open', null]);
 
 /** The later fixes' term: its words with a dotted underline, its tooltip saying what the reporter counts. */
 export function LaterFixesTerm({ children }: { children: ReactNode }) {
@@ -20,9 +16,9 @@ export function LaterFixesTerm({ children }: { children: ReactNode }) {
 }
 
 /**
- * What the run, or the selected `step`, left for later: its deferred, to-owner, open and no-outcome findings, each with
- * its reason and the name of the unit it came from (`from`), in a region that scrolls sideways; with no step selected,
- * the run's later fixes under them.
+ * What the run, or the selected `step`, left for later: its findings in that group, each with its reason and the name
+ * of the unit it came from (`from`), in a region that scrolls sideways; with no step selected, the run's later fixes
+ * under them.
  */
 export function LeftForLater({
   findings,
@@ -36,7 +32,7 @@ export function LeftForLater({
   beforeSteps: boolean;
 }) {
   const title = step ? `Left for later in ${step}` : 'Left for later';
-  const left = findings.filter(({ finding }) => LEFT_FOR_LATER.has(finding.outcome));
+  const left = findings.filter(({ finding }) => OUTCOME_GROUPS[finding.outcome ?? 'none'] === 'left_for_later');
   return (
     <Panel title={title}>
       {beforeSteps ? (
