@@ -2,9 +2,9 @@ import type { Area } from '../categories.ts';
 import type { Path } from '../report.ts';
 import type { FindingRow } from './runs.ts';
 
-/** A week's findings in one row: every one raised, those acted on (fixed or applied), those judged invalid (the
- * workflow's validity when set, else the app's relevance), those whose shown label is the app's (`byApp`) and those the
- * app labels differently from the workflow (`appDiffers`); and the reviewers' strengths under the row's category. */
+/** A week's findings in one row: every one raised, those acted on, those judged invalid (the workflow's validity when
+ * set, else the app's relevance), those whose shown label is the app's (`byApp`) and those the app labels differently
+ * from the workflow (`appDiffers`); and the reviewers' strengths under the row's category. */
 export type FindingCell = {
   raised: number;
   actedOn: number;

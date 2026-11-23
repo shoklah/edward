@@ -24,24 +24,35 @@ export type RunFacts = {
   beforeSteps: boolean;
 };
 
-const ACTED_ON: readonly Outcome[] = ['fixed', 'applied'];
-const NOT_ACTED_ON: readonly Outcome[] = ['declined', 'deferred', 'ruled', 'to_owner', 'not_built'];
+/** Each outcome's group (`none`: no outcome): acted on, closed with no action or left for later; in the run graph's chip
+ * order. Closed with no action is narrower than `splitFindings`' not acted on, which holds deferred and to_owner too. */
+export const OUTCOME_GROUPS: Record<Outcome | 'none', 'acted_on' | 'no_action' | 'left_for_later'> = {
+  fixed: 'acted_on',
+  applied: 'acted_on',
+  deferred: 'left_for_later',
+  to_owner: 'left_for_later',
+  open: 'left_for_later',
+  declined: 'no_action',
+  ruled: 'no_action',
+  not_built: 'no_action',
+  none: 'left_for_later',
+};
 
 // A session ID, and a session transcript's file name, as the reporter writes it in a session warning.
 export const SESSION_ID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 export const SESSION_FILE = new RegExp(`(${SESSION_ID.source})\\.jsonl`, 'i');
 
-/** Every finding of every step: acted on = fixed or applied, not acted on = declined, deferred, ruled, to_owner or
- * not_built, open = open; a finding with no outcome counts in total only. */
+/** Every finding of every step: acted on by its outcome's group, open = open, not acted on = any other outcome; a
+ * finding with no outcome counts in total only. */
 export function splitFindings(steps: Step[]): FindingSplit {
   const split = { total: 0, actedOn: 0, notActedOn: 0, open: 0 };
   for (const finding of steps.flatMap((step) => step.findings ?? [])) {
     split.total += 1;
     const outcome = finding.outcome;
     if (!outcome) continue;
-    if (ACTED_ON.includes(outcome)) split.actedOn += 1;
-    else if (NOT_ACTED_ON.includes(outcome)) split.notActedOn += 1;
-    else if (outcome === 'open') split.open += 1;
+    if (outcome === 'open') split.open += 1;
+    else if (OUTCOME_GROUPS[outcome] === 'acted_on') split.actedOn += 1;
+    else split.notActedOn += 1;
   }
   return split;
 }
