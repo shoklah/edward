@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
 import { WARNING_INK, formatDayTime } from '../lib/format.ts';
-import { runFull, runLong, runSmall } from '../test/runs.ts';
+import { runFull, runLong, runPlanPair, runPlanTwice, runSmall } from '../test/runs.ts';
 import { width } from '../test/table.ts';
 import { stagesOf, unitsOf } from './flow.ts';
 import { RunFlow } from './RunFlow.tsx';
@@ -103,6 +103,39 @@ export const Selected: Story = {
     await expect(task1).toHaveAttribute('aria-pressed', 'true');
     await userEvent.click(task1);
     await expect(args.onSelect).toHaveBeenCalledWith(null);
+  },
+};
+
+/** Each box's lines: its name, what is under it and what it found. */
+const lines = (flow: HTMLElement) => within(flow).getAllByRole('button').map((box) => [...box.children].map((line) => line.textContent));
+
+/** A plan pair: each box names its plan under its kind, in place of its reviewer, and no line is cut. */
+export const PlanPair: Story = {
+  args: { stages: stagesOf(runPlanPair.timeline) },
+  decorators: [width(900)],
+  play: async ({ canvas }) => {
+    const flow = canvas.getByRole('group', { name: "The run's flow" });
+    await expect(lines(flow)).toEqual([
+      ['Plan simplify', 'xhigh plan', 'Found 1'],
+      ['Plan review', 'xhigh plan', 'Found 1'],
+      ['Plan simplify', 'medium plan', 'Found 1'],
+      ['Plan review', 'medium plan', 'Found 1'],
+    ]);
+    for (const line of flow.querySelectorAll('button > *')) await expect(line.scrollWidth, line.textContent!).toBeLessThanOrEqual(line.clientWidth);
+    await chipsWhole(flow);
+  },
+};
+
+/** A plan reviewed twice, with no plan to name: its reviews numbered, its one simplify not. */
+export const PlanTwice: Story = {
+  args: { stages: stagesOf(runPlanTwice.timeline) },
+  decorators: [width(900)],
+  play: async ({ canvas }) => {
+    await expect(lines(canvas.getByRole('group', { name: "The run's flow" }))).toEqual([
+      ['Plan simplify', 'plan-simplifier', 'Found 0'],
+      ['Plan review 1', 'plan-reviewer', 'Found 0'],
+      ['Plan review 2', 'plan-reviewer', 'Found 0'],
+    ]);
   },
 };
 

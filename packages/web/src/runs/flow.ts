@@ -1,13 +1,14 @@
 import type { FindingRow, Outcome, StrengthRow, TimelineGroup, TimelineStep } from '@cwd/shared';
 import { STEP_LABELS, outcomeLabel, reviewerLabel } from '../lib/format.ts';
 
-/** One review with its fix rounds: a box of the graph. */
+/** One review with its fix rounds, and their steps' places in the run: a box of the graph. */
 export type Unit = {
   id: string;
   name: string;
   task: number | null;
   wave: string | null;
   kit: boolean;
+  steps: number[];
   review: TimelineStep | null;
   rounds: TimelineStep[];
   findings: FindingRow[];
@@ -25,6 +26,7 @@ function unitOf(id: string, name: string, steps: TimelineStep[], where: Pick<Uni
     id,
     name,
     ...where,
+    steps: steps.map((s) => s.index),
     review: steps.find((s) => !isRound(s)) ?? null,
     rounds: steps.filter(isRound),
     findings: steps.flatMap((s) => s.findings),
@@ -38,6 +40,25 @@ function taskUnits({ task, steps }: { task: number; steps: TimelineStep[] }, wav
     unitOf(`t${task}`, `Task ${task}`, steps.filter((s) => !isKit(s)), { task, wave, kit: false }),
     ...(kit.length ? [unitOf(`k${task}`, `Task ${task} kit review`, kit, { task, wave, kit: true })] : []),
   ];
+}
+
+/** A plan pair's step's plan, by the effort it was written at: "xhigh plan". */
+const planOf = (s: TimelineStep) => s.planEffort && `${s.planEffort} plan`;
+
+/** A plan step's name among its run's plan steps: its kind, with its plan when it names one, else numbered when its run
+ * repeats the kind with no plan to name. */
+function planName(step: TimelineStep, steps: TimelineStep[]): string {
+  const label = STEP_LABELS[step.step];
+  const plan = planOf(step);
+  if (plan) return `${label}, ${plan}`;
+  const same = steps.filter((s) => s.step === step.step && !s.planEffort);
+  return same.length > 1 ? `${label} ${same.indexOf(step) + 1}` : label;
+}
+
+/** A box's two lines: its name over its reviewer, or a plan pair's step's kind over its plan. */
+export function boxLines({ name, review }: Unit): [string, string] {
+  const plan = review && planOf(review);
+  return plan ? [STEP_LABELS[review.step], plan] : [name, reviewerLabel(review)];
 }
 
 /** The timeline's groups as stages of units: a wave's tasks (a kit-reviewed task's two boxes together) side by side,
@@ -55,7 +76,7 @@ export function stagesOf(timeline: TimelineGroup[]): Stage[] {
       case 'task':
         return side(g.tasks.flatMap((t) => taskUnits(t, null)));
       case 'plan':
-        return stage([], g.steps.map((s) => unitOf(s.step, STEP_LABELS[s.step], [s], NOWHERE)));
+        return stage([], g.steps.map((s) => unitOf(`p${s.index}`, planName(s, g.steps), [s], NOWHERE)));
       case 'simplify':
         return stage([], g.steps.length ? [unitOf('simplify', STEP_LABELS.simplify, g.steps, NOWHERE)] : []);
       case 'final': {
@@ -93,14 +114,9 @@ export function stuck(unit: Unit): boolean {
   return !!last && ((last.counts.open ?? 0) > 0 || (last.counts.not_proportionate ?? 0) > 0);
 }
 
-/** A unit's strengths: its review's kind, task and wave (a task's by its task, a wave check's by its wave); a kit
- * review has none. */
+/** A unit's strengths: those of its own steps. */
 export function strengthsOf<S extends StrengthRow>(unit: Unit, strengths: S[]): S[] {
-  const review = unit.review;
-  if (!review || unit.kit) return [];
-  return strengths.filter(
-    (s) => s.step === review.step && (unit.task != null ? s.task === unit.task : s.task == null && s.wave === unit.wave),
-  );
+  return strengths.filter((s) => unit.steps.includes(s.stepIndex));
 }
 
 export type Shape = 'flat' | 'wrapped' | 'upright';
@@ -183,9 +199,9 @@ const joined = (layers: Layer[]): Edge[] =>
 
 const chipWidth = (outcome: Outcome | 'none', count: number) => `${outcomeLabel(outcome)} ${count}`.length * CHAR + CHIP_PAD;
 
-/** The narrowest a box can be with its name, its reviewer and its exit chips whole, by the text estimate. */
+/** The narrowest a box can be with its two lines and its exit chips whole, by the text estimate. */
 export function boxNeed(unit: Unit): number {
-  const text = [unit.name, reviewerLabel(unit.review)].map((t) => t.length * CHAR + BOX_PAD);
+  const text = boxLines(unit).map((t) => t.length * CHAR + BOX_PAD);
   const chips = leftOf(unit).map(([outcome, count]) => chipWidth(outcome, count) + CHIP_IN + SIDE_IN + 4);
   return Math.max(...text, ...chips);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StrengthRow, TimelineGroup, TimelineStep } from '@cwd/shared';
-import { runBeforeSteps, runFull, runLong, runPlan, runSmall, runStopped } from '../test/runs.ts';
+import { runBeforeSteps, runFull, runLong, runPlan, runPlanPair, runPlanTwice, runSmall, runStopped } from '../test/runs.ts';
 import { WRAP_MIN, boxNeed, layout, leftOf, stagesOf, strengthsOf, stuck, unitsOf, type Layout, type Placed, type Unit } from './flow.ts';
 
 type Rect = { x: number; y: number; w: number; h: number; row: number };
@@ -27,12 +27,12 @@ function clear({ placed, edges, shape }: Layout): boolean {
 const ids = (units: Unit[]) => units.map((u) => u.id);
 const unitOf = (timeline: TimelineGroup[], id: string) => unitsOf(stagesOf(timeline)).find((u) => u.id === id)!;
 const step = (s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineStep => ({
-  round: 0, agent: null, model: null, effort: null, kit: null, counts: {}, findings: [], ...s,
+  index: 0, round: 0, agent: null, model: null, effort: null, kit: null, planEffort: null, counts: {}, findings: [], ...s,
 });
 const group = (g: Partial<TimelineGroup> & Pick<TimelineGroup, 'kind'>): TimelineGroup => ({
   label: '', at: null, conflicts: null, tasks: [], steps: [], ...g,
 });
-const STORIES = { runFull, runBeforeSteps, runLong, runStopped, runSmall, runPlan };
+const STORIES = { runFull, runBeforeSteps, runLong, runStopped, runSmall, runPlan, runPlanPair, runPlanTwice };
 
 describe('stagesOf', () => {
   it("gives the full run's units in drawing order", () => {
@@ -56,8 +56,29 @@ describe('stagesOf', () => {
   it("draws a plan run's two steps as two units in a row", () => {
     const plan = stagesOf(runPlan.timeline).find((s) => s.kind === 'plan')!;
     expect(plan.parallel).toEqual([]);
-    expect(ids(plan.then)).toEqual(['plan_simplify', 'plan_review']);
-    expect(plan.then.map((u) => u.name)).toEqual(['Plan simplify', 'Plan review']);
+    expect(plan.then.map((u) => [u.id, u.name])).toEqual([['p0', 'Plan simplify'], ['p1', 'Plan review']]);
+  });
+
+  it("draws a plan pair's steps as a unit each, named by its plan", () => {
+    expect(unitsOf(stagesOf(runPlanPair.timeline)).map((u) => [u.id, u.name])).toEqual([
+      ['p0', 'Plan simplify, xhigh plan'],
+      ['p1', 'Plan review, xhigh plan'],
+      ['p2', 'Plan simplify, medium plan'],
+      ['p3', 'Plan review, medium plan'],
+    ]);
+  });
+
+  it('numbers a plan step kind the run repeats with no plan to name, and only that kind', () => {
+    expect(unitsOf(stagesOf(runPlanTwice.timeline)).map((u) => [u.id, u.name])).toEqual([
+      ['p0', 'Plan simplify'],
+      ['p1', 'Plan review 1'],
+      ['p2', 'Plan review 2'],
+    ]);
+    // Beside a pair's review, the one review with no plan to name is the only one of its kind.
+    const [plan] = stagesOf([
+      group({ kind: 'plan', steps: [step({ step: 'plan_review', index: 4, planEffort: 'xhigh' }), step({ step: 'plan_review', index: 6 })] }),
+    ]);
+    expect(plan.then.map((u) => [u.id, u.name])).toEqual([['p4', 'Plan review, xhigh plan'], ['p6', 'Plan review']]);
   });
 
   it("gives a task's kit review step with no kit its own unit", () => {
@@ -119,28 +140,36 @@ describe('boxNeed', () => {
     const deferred = { ...unitOf(runFull.timeline, 't3'), findings: [{ ...runFull.findings[1] }] };
     expect(boxNeed(deferred)).toBe(10 * 6 + 12 + 36);
   });
+
+  it("is a plan pair's box's two lines, not its longer title", () => {
+    // "Plan simplify" (13 chars) over "medium plan" (11).
+    expect(boxNeed(unitOf(runPlanPair.timeline, 'p2'))).toBe(13 * 6 + 22);
+  });
 });
 
 describe('strengthsOf', () => {
-  const strength = (s: Partial<StrengthRow>): StrengthRow => ({ step: 'task_review', task: null, wave: null, round: 0, category: null, summary: 'x', ...s });
+  /** The units that hold a strength of the step at this place in the run. */
+  const holders = (run: typeof runFull, stepIndex: number) => {
+    const s: StrengthRow = { step: 'task_review', stepIndex, task: null, wave: null, round: 0, category: null, summary: 'x' };
+    return ids(unitsOf(stagesOf(run.timeline)).filter((u) => strengthsOf(u, [s]).length > 0));
+  };
 
   it("gives a task review's strength to its task only", () => {
-    const s = strength({ task: 3 });
-    const units = unitsOf(stagesOf(runFull.timeline));
-    expect(units.filter((u) => strengthsOf(u, [s]).length > 0).map((u) => u.id)).toEqual(['t3']);
+    expect(holders(runFull, 7)).toEqual(['t3']);
   });
 
   it("gives a wave's strength to its check", () => {
-    const s = strength({ wave: 'A' });
-    const units = unitsOf(stagesOf(runFull.timeline));
-    expect(units.filter((u) => strengthsOf(u, [s]).length > 0).map((u) => u.id)).toEqual(['wA']);
+    expect(holders(runFull, 3)).toEqual(['wA']);
   });
 
-  it("gives the final review's strength to it, never to a kit review", () => {
-    const s = strength({ step: 'final_review' });
-    const units = unitsOf(stagesOf(runLong.timeline));
-    expect(units.filter((u) => strengthsOf(u, [s]).length > 0).map((u) => u.id)).toEqual(['final']);
-    expect(strengthsOf(unitOf(runLong.timeline, 'k7'), [strength({ task: 7 })])).toEqual([]);
+  it("gives the final review's strength to it, and a task's to its review, never to its kit review", () => {
+    expect(holders(runLong, 32)).toEqual(['final']);
+    expect(holders(runLong, 15)).toEqual(['t7']);
+  });
+
+  it("gives each of a plan pair's reviews its own strength", () => {
+    expect(holders(runPlanPair, 1)).toEqual(['p1']);
+    expect(holders(runPlanPair, 3)).toEqual(['p3']);
   });
 });
 
@@ -177,7 +206,7 @@ describe('layout', () => {
   });
 
   it.each(
-    (['runPlan', 'runSmall', 'runFull', 'runLong'] as const).flatMap((name) => [504, 720, 343].map((at) => [name, at] as const)),
+    (['runPlan', 'runPlanPair', 'runSmall', 'runFull', 'runLong'] as const).flatMap((name) => [504, 720, 343].map((at) => [name, at] as const)),
   )('gives every box of %s at %i the width its text needs', (name, at) => {
     const { placed } = layout(stagesOf(STORIES[name].timeline), at);
     for (const p of placed) if (p.kind === 'unit') expect(p.w, p.unit.name).toBeGreaterThanOrEqual(boxNeed(p.unit));

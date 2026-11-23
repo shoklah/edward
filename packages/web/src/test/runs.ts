@@ -155,7 +155,14 @@ const F5 = finding({ id: 'F5', step: 'simplify', summary: 'Merge the two query b
 const F6 = finding({ id: 'F6', step: 'final_review', severity: 'minor', summary: 'Error text not localized', outcome: 'open' });
 
 function step(s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineStep {
-  return { round: 0, agent: null, model: null, effort: null, kit: null, counts: {}, findings: [], ...s };
+  return { index: 0, round: 0, agent: null, model: null, effort: null, kit: null, planEffort: null, counts: {}, findings: [], ...s };
+}
+
+/** A timeline whose steps carry their place in the run, in order. */
+function numbered(timeline: TimelineGroup[]): TimelineGroup[] {
+  let index = 0;
+  const number = (steps: TimelineStep[]) => steps.map((s) => ({ ...s, index: index++ }));
+  return timeline.map((g) => ({ ...g, tasks: g.tasks.map((t) => ({ ...t, steps: number(t.steps) })), steps: number(g.steps) }));
 }
 
 /** A review step, by `task-reviewer` on Opus 5.5 at high effort unless it says otherwise. */
@@ -165,7 +172,7 @@ function review(s: Partial<TimelineStep>): TimelineStep {
 
 export const runFull: RunPageResponse = {
   facts: fullRun,
-  timeline: [
+  timeline: numbered([
     { kind: 'start', label: 'Start', at: fullRun.startedAt, conflicts: null, tasks: [], steps: [] },
     {
       kind: 'wave',
@@ -195,11 +202,11 @@ export const runFull: RunPageResponse = {
     { kind: 'simplify', label: 'Simplify', at: null, conflicts: null, tasks: [], steps: [step({ step: 'simplify', counts: { applied: 1 }, findings: [F5] })] },
     { kind: 'final', label: 'Final review', at: null, conflicts: null, tasks: [], steps: [review({ step: 'final_review', agent: 'final-reviewer', counts: { minor: 1 }, findings: [F6] })] },
     { kind: 'end', label: 'End', at: fullRun.finishedAt, conflicts: null, tasks: [], steps: [] },
-  ],
+  ]),
   findings: [F1, F2, F3, F4, F5, F6],
   strengths: [
-    { step: 'task_review', task: 3, wave: null, round: 0, category: 'reuse', summary: 'New page reuses the shared table and format helpers' },
-    { step: 'final_review', task: null, wave: null, round: 0, category: 'tests', summary: 'Each view tested on both fixtures, null facts included' },
+    { step: 'task_review', stepIndex: 7, task: 3, wave: null, round: 0, category: 'reuse', summary: 'New page reuses the shared table and format helpers' },
+    { step: 'final_review', stepIndex: 10, task: null, wave: null, round: 0, category: 'tests', summary: 'Each view tested on both fixtures, null facts included' },
   ],
   skills: [
     { name: 'subagent-driven-development', outcome: 'ran' },
@@ -307,12 +314,12 @@ export const runAlone: RunPageResponse = {
 export const runSmall: RunPageResponse = {
   ...runFull,
   facts: { ...smallRun, findings: NO_FINDINGS },
-  timeline: [
+  timeline: numbered([
     { kind: 'start', label: 'Start', at: smallRun.startedAt, conflicts: null, tasks: [], steps: [] },
     { kind: 'simplify', label: 'Simplify', at: null, conflicts: null, tasks: [], steps: [step({ step: 'simplify' })] },
     { kind: 'final', label: 'Final review', at: null, conflicts: null, tasks: [], steps: [review({ step: 'final_review', agent: 'final-reviewer' })] },
     { kind: 'end', label: 'End', at: smallRun.finishedAt, conflicts: null, tasks: [], steps: [] },
-  ],
+  ]),
   findings: [],
   strengths: [],
   warnings: [],
@@ -332,24 +339,47 @@ export const planRun: RunFacts = {
   waves: 0,
 };
 
+/** A plan run's timeline: these plan steps between its start and its end. */
+const planTimeline = (...steps: TimelineStep[]): TimelineGroup[] =>
+  numbered([
+    { kind: 'start', label: 'Start', at: planRun.startedAt, conflicts: null, tasks: [], steps: [] },
+    { kind: 'plan', label: 'Plan', at: null, conflicts: null, tasks: [], steps },
+    { kind: 'end', label: 'End', at: planRun.finishedAt, conflicts: null, tasks: [], steps: [] },
+  ]);
+const planSimplify = (s: Partial<TimelineStep> = {}) => step({ step: 'plan_simplify', agent: 'plan-simplifier', ...s });
+const planReview = (s: Partial<TimelineStep> = {}) => review({ step: 'plan_review', agent: 'plan-reviewer', ...s });
+
 /** A Plan run: its plan simplify and plan review. */
 export const runPlan: RunPageResponse = {
   ...runFull,
   facts: planRun,
-  timeline: [
-    { kind: 'start', label: 'Start', at: planRun.startedAt, conflicts: null, tasks: [], steps: [] },
-    {
-      kind: 'plan',
-      label: 'Plan',
-      at: null,
-      conflicts: null,
-      tasks: [],
-      steps: [step({ step: 'plan_simplify', agent: 'plan-simplifier' }), review({ step: 'plan_review', agent: 'plan-reviewer' })],
-    },
-    { kind: 'end', label: 'End', at: planRun.finishedAt, conflicts: null, tasks: [], steps: [] },
-  ],
+  timeline: planTimeline(planSimplify(), planReview()),
   findings: [],
   strengths: [],
+};
+
+/** A Plan run whose one plan was reviewed twice. */
+export const runPlanTwice: RunPageResponse = { ...runPlan, timeline: planTimeline(planSimplify(), planReview(), planReview()) };
+
+const P1 = finding({ id: 'P1', step: 'plan_simplify', kind: 'flag', summary: 'The spec never says how results are ranked', outcome: 'to_owner' });
+const P2 = finding({ id: 'P2', step: 'plan_review', severity: 'important', summary: 'Task 2 has no failing test', outcome: 'deferred' });
+const P3 = finding({ id: 'P3', step: 'plan_simplify', kind: 'cut', summary: 'Cut the second index', outcome: 'applied' });
+const P4 = finding({ id: 'P4', step: 'plan_review', severity: 'important', summary: 'Tasks 1 and 3 write one file', outcome: 'not_built' });
+
+/** A plan pair's run: the xhigh plan, built, and the medium one, not built, each simplified and reviewed. */
+export const runPlanPair: RunPageResponse = {
+  ...runPlan,
+  timeline: planTimeline(
+    planSimplify({ planEffort: 'xhigh', findings: [P1] }),
+    planReview({ planEffort: 'xhigh', findings: [P2] }),
+    planSimplify({ planEffort: 'medium', findings: [P3] }),
+    planReview({ planEffort: 'medium', findings: [P4] }),
+  ),
+  findings: [P1, P2, P3, P4],
+  strengths: [
+    { step: 'plan_review', stepIndex: 1, task: null, wave: null, round: 0, category: 'test_plan', summary: 'Every task starts from a failing test' },
+    { step: 'plan_review', stepIndex: 3, task: null, wave: null, round: 0, category: 'scope', summary: 'Nothing outside the spec' },
+  ],
 };
 
 /** A finding of the long run, closed in the round of its last verdict when that verdict is `fixed`. */
@@ -415,7 +445,7 @@ export const longRun: RunFacts = {
 export const runLong: RunPageResponse = {
   ...runFull,
   facts: longRun,
-  timeline: [
+  timeline: numbered([
     { kind: 'start', label: 'Start', at: longRun.startedAt, conflicts: null, tasks: [], steps: [] },
     longGroup({
       kind: 'wave',
@@ -483,11 +513,11 @@ export const runLong: RunPageResponse = {
       ],
     },
     { kind: 'end', label: 'End', at: longRun.finishedAt, conflicts: null, tasks: [], steps: [] },
-  ],
+  ]),
   findings: [L1, L2, L3, L4, L5, L6, L7, L8, L9, L10, L11, L12, L13, L14, L15, L16, L17, L18, L19, L20, L21],
   strengths: [
-    { step: 'task_review', task: 1, wave: null, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
-    { step: 'task_review', task: 4, wave: null, round: 0, category: 'simplicity', summary: 'The conflict rule is one pure function' },
-    { step: 'final_review', task: null, wave: null, round: 0, category: 'security_privacy', summary: 'No sync payload reaches a log' },
+    { step: 'task_review', stepIndex: 0, task: 1, wave: null, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
+    { step: 'task_review', stepIndex: 8, task: 4, wave: null, round: 0, category: 'simplicity', summary: 'The conflict rule is one pure function' },
+    { step: 'final_review', stepIndex: 32, task: null, wave: null, round: 0, category: 'security_privacy', summary: 'No sync payload reaches a log' },
   ],
 };
