@@ -25,7 +25,7 @@ export type RunFacts = {
 };
 
 /** Each outcome's group (`none`: no outcome): acted on, closed with no action or left for later; in the run graph's chip
- * order. */
+ * order. Closed with no action is narrower than `splitFindings`' not acted on, which holds deferred and to_owner too. */
 export const OUTCOME_GROUPS: Record<Outcome | 'none', 'acted_on' | 'no_action' | 'left_for_later'> = {
   fixed: 'acted_on',
   applied: 'acted_on',
