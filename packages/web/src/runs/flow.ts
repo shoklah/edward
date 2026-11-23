@@ -77,7 +77,7 @@ export function unitsOf(stages: Stage[]): Unit[] {
   return stages.flatMap((s) => [...s.parallel, ...s.then]);
 }
 
-const LEFT = ['deferred', 'to_owner', 'open', 'declined', 'ruled', 'none'] as const;
+const LEFT = ['deferred', 'to_owner', 'open', 'declined', 'ruled', 'not_built', 'none'] as const;
 
 /** A unit's findings that were not fixed or applied, by outcome (`none`: no outcome), the non-zero counts only. */
 export function leftOf(unit: Unit): [Outcome | 'none', number][] {

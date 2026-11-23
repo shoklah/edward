@@ -76,11 +76,16 @@ describe('runFacts', () => {
 });
 
 describe('splitFindings', () => {
+  // The full run's F6, a finding with no outcome.
+  const f6 = () => run('full').steps!.flatMap((s) => s.findings ?? []).find((f) => f.id === 'F6')!;
+
   test('a finding with no outcome counts in total only', () => {
-    const steps = run('full').steps!;
-    const f6 = steps.flatMap((s) => s.findings ?? []).find((f) => f.id === 'F6')!;
-    expect(f6.outcome ?? null).toBeNull();
-    expect(splitFindings([{ findings: [f6] }])).toEqual({ total: 1, actedOn: 0, notActedOn: 0, open: 0 });
+    expect(f6().outcome ?? null).toBeNull();
+    expect(splitFindings([{ findings: [f6()] }])).toEqual({ total: 1, actedOn: 0, notActedOn: 0, open: 0 });
+  });
+
+  test("a plan pair's not-built finding is closed, not acted on", () => {
+    expect(splitFindings([{ findings: [{ ...f6(), outcome: 'not_built' }] }])).toEqual({ total: 1, actedOn: 0, notActedOn: 1, open: 0 });
   });
 });
 

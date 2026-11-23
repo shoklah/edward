@@ -6,7 +6,8 @@ import { ColumnHead, Line, Panel, ScrollTable, Term } from '../components/Panel.
 import { Time } from '../layout/StatusBanner.tsx';
 import { LATER_FIXES_TERM, outcomeLabel, outcomeWarns, WARNING_INK } from '../lib/format.ts';
 
-// The outcomes a finding is left for later with: not fixed or applied, and not closed by a decision (ruled, declined).
+// The outcomes a finding is left for later with: not fixed or applied, not closed by a decision (ruled, declined), and
+// not on a plan that was never built (not built).
 const LEFT_FOR_LATER = new Set<string | null>(['deferred', 'to_owner', 'open', null]);
 
 /** The later fixes' term: its words with a dotted underline, its tooltip saying what the reporter counts. */

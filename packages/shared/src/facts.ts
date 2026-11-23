@@ -25,14 +25,14 @@ export type RunFacts = {
 };
 
 const ACTED_ON: readonly Outcome[] = ['fixed', 'applied'];
-const NOT_ACTED_ON: readonly Outcome[] = ['declined', 'deferred', 'ruled', 'to_owner'];
+const NOT_ACTED_ON: readonly Outcome[] = ['declined', 'deferred', 'ruled', 'to_owner', 'not_built'];
 
 // A session ID, and a session transcript's file name, as the reporter writes it in a session warning.
 export const SESSION_ID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 export const SESSION_FILE = new RegExp(`(${SESSION_ID.source})\\.jsonl`, 'i');
 
-/** Every finding of every step: acted on = fixed or applied, not acted on = declined, deferred, ruled or to_owner,
- * open = open; a finding with no outcome counts in total only. */
+/** Every finding of every step: acted on = fixed or applied, not acted on = declined, deferred, ruled, to_owner or
+ * not_built, open = open; a finding with no outcome counts in total only. */
 export function splitFindings(steps: Step[]): FindingSplit {
   const split = { total: 0, actedOn: 0, notActedOn: 0, open: 0 };
   for (const finding of steps.flatMap((step) => step.findings ?? [])) {

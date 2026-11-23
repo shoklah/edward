@@ -182,6 +182,13 @@ describe('loadReport', () => {
     expect(loadReport(raw).ok).toBe(true);
   });
 
+  test("accepts a plan pair's not-built finding (schema 9)", () => {
+    const raw = fixture('report-full');
+    const review = raw.runs.flatMap((r: any) => r.steps ?? []).find((s: any) => s.step === 'plan_review');
+    review.findings[0].outcome = 'not_built';
+    expect(loadReport(raw).ok).toBe(true);
+  });
+
   test('writes map keys as {}', () => {
     const raw = fixture('report-full');
     const run = raw.runs.find((r: any) => r.models !== null);

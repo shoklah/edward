@@ -15,7 +15,8 @@ export const STEP_KINDS = [
   'final_fix_check',
   'kit_review',
 ] as const;
-export const OUTCOMES = ['fixed', 'applied', 'declined', 'deferred', 'ruled', 'open', 'to_owner'] as const;
+// not_built (schema 9): a plan review finding on the plan a plan pair did not build.
+export const OUTCOMES = ['fixed', 'applied', 'declined', 'deferred', 'ruled', 'open', 'to_owner', 'not_built'] as const;
 export const PATHS = ['small', 'full', 'plan'] as const;
 
 const str = z.string().nullish();
