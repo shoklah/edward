@@ -3,7 +3,7 @@ import { CircleAlert } from 'lucide-react';
 import { cn } from 'cn';
 import { Time } from '../layout/StatusBanner.tsx';
 import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, outcomeLabel, outcomeWarns, plural, roundsLabel } from '../lib/format.ts';
-import { boxLines, layout, stuck, type Anchor, type Edge, type Placed, type Shape, type Stage, type Unit } from './flow.ts';
+import { layout, stuck, type Anchor, type Edge, type Placed, type Shape, type Stage, type Unit } from './flow.ts';
 
 type Pick = { selected: string | null; onSelect: (id: string | null) => void };
 type Of<K extends Placed['kind']> = Extract<Placed, { kind: K }>;
@@ -102,12 +102,12 @@ function LoopLabel({ arc }: { arc: Of<'arc'> }) {
 /** A graph box's look, the session graph's too: a rectangle at its place, its lines stacked and centred. */
 export const BOX = 'absolute flex flex-col justify-center rounded-lg border bg-secondary px-2.5 text-left leading-tight';
 
-/** A box: its two lines (`boxLines`) and what it found; pressing it selects it, pressing it again clears it. */
+/** A box: its two lines and what it found; pressing it selects it, pressing it again clears it. */
 function Box({ box, selected, onSelect }: { box: Of<'unit'> } & Pick) {
   const { unit } = box;
   const on = selected === unit.id;
   const found = unit.findings.length;
-  const [name, under] = boxLines(unit);
+  const [name, under] = unit.lines;
   return (
     <button
       type="button"

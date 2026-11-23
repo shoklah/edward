@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { StrengthRow, TimelineGroup, TimelineStep } from '@cwd/shared';
-import { runBeforeSteps, runFull, runLong, runPlan, runPlanPair, runPlanTwice, runSmall, runStopped } from '../test/runs.ts';
+import type { TimelineGroup } from '@cwd/shared';
+import { runBeforeSteps, runFull, runLong, runPlan, runPlanPair, runPlanTwice, runSmall, runStopped, step } from '../test/runs.ts';
 import { WRAP_MIN, boxNeed, layout, leftOf, stagesOf, strengthsOf, stuck, unitsOf, type Layout, type Placed, type Unit } from './flow.ts';
 
 type Rect = { x: number; y: number; w: number; h: number; row: number };
@@ -26,9 +26,6 @@ function clear({ placed, edges, shape }: Layout): boolean {
 
 const ids = (units: Unit[]) => units.map((u) => u.id);
 const unitOf = (timeline: TimelineGroup[], id: string) => unitsOf(stagesOf(timeline)).find((u) => u.id === id)!;
-const step = (s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineStep => ({
-  index: 0, round: 0, agent: null, model: null, effort: null, kit: null, planEffort: null, counts: {}, findings: [], ...s,
-});
 const group = (g: Partial<TimelineGroup> & Pick<TimelineGroup, 'kind'>): TimelineGroup => ({
   label: '', at: null, conflicts: null, tasks: [], steps: [], ...g,
 });
@@ -89,7 +86,7 @@ describe('stagesOf', () => {
   it("names a wave's check and carries its conflicts", () => {
     const stages = stagesOf(runLong.timeline);
     const waveB = stages.find((s) => s.kind === 'wave' && s.then.some((u) => u.id === 'wB'))!;
-    expect(waveB.then.map((u) => [u.name, u.wave])).toEqual([['Wave B check', 'B']]);
+    expect(waveB.then.map((u) => u.name)).toEqual(['Wave B check']);
     expect(waveB.conflicts).toBe(2);
     expect(stages.find((s) => s.kind === 'task')!.conflicts).toBe(0);
   });
@@ -148,28 +145,15 @@ describe('boxNeed', () => {
 });
 
 describe('strengthsOf', () => {
-  /** The units that hold a strength of the step at this place in the run. */
-  const holders = (run: typeof runFull, stepIndex: number) => {
-    const s: StrengthRow = { step: 'task_review', stepIndex, task: null, wave: null, round: 0, category: null, summary: 'x' };
-    return ids(unitsOf(stagesOf(run.timeline)).filter((u) => strengthsOf(u, [s]).length > 0));
-  };
-
-  it("gives a task review's strength to its task only", () => {
-    expect(holders(runFull, 7)).toEqual(['t3']);
-  });
-
-  it("gives a wave's strength to its check", () => {
-    expect(holders(runFull, 3)).toEqual(['wA']);
-  });
-
-  it("gives the final review's strength to it, and a task's to its review, never to its kit review", () => {
-    expect(holders(runLong, 32)).toEqual(['final']);
-    expect(holders(runLong, 15)).toEqual(['t7']);
-  });
-
-  it("gives each of a plan pair's reviews its own strength", () => {
-    expect(holders(runPlanPair, 1)).toEqual(['p1']);
-    expect(holders(runPlanPair, 3)).toEqual(['p3']);
+  it.each([
+    ["a task's review", runFull, 7, 't3'],
+    ["a wave's check", runFull, 3, 'wA'],
+    ['the final review', runLong, 32, 'final'],
+    ["a kit-reviewed task's own review", runLong, 15, 't7'],
+    ["a plan pair's one review", runPlanPair, 1, 'p1'],
+    ["a plan pair's other review", runPlanPair, 3, 'p3'],
+  ])("gives %s's strength to its box only", (_, run, stepIndex, id) => {
+    expect(ids(unitsOf(stagesOf(run.timeline)).filter((u) => strengthsOf(u, [{ stepIndex }]).length > 0))).toEqual([id]);
   });
 });
 

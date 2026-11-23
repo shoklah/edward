@@ -154,7 +154,7 @@ const F4 = finding({ id: 'F4', step: 'task_review', wave: 'A', severity: 'import
 const F5 = finding({ id: 'F5', step: 'simplify', summary: 'Merge the two query builders', outcome: 'applied', category: 'simplicity', relevance: 'valid', labelReason: 'Two builders do the same work' });
 const F6 = finding({ id: 'F6', step: 'final_review', severity: 'minor', summary: 'Error text not localized', outcome: 'open' });
 
-function step(s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineStep {
+export function step(s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineStep {
   return { index: 0, round: 0, agent: null, model: null, effort: null, kit: null, planEffort: null, counts: {}, findings: [], ...s };
 }
 

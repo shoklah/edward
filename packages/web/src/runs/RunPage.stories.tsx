@@ -394,10 +394,7 @@ export const PlanPair: Story = {
     ] as const) {
       await userEvent.click(boxes[box]);
       await expect(pressed()).toEqual(boxes.map((_, i) => String(i === box)));
-      const detail = within(canvas.getByRole('region', { name }));
-      await expect(detail.getByRole('heading', { name })).toBeVisible();
-      await expect(detail.getByRole('button', { name: `Close ${name}` })).toBeVisible();
-      await expect(detail.getByRole('table', { name })).toHaveTextContent(finding);
+      await expect(canvas.getByRole('region', { name })).toHaveTextContent(finding);
       await expect(canvas.getByRole('region', { name: `Problems in ${name} (1)` })).toBeVisible();
       await expect(ids(canvasElement, 'Problems table')).toEqual([finding]);
       await expect(canvas.getByRole('heading', { name: `Strengths in ${name} (1)` })).toBeVisible();

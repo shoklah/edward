@@ -5,8 +5,9 @@ import { STEP_LABELS, outcomeLabel, reviewerLabel } from '../lib/format.ts';
 export type Unit = {
   id: string;
   name: string;
+  /** Its box's two lines: its name over its reviewer, or a plan pair's step's kind over its plan. */
+  lines: [string, string];
   task: number | null;
-  wave: string | null;
   kit: boolean;
   steps: number[];
   review: TimelineStep | null;
@@ -16,49 +17,45 @@ export type Unit = {
 export type Stage = { kind: TimelineGroup['kind']; at: string | null; parallel: Unit[]; then: Unit[]; conflicts: number };
 
 const isRound = (s: TimelineStep) => s.step === 'fix_check' || s.step === 'final_fix_check';
-/** A unit of no task or wave, not a kit's. */
-const NOWHERE = { task: null, wave: null, kit: false };
+/** A unit of no task, not a kit's. */
+const NOWHERE = { task: null, kit: false };
 /** A kit's own step, as the server's `timeline` tells them apart. */
 const isKit = (s: TimelineStep) => s.step === 'kit_review' || s.kit != null;
 
-function unitOf(id: string, name: string, steps: TimelineStep[], where: Pick<Unit, 'task' | 'wave' | 'kit'>): Unit {
+function unitOf(id: string, name: string, steps: TimelineStep[], where: Pick<Unit, 'task' | 'kit'>): Unit {
+  const review = steps.find((s) => !isRound(s)) ?? null;
   return {
     id,
     name,
+    lines: [name, reviewerLabel(review)],
     ...where,
     steps: steps.map((s) => s.index),
-    review: steps.find((s) => !isRound(s)) ?? null,
+    review,
     rounds: steps.filter(isRound),
     findings: steps.flatMap((s) => s.findings),
   };
 }
 
 /** A task's units: its review, and beside it its kit's review when it has one. */
-function taskUnits({ task, steps }: { task: number; steps: TimelineStep[] }, wave: string | null): Unit[] {
+function taskUnits({ task, steps }: { task: number; steps: TimelineStep[] }): Unit[] {
   const kit = steps.filter(isKit);
   return [
-    unitOf(`t${task}`, `Task ${task}`, steps.filter((s) => !isKit(s)), { task, wave, kit: false }),
-    ...(kit.length ? [unitOf(`k${task}`, `Task ${task} kit review`, kit, { task, wave, kit: true })] : []),
+    unitOf(`t${task}`, `Task ${task}`, steps.filter((s) => !isKit(s)), { task, kit: false }),
+    ...(kit.length ? [unitOf(`k${task}`, `Task ${task} kit review`, kit, { task, kit: true })] : []),
   ];
 }
 
-/** A plan pair's step's plan, by the effort it was written at: "xhigh plan". */
-const planOf = (s: TimelineStep) => s.planEffort && `${s.planEffort} plan`;
-
-/** A plan step's name among its run's plan steps: its kind, with its plan when it names one, else numbered when its run
- * repeats the kind with no plan to name. */
-function planName(step: TimelineStep, steps: TimelineStep[]): string {
+/** A plan step's unit, among its run's plan steps: a plan pair's named by its kind and its plan, any other by its kind,
+ * numbered when its run repeats the kind with no plan to name. */
+function planUnit(step: TimelineStep, steps: TimelineStep[]): Unit {
   const label = STEP_LABELS[step.step];
-  const plan = planOf(step);
-  if (plan) return `${label}, ${plan}`;
+  const unit = (name: string) => unitOf(`p${step.index}`, name, [step], NOWHERE);
+  if (step.planEffort) {
+    const plan = `${step.planEffort} plan`;
+    return { ...unit(`${label}, ${plan}`), lines: [label, plan] };
+  }
   const same = steps.filter((s) => s.step === step.step && !s.planEffort);
-  return same.length > 1 ? `${label} ${same.indexOf(step) + 1}` : label;
-}
-
-/** A box's two lines: its name over its reviewer, or a plan pair's step's kind over its plan. */
-export function boxLines({ name, review }: Unit): [string, string] {
-  const plan = review && planOf(review);
-  return plan ? [STEP_LABELS[review.step], plan] : [name, reviewerLabel(review)];
+  return unit(same.length > 1 ? `${label} ${same.indexOf(step) + 1}` : label);
 }
 
 /** The timeline's groups as stages of units: a wave's tasks (a kit-reviewed task's two boxes together) side by side,
@@ -70,13 +67,13 @@ export function stagesOf(timeline: TimelineGroup[]): Stage[] {
     switch (g.kind) {
       case 'wave': {
         const wave = g.label.replace(/^Wave /, '');
-        const check = g.steps.length ? [unitOf(`w${wave}`, `${g.label} check`, g.steps, { task: null, wave, kit: false })] : [];
-        return stage(g.tasks.flatMap((t) => taskUnits(t, wave)), check);
+        const check = g.steps.length ? [unitOf(`w${wave}`, `${g.label} check`, g.steps, NOWHERE)] : [];
+        return stage(g.tasks.flatMap(taskUnits), check);
       }
       case 'task':
-        return side(g.tasks.flatMap((t) => taskUnits(t, null)));
+        return side(g.tasks.flatMap(taskUnits));
       case 'plan':
-        return stage([], g.steps.map((s) => unitOf(`p${s.index}`, planName(s, g.steps), [s], NOWHERE)));
+        return stage([], g.steps.map((s) => planUnit(s, g.steps)));
       case 'simplify':
         return stage([], g.steps.length ? [unitOf('simplify', STEP_LABELS.simplify, g.steps, NOWHERE)] : []);
       case 'final': {
@@ -115,7 +112,7 @@ export function stuck(unit: Unit): boolean {
 }
 
 /** A unit's strengths: those of its own steps. */
-export function strengthsOf<S extends StrengthRow>(unit: Unit, strengths: S[]): S[] {
+export function strengthsOf<S extends Pick<StrengthRow, 'stepIndex'>>(unit: Unit, strengths: S[]): S[] {
   return strengths.filter((s) => unit.steps.includes(s.stepIndex));
 }
 
@@ -201,7 +198,7 @@ const chipWidth = (outcome: Outcome | 'none', count: number) => `${outcomeLabel(
 
 /** The narrowest a box can be with its two lines and its exit chips whole, by the text estimate. */
 export function boxNeed(unit: Unit): number {
-  const text = boxLines(unit).map((t) => t.length * CHAR + BOX_PAD);
+  const text = unit.lines.map((t) => t.length * CHAR + BOX_PAD);
   const chips = leftOf(unit).map(([outcome, count]) => chipWidth(outcome, count) + CHIP_IN + SIDE_IN + 4);
   return Math.max(...text, ...chips);
 }

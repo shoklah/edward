@@ -13,11 +13,9 @@ const meta = { component: RunFlow, args: { stages: stagesOf(runFull.timeline), s
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Every exit chip shows its whole text where the box leaves it room. */
-async function chipsWhole(flow: HTMLElement) {
-  for (const chip of flow.querySelectorAll('.border-dashed')) {
-    await expect(chip.scrollWidth, chip.textContent!).toBeLessThanOrEqual(chip.clientWidth);
-  }
+/** Every element `selector` finds shows its whole text: every exit chip where the box leaves it room, unless it says. */
+async function whole(flow: HTMLElement, selector = '.border-dashed') {
+  for (const el of flow.querySelectorAll(selector)) await expect(el.scrollWidth, el.textContent!).toBeLessThanOrEqual(el.clientWidth);
 }
 
 /** `a` comes before `b` in the document. */
@@ -86,7 +84,7 @@ export const Full: Story = {
     const conflicts = flow.getByText('1 conflict');
     await expect(conflicts).toHaveClass('text-muted-foreground');
     await expect(before(flow.getByRole('button', { name: /^Task 4(?!\d)/ }), conflicts)).toBe(true);
-    await chipsWhole(group);
+    await whole(group);
     // A loop that left nothing is not in the warning ink.
     const clean = flow.getAllByText('1 round')[0].parentElement!;
     await expect(clean).not.toHaveClass(WARNING_INK);
@@ -121,8 +119,7 @@ export const PlanPair: Story = {
       ['Plan simplify', 'medium plan', 'Found 1'],
       ['Plan review', 'medium plan', 'Found 1'],
     ]);
-    for (const line of flow.querySelectorAll('button > *')) await expect(line.scrollWidth, line.textContent!).toBeLessThanOrEqual(line.clientWidth);
-    await chipsWhole(flow);
+    await whole(flow, 'button > *, .border-dashed');
   },
 };
 
@@ -154,7 +151,7 @@ export const Long: Story = {
     await expect(deferred).toBeVisible();
     await expect(open).toHaveClass(WARNING_INK);
     await expect(deferred).toHaveClass('text-muted-foreground');
-    await chipsWhole(canvas.getByRole('group', { name: "The run's flow" }));
+    await whole(canvas.getByRole('group', { name: "The run's flow" }));
   },
 };
 
