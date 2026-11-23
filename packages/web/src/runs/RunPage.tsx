@@ -329,17 +329,17 @@ export function RunPage({ runKey }: { runKey: string }) {
   if (run.isError) return <State error>Couldn't load this run.</State>;
   const { facts, findings, strengths, warnings, categoryLabels } = run.data;
   const unit = units.find((u) => u.id === selected);
-  // A plan step's kind repeats, so its rows read its box's title: a strength's by its step, a finding's by its id.
+  // A plan step's kind can repeat, so its rows read its box's title instead.
   const planned = unitsOf(stages.filter((s) => s.kind === 'plan'));
   // The run's strengths are numbered in order, so a strength keeps its number when a step filters them.
   const numbered = strengths.map((strength, i) => ({
     ...strength,
     id: `S${i + 1}`,
-    from: planned.find((u) => strengthsOf(u, [strength]).length > 0)?.name,
+    stepName: planned.find((u) => strengthsOf(u, [strength]).length > 0)?.name,
   }));
   const problems = (unit ? unit.findings : findings).map((finding) => ({
     ...finding,
-    from: planned.find((u) => finding.id !== null && u.findings.some((f) => f.id === finding.id))?.name,
+    stepName: finding.id === null ? undefined : planned.find((u) => u.findings.some((f) => f.id === finding.id))?.name,
   }));
   const praised = unit ? strengthsOf(unit, numbered) : numbered;
   const where = unit ? ` in ${unit.name}` : '';

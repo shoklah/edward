@@ -22,6 +22,17 @@ export const visibleValues = (row: HTMLElement) => visible(row, 'dd');
 export const visibleFact = (row: HTMLElement, term: string) =>
   [...row.querySelectorAll<HTMLElement>('dt')].find((el) => el.checkVisibility() && el.textContent === term)!
     .nextElementSibling as HTMLElement;
+/** Opens every closed row, then gives each row's visible value for the fact `term`, null where it is left out. */
+export async function fact(
+  canvasElement: HTMLElement,
+  userEvent: { click: (el: Element) => Promise<void> },
+  term: string,
+): Promise<(string | null)[]> {
+  for (const toggle of canvasElement.querySelectorAll('tbody button[aria-expanded="false"]')) await userEvent.click(toggle);
+  return [...canvasElement.querySelectorAll<HTMLElement>('tbody tr')]
+    .filter((tr) => tr.querySelector('dl'))
+    .map((tr) => (visibleTerms(tr).includes(term) ? visibleFact(tr, term).textContent : null));
+}
 
 /** The text of each cell (`td`) of a table row. */
 export function cells(row: HTMLElement): string[] {

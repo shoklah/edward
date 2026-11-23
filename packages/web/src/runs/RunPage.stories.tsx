@@ -4,7 +4,7 @@ import { expect, spyOn, within } from 'storybook/test';
 import { parseTime, type FindingRow, type StatusResponse } from '@cwd/shared';
 import { formatDayTime, LATER_FIXES_TERM, WARNING_INK } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
-import { cells, expectNoJoined, openedRow, visibleFact } from '../test/table.ts';
+import { cells, expectNoJoined, fact } from '../test/table.ts';
 import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runPlanPair, runPlanTwice, runSmall, runStopped, smallRun } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
 
@@ -404,25 +404,15 @@ export const PlanPair: Story = {
   },
 };
 
-/** The Step fact of every row of the table region named `name`, in order, each row opened through `click`. */
-async function stepFacts(canvasElement: HTMLElement, name: string, click: (element: Element) => Promise<void>): Promise<(string | null)[]> {
-  const facts: (string | null)[] = [];
-  for (const toggle of within(canvasElement).getByRole('region', { name }).querySelectorAll<HTMLElement>('button[aria-expanded]')) {
-    if (toggle.getAttribute('aria-expanded') === 'false') await click(toggle);
-    facts.push(visibleFact(openedRow(toggle), 'Step').textContent);
-  }
-  return facts;
-}
-
 /** A plan pair's rows read their box's title as their step, with its box selected or not. */
 export const PlanPairSteps: Story = {
   args: { runKey: planRun.key },
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${planRun.key}`]: runPlanPair });
   },
-  play: async ({ canvas, canvasElement, userEvent }) => {
+  play: async ({ canvas, userEvent }) => {
     const flow = within(await canvas.findByRole('group', { name: "The run's flow" }));
-    const steps = (table: string) => stepFacts(canvasElement, table, (toggle) => userEvent.click(toggle));
+    const steps = (name: string) => fact(canvas.getByRole('region', { name }), userEvent, 'Step');
     await expect(await steps('Problems table')).toEqual([
       'Plan simplify, xhigh plan',
       'Plan review, xhigh plan',
@@ -443,9 +433,9 @@ export const PlanTwice: Story = {
     const strengths = [1, 2].map((stepIndex) => ({ ...runPlanPair.strengths[0], stepIndex }));
     mockApi({ '/api/status': status, [`/api/runs/${planRun.key}`]: { ...runPlanTwice, strengths } });
   },
-  play: async ({ canvas, canvasElement, userEvent }) => {
+  play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('group', { name: "The run's flow" });
-    const steps = await stepFacts(canvasElement, 'Strengths table', (toggle) => userEvent.click(toggle));
+    const steps = await fact(canvas.getByRole('region', { name: 'Strengths table' }), userEvent, 'Step');
     await expect(steps).toEqual(['Plan review 1', 'Plan review 2']);
   },
 };
@@ -461,9 +451,9 @@ export const PlanPairNoIds: Story = {
       [`/api/runs/${planRun.key}`]: { ...runPlanPair, timeline, findings: bare(runPlanPair.findings) },
     });
   },
-  play: async ({ canvas, canvasElement, userEvent }) => {
+  play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('group', { name: "The run's flow" });
-    const steps = await stepFacts(canvasElement, 'Problems table', (toggle) => userEvent.click(toggle));
+    const steps = await fact(canvas.getByRole('region', { name: 'Problems table' }), userEvent, 'Step');
     await expect(steps).toEqual(['Plan simplify', 'Plan review', 'Plan simplify', 'Plan review']);
   },
 };
@@ -473,9 +463,9 @@ export const StepKinds: Story = {
   beforeEach: () => {
     mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
   },
-  play: async ({ canvas, canvasElement, userEvent }) => {
+  play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('group', { name: "The run's flow" });
-    const steps = (table: string) => stepFacts(canvasElement, table, (toggle) => userEvent.click(toggle));
+    const steps = (name: string) => fact(canvas.getByRole('region', { name }), userEvent, 'Step');
     await expect(await steps('Problems table')).toEqual(['Task review', 'Task review', 'Task review', 'Task review', 'Simplify', 'Final review']);
     await expect(await steps('Strengths table')).toEqual(['Task review', 'Final review']);
   },
