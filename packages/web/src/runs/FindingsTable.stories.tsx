@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { NONE, PROBLEMS_SIDE } from '../lib/format.ts';
 import { HTML_TEXT, fullRun, runFull, workflowFindings } from '../test/runs.ts';
-import { visibleFact, visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
+import { fact, visibleFact, visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
 const meta = { component: FindingsTable, decorators: [width(1000)] } satisfies Meta<typeof FindingsTable>;
@@ -25,18 +25,6 @@ const closedRows = (canvasElement: HTMLElement) =>
 function column(canvasElement: HTMLElement, name: string): (string | null)[] {
   const index = [...canvasElement.querySelectorAll('th')].findIndex((th) => th.textContent === name);
   return closedRows(canvasElement).map((tr) => tr.children[index].textContent);
-}
-
-/** Opens every closed row, then gives each row's visible value for the fact `term`, null where it is left out. */
-async function fact(
-  canvasElement: HTMLElement,
-  userEvent: { click: (el: Element) => Promise<void> },
-  term: string,
-): Promise<(string | null)[]> {
-  for (const toggle of canvasElement.querySelectorAll('tbody button[aria-expanded="false"]')) await userEvent.click(toggle);
-  return [...canvasElement.querySelectorAll<HTMLElement>('tbody tr')]
-    .filter((tr) => tr.querySelector('dl'))
-    .map((tr) => (visibleTerms(tr).includes(term) ? visibleFact(tr, term).textContent : null));
 }
 
 /** A finding with no id keeps its open state when a filter changes the rows above it. */

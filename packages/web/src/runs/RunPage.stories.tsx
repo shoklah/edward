@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, spyOn, within } from 'storybook/test';
-import { parseTime, type StatusResponse } from '@cwd/shared';
+import { parseTime, type FindingRow, type StatusResponse } from '@cwd/shared';
 import { formatDayTime, LATER_FIXES_TERM, WARNING_INK } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
-import { cells, expectNoJoined } from '../test/table.ts';
-import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runPlanPair, runSmall, runStopped, smallRun } from '../test/runs.ts';
+import { cells, expectNoJoined, fact } from '../test/table.ts';
+import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runPlanPair, runPlanTwice, runSmall, runStopped, smallRun } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
 
 const meta = { component: RunPage, args: { runKey: fullRun.key } } satisfies Meta<typeof RunPage>;
@@ -401,6 +401,73 @@ export const PlanPair: Story = {
       await expect(ids(canvasElement, 'Strengths table')).toEqual([strength]);
       await expect(left(`Left for later in ${name}`).getByText(rest)).toBeVisible();
     }
+  },
+};
+
+/** A plan pair's rows read their box's title as their step, with its box selected or not. */
+export const PlanPairSteps: Story = {
+  args: { runKey: planRun.key },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${planRun.key}`]: runPlanPair });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const flow = within(await canvas.findByRole('group', { name: "The run's flow" }));
+    const steps = (name: string) => fact(canvas.getByRole('region', { name }), userEvent, 'Step');
+    await expect(await steps('Problems table')).toEqual([
+      'Plan simplify, xhigh plan',
+      'Plan review, xhigh plan',
+      'Plan simplify, medium plan',
+      'Plan review, medium plan',
+    ]);
+    await expect(await steps('Strengths table')).toEqual(['Plan review, xhigh plan', 'Plan review, medium plan']);
+    await userEvent.click(flow.getAllByRole('button')[3]);
+    await expect(await steps('Problems table')).toEqual(['Plan review, medium plan']);
+    await expect(await steps('Strengths table')).toEqual(['Plan review, medium plan']);
+  },
+};
+
+/** One plan reviewed twice: a row's step is its review's numbered box. */
+export const PlanTwice: Story = {
+  args: { runKey: planRun.key },
+  beforeEach: () => {
+    const strengths = [1, 2].map((stepIndex) => ({ ...runPlanPair.strengths[0], stepIndex }));
+    mockApi({ '/api/status': status, [`/api/runs/${planRun.key}`]: { ...runPlanTwice, strengths } });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByRole('group', { name: "The run's flow" });
+    const steps = await fact(canvas.getByRole('region', { name: 'Strengths table' }), userEvent, 'Step');
+    await expect(steps).toEqual(['Plan review 1', 'Plan review 2']);
+  },
+};
+
+/** A plan pair's findings with no id don't say which box they came from, so their step stays its kind. */
+export const PlanPairNoIds: Story = {
+  args: { runKey: planRun.key },
+  beforeEach: () => {
+    const bare = (findings: FindingRow[]) => findings.map((f) => ({ ...f, id: null }));
+    const timeline = runPlanPair.timeline.map((g) => ({ ...g, steps: g.steps.map((s) => ({ ...s, findings: bare(s.findings) })) }));
+    mockApi({
+      '/api/status': status,
+      [`/api/runs/${planRun.key}`]: { ...runPlanPair, timeline, findings: bare(runPlanPair.findings) },
+    });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByRole('group', { name: "The run's flow" });
+    const steps = await fact(canvas.getByRole('region', { name: 'Problems table' }), userEvent, 'Step');
+    await expect(steps).toEqual(['Plan simplify', 'Plan review', 'Plan simplify', 'Plan review']);
+  },
+};
+
+/** Outside the plan a row's step stays its kind, never its box's name. */
+export const StepKinds: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
+  },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByRole('group', { name: "The run's flow" });
+    const steps = (name: string) => fact(canvas.getByRole('region', { name }), userEvent, 'Step');
+    await expect(await steps('Problems table')).toEqual(['Task review', 'Task review', 'Task review', 'Task review', 'Simplify', 'Final review']);
+    await expect(await steps('Strengths table')).toEqual(['Task review', 'Final review']);
   },
 };
 
