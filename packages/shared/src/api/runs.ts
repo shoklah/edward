@@ -53,15 +53,18 @@ export type FindingRow = {
   appRelevance: Relevance | null;
 };
 
-/** A step of the timeline: its model and effort its tied dispatch's, else its own (the alias it was asked for), field by
- * field, and its kit's name on a kit's own review and fix-checks. */
+/** A step of the timeline: its place in the run's exported steps, its model and effort its tied dispatch's, else its own
+ * (the alias it was asked for), field by field, its kit's name on a kit's own review and fix-checks, and its plan's effort
+ * on a plan pair's steps. */
 export type TimelineStep = {
+  index: number;
   step: StepKind;
   round: number | null;
   agent: string | null;
   model: string | null;
   effort: string | null;
   kit: string | null;
+  planEffort: string | null;
   counts: Record<string, number>;
   findings: FindingRow[];
 };
@@ -78,9 +81,10 @@ export type TimelineGroup = {
   steps: TimelineStep[];
 };
 
-/** A reviewer's strength, with its step's kind, task, wave and round. */
+/** A reviewer's strength, with its step's kind, place in the run's exported steps, task, wave and round. */
 export type StrengthRow = {
   step: StepKind;
+  stepIndex: number;
   task: number | null;
   wave: string | null;
   round: number | null;

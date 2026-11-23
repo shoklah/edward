@@ -5,7 +5,7 @@ import { parseTime, type StatusResponse } from '@cwd/shared';
 import { formatDayTime, LATER_FIXES_TERM, WARNING_INK } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { cells, expectNoJoined } from '../test/table.ts';
-import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runSmall, runStopped, smallRun } from '../test/runs.ts';
+import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runPlanPair, runSmall, runStopped, smallRun } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
 
 const meta = { component: RunPage, args: { runKey: fullRun.key } } satisfies Meta<typeof RunPage>;
@@ -368,6 +368,39 @@ export const SelectedStepTables: Story = {
     await expect(within(problems).queryByRole('combobox')).toBeNull();
     await expect(canvas.getByRole('heading', { name: 'Strengths in Task 3 (1)' })).toBeVisible();
     await expect(ids(canvasElement, 'Strengths table')).toEqual(['S1']);
+  },
+};
+
+/** A plan pair's two reviews: pressing one's box selects that box alone, and its detail, Problems, Strengths and Left
+ * for later are its own, under its plan's name; unselected, Left for later says which plan's step each came from. */
+export const PlanPair: Story = {
+  args: { runKey: planRun.key },
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${planRun.key}`]: runPlanPair });
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const flow = within(await canvas.findByRole('group', { name: "The run's flow" }));
+    const boxes = flow.getAllByRole('button');
+    const pressed = () => boxes.map((box) => box.getAttribute('aria-pressed'));
+    const left = (name: string) => within(canvas.getByRole('region', { name }));
+    await expect(left('Left for later').getAllByRole('row').slice(1).map((row) => cells(row))).toEqual([
+      ['To owner', 'The spec never says how results are ranked', 'Plan simplify, xhigh plan'],
+      ['Deferred', 'Task 2 has no failing test', 'Plan review, xhigh plan'],
+    ]);
+
+    for (const [box, name, finding, strength, rest] of [
+      [1, 'Plan review, xhigh plan', 'P2', 'S1', 'Task 2 has no failing test'],
+      [3, 'Plan review, medium plan', 'P4', 'S2', 'Plan review, medium plan left nothing for later.'],
+    ] as const) {
+      await userEvent.click(boxes[box]);
+      await expect(pressed()).toEqual(boxes.map((_, i) => String(i === box)));
+      await expect(canvas.getByRole('region', { name })).toHaveTextContent(finding);
+      await expect(canvas.getByRole('region', { name: `Problems in ${name} (1)` })).toBeVisible();
+      await expect(ids(canvasElement, 'Problems table')).toEqual([finding]);
+      await expect(canvas.getByRole('heading', { name: `Strengths in ${name} (1)` })).toBeVisible();
+      await expect(ids(canvasElement, 'Strengths table')).toEqual([strength]);
+      await expect(left(`Left for later in ${name}`).getByText(rest)).toBeVisible();
+    }
   },
 };
 

@@ -109,7 +109,7 @@ export const Fixed: Story = {
 export const NotBuilt: Story = {
   args: {
     unit: {
-      ...unit('plan_review', runPlan.timeline),
+      ...unit('p1', runPlan.timeline),
       findings: [finding({ id: 'F3', step: 'plan_review', severity: 'important', summary: 'Task 4 has no failing test', outcome: 'not_built' })],
     },
   },

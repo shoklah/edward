@@ -48,6 +48,8 @@ const StepSchema = z.object({
   agent: str,
   model: str,
   effort: str,
+  // The effort the step's plan was written at, on a plan pair's steps (schema 9).
+  plan_effort: str,
   counts,
   findings: z.array(FindingSchema).nullish(),
   strengths: z.array(z.object({ category: str, summary: str })).nullish(),

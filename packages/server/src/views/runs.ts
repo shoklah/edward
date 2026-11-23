@@ -30,8 +30,8 @@ import { goalOptions, inGoal, levels, listedGoal, runChange } from './work.ts';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
-// A logged step whose kind the reporter gave; it always gives one.
-type KnownStep = Step & { step: StepKind };
+// A logged step, by its place in the exported steps, whose kind the reporter gave; it always gives one.
+type KnownStep = Step & { index: number; step: StepKind };
 
 
 // A finding's label fields: the workflow's it carries, and the app's.
@@ -278,12 +278,14 @@ function findingRows(step: KnownStep, labelOf: LabelOf): FindingRow[] {
 
 function timelineSteps(steps: KnownStep[], labelOf: LabelOf): TimelineStep[] {
   return steps.map((step) => ({
+    index: step.index,
     step: step.step,
     round: step.round ?? null,
     agent: step.agent ?? null,
     model: step.model ?? null,
     effort: step.effort ?? null,
     kit: step.kit ?? null,
+    planEffort: step.plan_effort ?? null,
     counts: step.counts ?? {},
     findings: findingRows(step, labelOf),
   }));
@@ -362,8 +364,8 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
  * (currentLabels), its review steps' strengths, its skills, models, advisor notes and context, its current warnings, and the
  * display labels of `list`'s (the active list's) categories; its project's name from `names`, every stored run's
  * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
- * named by the scope and its findings' texts, label reasons, strengths' summaries, steps' agents, models, efforts and
- * kits, loaded skills' names and models' ids masked (maskText). A step's model and effort are its tied dispatch's (the one whose `step` is its index), else
+ * named by the scope and its findings' texts, label reasons, strengths' summaries, steps' agents, models, efforts,
+ * plans' efforts and kits, loaded skills' names and models' ids masked (maskText). A step's model and effort are its tied dispatch's (the one whose `step` is its index), else
  * its own, field by field. */
 export function runView(
   run: StoredUnit<RunEntry>,
@@ -379,13 +381,15 @@ export function runView(
   const dispatches = entry.dispatches ?? [];
   // A step's dispatch is read before the filter, since its `step` is an index into the exported steps.
   const steps = (entry.steps ?? [])
-    .map((s, i): Step => {
+    .map((s, i): Step & { index: number } => {
       const dispatch = dispatches.find((d) => d.step === i);
       return {
         ...s,
+        index: i,
         agent: maskText(scope, s.agent),
         model: maskText(scope, dispatch?.model ?? s.model),
         effort: maskText(scope, dispatch?.effort ?? s.effort),
+        plan_effort: maskText(scope, s.plan_effort),
         kit: maskText(scope, s.kit),
         findings: s.findings?.map((f) => ({
           ...f,
@@ -422,6 +426,7 @@ export function runView(
     strengths: steps.flatMap((s) =>
       (s.strengths ?? []).map((strength) => ({
         step: s.step,
+        stepIndex: s.index,
         task: s.task ?? null,
         wave: s.wave ?? null,
         round: s.round ?? null,

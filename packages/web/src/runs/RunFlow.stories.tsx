@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
 import { WARNING_INK, formatDayTime } from '../lib/format.ts';
-import { runFull, runLong, runSmall } from '../test/runs.ts';
+import { runFull, runLong, runPlanPair, runPlanTwice, runSmall } from '../test/runs.ts';
 import { width } from '../test/table.ts';
 import { stagesOf, unitsOf } from './flow.ts';
 import { RunFlow } from './RunFlow.tsx';
@@ -13,11 +13,9 @@ const meta = { component: RunFlow, args: { stages: stagesOf(runFull.timeline), s
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Every exit chip shows its whole text where the box leaves it room. */
-async function chipsWhole(flow: HTMLElement) {
-  for (const chip of flow.querySelectorAll('.border-dashed')) {
-    await expect(chip.scrollWidth, chip.textContent!).toBeLessThanOrEqual(chip.clientWidth);
-  }
+/** Every element `selector` finds shows its whole text: every exit chip where the box leaves it room, unless it says. */
+async function whole(flow: HTMLElement, selector = '.border-dashed') {
+  for (const el of flow.querySelectorAll(selector)) await expect(el.scrollWidth, el.textContent!).toBeLessThanOrEqual(el.clientWidth);
 }
 
 /** `a` comes before `b` in the document. */
@@ -86,7 +84,7 @@ export const Full: Story = {
     const conflicts = flow.getByText('1 conflict');
     await expect(conflicts).toHaveClass('text-muted-foreground');
     await expect(before(flow.getByRole('button', { name: /^Task 4(?!\d)/ }), conflicts)).toBe(true);
-    await chipsWhole(group);
+    await whole(group);
     // A loop that left nothing is not in the warning ink.
     const clean = flow.getAllByText('1 round')[0].parentElement!;
     await expect(clean).not.toHaveClass(WARNING_INK);
@@ -106,6 +104,38 @@ export const Selected: Story = {
   },
 };
 
+/** Each box's lines: its name, what is under it and what it found. */
+const lines = (flow: HTMLElement) => within(flow).getAllByRole('button').map((box) => [...box.children].map((line) => line.textContent));
+
+/** A plan pair: each box names its plan under its kind, in place of its reviewer, and no line is cut. */
+export const PlanPair: Story = {
+  args: { stages: stagesOf(runPlanPair.timeline) },
+  decorators: [width(900)],
+  play: async ({ canvas }) => {
+    const flow = canvas.getByRole('group', { name: "The run's flow" });
+    await expect(lines(flow)).toEqual([
+      ['Plan simplify', 'xhigh plan', 'Found 1'],
+      ['Plan review', 'xhigh plan', 'Found 1'],
+      ['Plan simplify', 'medium plan', 'Found 1'],
+      ['Plan review', 'medium plan', 'Found 1'],
+    ]);
+    await whole(flow, 'button > *, .border-dashed');
+  },
+};
+
+/** A plan reviewed twice, with no plan to name: its reviews numbered, its one simplify not. */
+export const PlanTwice: Story = {
+  args: { stages: stagesOf(runPlanTwice.timeline) },
+  decorators: [width(900)],
+  play: async ({ canvas }) => {
+    await expect(lines(canvas.getByRole('group', { name: "The run's flow" }))).toEqual([
+      ['Plan simplify', 'plan-simplifier', 'Found 0'],
+      ['Plan review 1', 'plan-reviewer', 'Found 0'],
+      ['Plan review 2', 'plan-reviewer', 'Found 0'],
+    ]);
+  },
+};
+
 /** Long: a kit-reviewed task's two boxes, and Task 10's chips, its open one in the warning ink. */
 export const Long: Story = {
   args: { stages: stagesOf(runLong.timeline) },
@@ -121,7 +151,7 @@ export const Long: Story = {
     await expect(deferred).toBeVisible();
     await expect(open).toHaveClass(WARNING_INK);
     await expect(deferred).toHaveClass('text-muted-foreground');
-    await chipsWhole(canvas.getByRole('group', { name: "The run's flow" }));
+    await whole(canvas.getByRole('group', { name: "The run's flow" }));
   },
 };
 

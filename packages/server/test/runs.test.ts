@@ -297,7 +297,33 @@ test('a strength carries its wave', async () => {
     raw.runs[4].steps[4].strengths = [{ category: 'tests', summary: 'An invented strength' }];
   });
   expect((await run(FULL)).strengths).toEqual([
-    { step: 'task_review', task: null, wave: 'A', round: 0, category: 'tests', summary: 'An invented strength' },
+    { step: 'task_review', stepIndex: 4, task: null, wave: 'A', round: 0, category: 'tests', summary: 'An invented strength' },
+  ]);
+});
+
+test("a step carries its place in the exported steps and its plan's effort, and a strength its step's place", async () => {
+  db.$client.close();
+  db = dbWith('report-full', (raw) => {
+    const [simplify, review] = raw.runs[3].steps;
+    raw.runs[3].steps = [
+      // A step with no kind isn't shown, but keeps its place.
+      { ...simplify, step: null },
+      { ...simplify, plan_effort: 'xhigh' },
+      { ...review, plan_effort: 'xhigh', strengths: [{ category: 'tests', summary: 'An invented strength' }] },
+      { ...review, plan_effort: 'medium', strengths: [{ category: 'tests', summary: 'Another invented strength' }] },
+      { ...review, plan_effort: null },
+    ];
+  });
+  const { timeline, strengths } = await run(PLAN);
+  expect(timeline.flatMap((g) => g.steps).map((s) => [s.step, s.index, s.planEffort])).toEqual([
+    ['plan_simplify', 1, 'xhigh'],
+    ['plan_review', 2, 'xhigh'],
+    ['plan_review', 3, 'medium'],
+    ['plan_review', 4, null],
+  ]);
+  expect(strengths.map((s) => [s.summary, s.stepIndex])).toEqual([
+    ['An invented strength', 2],
+    ['Another invented strength', 3],
   ]);
 });
 
@@ -450,8 +476,8 @@ test("a run's strengths list each review step's, with its step, task and round",
   db.$client.close();
   db = dbWith('report-v5');
   expect((await run(WEBHOOKS)).strengths).toEqual([
-    { step: 'task_review', task: 1, wave: null, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
-    { step: 'final_review', task: null, wave: null, round: 0, category: 'security_privacy', summary: 'The signing secret never reaches a log' },
+    { step: 'task_review', stepIndex: 1, task: 1, wave: null, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
+    { step: 'final_review', stepIndex: 5, task: null, wave: null, round: 0, category: 'security_privacy', summary: 'The signing secret never reaches a log' },
   ]);
   expect((await run(FULL)).strengths).toEqual([]);
 });
@@ -465,9 +491,9 @@ test("with showing on, the run page holds no hidden project's name, path or bran
     // A strength that names the hidden lantern-notes, its branch and a path in it.
     raw.runs[5].steps[1].strengths[0].summary =
       'As lantern-notes does on feature/offline-sync in /Users/example/Work/lantern-notes/src/retry.ts';
-    // A kit's step whose kit, agent and tied dispatch's model name the hidden lantern-notes.
+    // A kit's step whose kit, agent, plan's effort and tied dispatch's model name the hidden lantern-notes.
     const index = raw.runs[5].steps.push({
-      step: 'kit_review', kit: 'lantern-notes', task: 2, round: 0, agent: 'lantern-notes', counts: {}, findings: [],
+      step: 'kit_review', kit: 'lantern-notes', task: 2, round: 0, agent: 'lantern-notes', plan_effort: 'lantern-notes', counts: {}, findings: [],
     }) - 1;
     raw.runs[5].dispatches.push({ agent: 'kit-reviewer', model: 'lantern-notes', effort: 'high', step: index });
   });
@@ -479,7 +505,7 @@ test("with showing on, the run page holds no hidden project's name, path or bran
   const body = await run(WEBHOOKS);
   expect(body.strengths[0].summary).toBe('As another project does on another branch in retry.ts');
   const kitStep = body.timeline.flatMap((g) => g.tasks.flatMap((t) => t.steps)).find((s) => s.step === 'kit_review');
-  expect(kitStep).toMatchObject({ kit: 'another project', agent: 'another project', model: 'another project' });
+  expect(kitStep).toMatchObject({ kit: 'another project', agent: 'another project', model: 'another project', planEffort: 'another project' });
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
 

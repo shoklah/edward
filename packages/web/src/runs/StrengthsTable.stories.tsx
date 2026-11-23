@@ -11,7 +11,7 @@ type Story = StoryObj<typeof meta>;
 /** The full run's strengths and a wave's, numbered as the run page numbers them. */
 const strengths = [
   ...runFull.strengths,
-  { step: 'task_review' as const, task: null, wave: 'A', round: 0, category: 'conventions', summary: 'Both tasks follow the one key recipe' },
+  { step: 'task_review' as const, stepIndex: 3, task: null, wave: 'A', round: 0, category: 'conventions', summary: 'Both tasks follow the one key recipe' },
 ].map((strength, i) => ({ ...strength, id: `S${i + 1}` }));
 
 /** Full: #, Summary and Category, one value per cell; a row opens to its step and task, a strength with no task
