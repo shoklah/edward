@@ -4,10 +4,11 @@ import { DataList, type ListColumn, type ListFact } from '../components/DataList
 import { Text } from '../components/Num.tsx';
 import { STEP_LABELS, STRENGTHS_SIDE, categoryLabel, taskLabel } from '../lib/format.ts';
 
-type Row = StrengthRow & { id: string };
+/** `from`: the title of the plan step's box it came from, shown as its step in place of the kind. */
+type Row = StrengthRow & { id: string; from?: string };
 
 const FACTS: ListFact<Row>[] = [
-  ['Step', (s) => STEP_LABELS[s.step]],
+  ['Step', (s) => s.from ?? STEP_LABELS[s.step]],
   ['Task', taskLabel],
 ];
 
