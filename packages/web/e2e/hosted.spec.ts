@@ -82,6 +82,15 @@ test('/account: a token created shows once and adds a row, and revoking it remov
   await expect(dialog.getByText(/^EDWARD_TOKEN=ed_[\w-]{43}$/)).toBeVisible();
   const dialogAxe = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
   expect(dialogAxe.violations).toEqual([]);
+
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = () => Promise.reject(new DOMException('', 'NotAllowedError'));
+  });
+  await dialog.getByRole('button', { name: 'Copy' }).click();
+  await expect(dialog.getByText("Couldn't copy it. Try again.")).toBeVisible();
+  await settled(dialog);
+  expect((await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations).toEqual([]);
+
   await dialog.getByRole('button', { name: 'Done' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(revoke).toHaveCount(1);

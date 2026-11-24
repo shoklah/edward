@@ -319,6 +319,21 @@ describe('check:real', () => {
     expect(status).toBe(1);
   });
 
+  test("a hidden branch named main passes beside the kept advisor roles, which are no leak's place", () => {
+    const onMain = (raw: any) => {
+      raw.runs.find((r: any) => r.record.project.endsWith('/tidepool-api')).record.branch = 'main';
+    };
+    expect(checkReal(['cat', changed('report-v6', onMain)]).stdout).toContain('\nshowing: pass\n');
+    // An agent's name holding it inside a word leaks as a value, whatever the byRole's own key main.
+    const inAgent = changed('report-v6', (raw) => {
+      onMain(raw);
+      raw.runs[5].dispatches[1].agent = 'domain-checker';
+    });
+    expect(checkReal(['cat', inAgent]).stdout).toContain(
+      '\nshowing leak: /api/models?weeks=52: branch, in a value, inside a word\n',
+    );
+  });
+
   test('names a hidden branch found as a response key, a limit of the strict check', () => {
     // A hidden tidepool-api run on a branch named docs, a category id the findings responses hold as a key.
     const file = changed('report-v6', (raw) => {

@@ -69,8 +69,8 @@ export function agentRows(sums: ModelSums) {
  * import's: each agent's mismatches, each path's stage table and differs, and the advisor's trial and its weeks, only
  * those of the period. An agent with mismatches that no dispatch in the period names gets a row with no dispatches,
  * as Skills keeps a skill required but missing. With a scope, each name from the units (agents, models, efforts, the
- * advisor's roles and failed codes) is masked (maskText), so names that mask alike merge and the sums still count
- * every project.
+ * advisor's roles and failed codes) is masked (maskText, a role by maskRole), so names that mask alike merge and the
+ * sums still count every project.
  */
 export function modelsView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -104,7 +104,7 @@ export function modelsView(input: {
       input.runs.map((unit) => unit.merged),
       input.sessions.map((unit) => unit.merged),
     ),
-    (label) => maskText(input.scope, label),
+    input.scope,
   ).advisor;
   return {
     agents: agentRows(sums).map((row) => ({ ...row, mismatches: mismatches[row.name] ?? null })),

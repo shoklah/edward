@@ -240,6 +240,15 @@ test('leaks finds a hidden name in any case, as maskText masks it, and names it 
   expect(leaks({ a: 'see LANTERN-notes' }, ['lantern'], ['lantern-notes'])).toEqual([]);
 });
 
+test("leaks skips the reporter's own advisor roles as a byRole's keys, and only there", () => {
+  const roles = { main: { calls: 1 }, 'main on Fable': { calls: 1 }, subagent: { calls: 1 } };
+  expect(leaks({ byRole: roles }, ['main', 'subagent'], [])).toEqual([]);
+  expect(leaks(roles, ['main', 'subagent'], [])).toEqual(['main', 'subagent']);
+  expect(leaks({ byRole: { 'main-helper': { calls: 1 } } }, ['main'], [])).toEqual(['main']);
+  expect(leaks({ byRole: { implementer: { main: 1 } } }, ['main'], [])).toEqual(['main']);
+  expect(leaks({ byRole: { implementer: 'main' } }, ['main'], [])).toEqual(['main']);
+});
+
 test("leaks' whole words: only the matches maskText's word rule would mask, a shown name still winning", () => {
   const { forbidden, shown } = forbiddenStrings([LANTERN, WORK], PREFIX_BRANCHES, [WORK], [], []);
   expect(leaks({ lanterns: 'see lantern' }, forbidden, shown)).toEqual(['lantern']);
