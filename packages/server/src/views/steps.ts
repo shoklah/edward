@@ -13,7 +13,7 @@ import {
 } from '@cwd/shared';
 import type { StoredUnit } from '../db/read.ts';
 import { addCount, periodUnits } from './runs.ts';
-import { maskOffers, maskText, type Scope } from './scope.ts';
+import { maskOffers, maskRole, maskText, type Scope } from './scope.ts';
 
 // The reporter's token labels, its failing-test results (TEST_RESULTS) and its offer outcomes (OFFER_OUTCOMES).
 const TOKENS = ['input', 'output', 'cache_read', 'cache_write'] as const;
@@ -144,18 +144,20 @@ export function cr6Of(runs: RunEntry[], sessions: SessionEntry[]): Cr6 {
  * guidelines, and the advisor's facts and notes, its share of the advisor and Fable dollars as share_pct gives it.
  * Each is null on an export from before CR6, as `cr6` (cr6Of over every stored unit) tells: the refusals and startup
  * unless `sessions`, the advisor unless `advisor`; on CR6 data, units with nothing sum to zeros, and a unit's advisor
- * with no `by_role` (stored before CR6) is not summed. `name` maps each refusal key, role label and failed code as it is
- * summed (a view's maskText under a scope), so keys that map alike merge.
+ * with no `by_role` (stored before CR6) is not summed. With a scope, each refusal key and failed code (maskText) and
+ * role label (maskRole) is masked as it is summed, so keys that mask alike merge.
  */
 export function unitSums(
   runs: RunEntry[],
   sessions: SessionEntry[],
   cr6: Cr6,
-  name: (label: string) => string = (label) => label,
+  scope: Scope | null = null,
 ): UnitSums {
   const units = [...runs, ...sessions];
   const guard: Record<string, number> = {};
-  for (const unit of units) for (const [key, n] of Object.entries(unit.refusals ?? {})) addCount(guard, name(key), n);
+  for (const unit of units) {
+    for (const [key, n] of Object.entries(unit.refusals ?? {})) addCount(guard, maskText(scope, key), n);
+  }
   const startup = { with: 0, without: 0 };
   for (const s of sessions) startup[s.startup ? 'with' : 'without'] += 1;
   let advisor: AdvisorFacts | null = null;
@@ -181,11 +183,11 @@ export function unitSums(
       sums.cost += a.cost ?? 0;
       for (const [label, n] of Object.entries(a.tokens ?? {})) addCount(sums.tokens, label, n);
       for (const [label, role] of Object.entries(a.by_role ?? {})) {
-        const row = (sums.byRole[name(label)] ??= { calls: 0, flagged: false });
+        const row = (sums.byRole[maskRole(scope, label)] ??= { calls: 0, flagged: false });
         row.calls += role.calls ?? 0;
         row.flagged ||= role.flagged ?? false;
       }
-      for (const [code, n] of Object.entries(a.failed ?? {})) addCount(sums.failed, name(code), n);
+      for (const [code, n] of Object.entries(a.failed ?? {})) addCount(sums.failed, maskText(scope, code), n);
       for (const week of a.weeks ?? []) fable += week.fable ?? 0;
     }
     const total = sums.cost + fable;
@@ -218,9 +220,7 @@ export function stepsView(input: {
     input.runs.map((unit) => unit.merged),
     input.sessions.map((unit) => unit.merged),
   );
-  const { advisor, dispatchGuard, startup } = unitSums(units.runs, units.sessions, cr6, (label) =>
-    maskText(input.scope, label),
-  );
+  const { advisor, dispatchGuard, startup } = unitSums(units.runs, units.sessions, cr6, input.scope);
   return {
     steps: stepSums(runs),
     rules: {

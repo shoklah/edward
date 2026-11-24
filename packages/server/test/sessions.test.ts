@@ -25,7 +25,7 @@ let db: Db;
 
 /** A fresh database holding `name` (report-v6 unless given), changed first by `change`. */
 function dbWith(change: (raw: any) => void = () => {}, name = 'report-v6'): Db {
-  const fresh = openDb(join(dir, `${name}.sqlite`));
+  const fresh = openDb(join(mkdtempSync(join(dir, 'db ')), 'dashboard.sqlite'));
   const raw = fixture(name);
   change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
@@ -130,8 +130,6 @@ describe('with showing off', () => {
 
   test("a held run with no window start is held first, and its timeline entry is at the session's start", async () => {
     db.$client.close();
-    rmSync(dir, { recursive: true, force: true });
-    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
     db = dbWith((raw) => {
       raw.runs[5].window.start = null;
     });
@@ -185,6 +183,37 @@ describe('with showing on lantern-notes', () => {
     expect(body.sessions.map((s) => s.sessionId)).toEqual([null, null]);
   });
 
+  // The two-run session with more commands: one in its shown plan run's window, and some around the end of its hidden
+  // feature/webhooks run's, (2026-11-12T02:40:00Z, 2026-11-12T08:00:05.317Z] unless `change` moves it.
+  async function commands(change: (raw: any) => void = () => {}): Promise<string[]> {
+    db.$client.close();
+    db = dbWith((raw) => {
+      raw.sessions.find((s: any) => s.file.includes(TWO_RUNS)).commands.push(
+        { name: 'in-plan', time: '2026-11-08T08:20:00.000Z' },
+        { name: 'at-start', time: '2026-11-12T02:40:00.000Z' },
+        { name: 'at-end', time: '2026-11-12T08:00:05.317Z' },
+        { name: 'after-end', time: '2026-11-12T08:00:05.318Z' },
+      );
+      change(raw);
+    });
+    setShowing(db, [projectKey(LANTERN)]);
+    const body = await sessions('?weeks=52');
+    const inside = ['2026-11-12T02:45:10.000Z', '2026-11-12T08:00:05.317Z'];
+    expect(leaks(body, [...inside, 'tidepool-api', 'feature/webhooks'], [])).toEqual([]);
+    return twoRuns(body).timeline.filter((t) => t.kind === 'command').map((c) => c.name);
+  }
+
+  test("a command typed in a hidden held run's window is left out, every other one stays", async () => {
+    expect(await commands()).toEqual(['model', 'grill-me', 'in-plan', 'at-start', 'after-end']);
+  });
+
+  test("a hidden held run's window with no start reaches back to the transcript's", async () => {
+    const open = (raw: any) => {
+      raw.runs[5].window.start = null;
+    };
+    expect(await commands(open)).toEqual(['after-end']);
+  });
+
   test("a shown session is named by the scope, so the project's alias applies", async () => {
     setShowing(db, [projectKey(LANTERN)]);
     const body = await sessions('?weeks=4', { [LANTERN]: 'Lantern' });
@@ -194,8 +223,6 @@ describe('with showing on lantern-notes', () => {
 
   test('names and titles are masked, and the response leaks nothing', async () => {
     db.$client.close();
-    rmSync(dir, { recursive: true, force: true });
-    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
     const change = (raw: any) => {
       const session = raw.sessions.find((s: any) => s.file.includes(TWO_RUNS));
       session.title = 'Port tidepool-api webhooks to lantern';
@@ -305,8 +332,6 @@ describe('changes and goals, on report-work', () => {
 
   test('with showing on, headlines and goal names are masked', async () => {
     db.$client.close();
-    rmSync(dir, { recursive: true, force: true });
-    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
     db = dbWith((raw) => {
       raw.runs.find((r: any) => r.key === OFFLINE_RUN).headline = 'Queue edits as tidepool-api does';
       for (const unit of [...raw.runs, ...raw.sessions]) {

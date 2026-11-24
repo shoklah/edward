@@ -36,13 +36,9 @@ import { cr6Of, ruleSums, stepSums, unitSums } from './views/steps.ts';
 import { runTime } from './views/weeks.ts';
 import { goalHomes, goalView, levels } from './views/work.ts';
 
-/** A JSON value's object keys, at any depth. */
-const objectKeys = (json: unknown): string[] =>
-  Array.isArray(json)
-    ? json.flatMap(objectKeys)
-    : json && typeof json === 'object'
-      ? Object.entries(json).flatMap(([key, value]) => [key, ...objectKeys(value)])
-      : [];
+/** A JSON value with its strings left out, so leaks finds only its keys, each still in its place. */
+const withoutStrings = (json: unknown): unknown =>
+  JSON.parse(JSON.stringify(json, (_, value) => (typeof value === 'string' ? null : value)));
 
 /** A JSON value's leaf values, at any depth. */
 const values = (json: unknown): unknown[] =>
@@ -461,7 +457,7 @@ else {
       const words = leaks(body, forbidden, strings.shown, true);
       count += found.length;
       inside += found.filter((s) => !words.includes(s)).length;
-      const inKeys = found.length ? leaks(objectKeys(body), found, strings.shown) : [];
+      const inKeys = found.length ? leaks(withoutStrings(body), found, strings.shown) : [];
       const inValues = found.length ? leaks(values(body), found, strings.shown) : [];
       for (const s of found) {
         const place = [inKeys.includes(s) && 'a key', inValues.includes(s) && 'a value'].filter(Boolean).join(' and ');
