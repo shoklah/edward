@@ -2,10 +2,10 @@
 // hour apart (the first is the baseline, so the feed shows what the later ones add), labels.json's invented labels,
 // a fixed clock, a reporter that prints the last fixture again, no triggers and the labeller off. Usage:
 // `pnpm --filter @cwd/server dev:fixtures [fixture...]` (default report-full report-later report-v6 report-v7
-// report-work); the port is the config's default unless PORT is set. With `DEV_MODE=hosted` it serves hosted mode on
-// `localhost:<port>` instead, the fixtures imported into account 1's file, and a stub GitHub that signs in at once as
-// account 1, `rowan-k`, the admin; account 2, `mika-ito`, invited, holds the same fixtures, keeps lantern-notes as its
-// one shown project and grants `rowan-k` a view.
+// report-kits report-work); the port is the config's default unless PORT is set. With `DEV_MODE=hosted` it serves
+// hosted mode on `localhost:<port>` instead, the fixtures imported into account 1's file, and a stub GitHub that signs
+// in at once as account 1, `rowan-k`, the admin; account 2, `mika-ito`, invited, holds the same fixtures, keeps
+// lantern-notes as its one shown project and grants `rowan-k` a view.
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -30,7 +30,7 @@ const HOUR = 60 * 60 * 1000;
 const names =
   process.argv.length > 2
     ? process.argv.slice(2)
-    : ['report-full', 'report-later', 'report-v6', 'report-v7', 'report-work'];
+    : ['report-full', 'report-later', 'report-v6', 'report-v7', 'report-kits', 'report-work'];
 const files = names.map((name) => fileURLToPath(new URL(`../../shared/fixtures/${name}.json`, import.meta.url)));
 const dataDir = mkdtempSync(join(tmpdir(), 'cwd fixtures '));
 const base = loadConfig(dataDir);

@@ -231,6 +231,15 @@ describe('check:real', () => {
     expect(status).toBe(0);
   });
 
+  test("report-kits' totals agree with its runs", () => {
+    const { stdout, status } = checkReal(['cat', fixturePath('report-kits')]);
+    expect(stdout).toContain('\nreporter keys: 4 compared, 0 differ\n');
+    expect(stdout).toContain('\nsteps: 8 compared, 0 differ\n');
+    expect(stdout).not.toMatch(/ [1-9]\d* differ/);
+    expect(stdout).toContain('\nshowing: pass\n');
+    expect(status).toBe(0);
+  });
+
   test("names the goals' sum when a goal's cost drops out, printing no goal name", () => {
     // A loose session with no project: its goal has no home, so no goal page holds its cost.
     const file = changed('report-work', (raw) => {

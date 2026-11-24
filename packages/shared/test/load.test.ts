@@ -89,6 +89,20 @@ describe('loadReport', () => {
     expect(build.started_by).toEqual({ key: '52e8f40878fa827a', how: 'started' });
   });
 
+  test("reads the runs' kits, check results and finding labels of the kits fixture, never a kit's files", () => {
+    const result = loadReport(fixture('report-kits'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const run = result.report.runs[3];
+    expect(run.kits).toEqual([{ name: 'ui', version: '0.2.0', tasks: [1, 2, 3] }]);
+    expect(run.kit_checks).toEqual([
+      { kit: 'ui', task: 1, result: 'passed' },
+      { kit: 'ui', task: 2, result: 'failed' },
+      { kit: 'ui', task: 3, result: 'couldnt_run' },
+    ]);
+    expect(run.steps![1].findings!.map((f) => f.label)).toEqual(['Every width', 'States', 'Every width']);
+  });
+
   test('accepts a failing-test entry whose task isn’t a number, as the raw record a session wrote', () => {
     const json = fixture('report-v5');
     const run = json.runs.find((r: { schema: number }) => r.schema === 5);

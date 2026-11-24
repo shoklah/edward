@@ -41,7 +41,7 @@ for (const width of [1440, 375]) {
     // The bar is drawn twice, in the rail and in the top row, one hidden by breakpoint.
     await expect(page.getByText("mika-ito's projects: lantern-notes").filter({ visible: true })).toBeVisible();
     // The bar comes with the status, before Home's refetch: wait for the viewed account's feed, not the owner's.
-    await expect(page.getByRole('region', { name: 'Since you last looked' }).getByRole('listitem')).toHaveCount(3);
+    await expect(page.getByRole('region', { name: 'Since you last looked' }).getByRole('listitem')).toHaveCount(7);
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveScreenshot(`viewer-${width}.png`);
   });

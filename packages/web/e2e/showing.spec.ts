@@ -27,7 +27,7 @@ test.afterEach(async ({ request }) => {
 test('showing lantern-notes hides tidepool-api from the pages', async ({ page }) => {
   const tidepoolRows = page.getByRole('row').filter({ hasText: /tidepool-api|fix\/retry-backoff/ });
   await page.goto('/runs');
-  await expect(tidepoolRows).toHaveCount(2);
+  await expect(tidepoolRows).toHaveCount(4);
 
   await page.getByRole('switch', { name: 'Showing mode' }).click();
   const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
