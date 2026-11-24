@@ -52,7 +52,8 @@ export function CopyButton({ text, label, children }: { text: string; label?: st
       <span className="inline-flex items-center gap-0.5 align-baseline">
         {children}
         {button}
-      </span>{' '}
+      </span>
+      {failed && ' '}
       {line}
     </>
   ) : (
