@@ -272,6 +272,7 @@ function findingRows(step: KnownStep, labelOf: LabelOf): FindingRow[] {
     outcome: f.outcome ?? null,
     reason: f.reason ?? null,
     verdicts: f.verdicts ?? [],
+    label: f.label ?? null,
     ...labelOf(f),
   }));
 }
@@ -364,7 +365,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
  * (currentLabels), its review steps' strengths, its skills, models, advisor notes and context, its current warnings, and the
  * display labels of `list`'s (the active list's) categories; its project's name from `names`, every stored run's
  * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
- * named by the scope and its findings' texts, label reasons, strengths' summaries, steps' agents, models, efforts,
+ * named by the scope and its findings' texts, checklist lines, label reasons, strengths' summaries, steps' agents, models, efforts,
  * plans' efforts and kits, loaded skills' names and models' ids masked (maskText). A step's model and effort are its tied dispatch's (the one whose `step` is its index), else
  * its own, field by field. */
 export function runView(
@@ -395,6 +396,7 @@ export function runView(
           ...f,
           kind: maskText(scope, f.kind),
           summary: maskText(scope, f.summary),
+          label: maskText(scope, f.label),
           reason: maskText(scope, f.reason),
           verdicts: f.verdicts?.map((v) => maskText(scope, v)),
         })),

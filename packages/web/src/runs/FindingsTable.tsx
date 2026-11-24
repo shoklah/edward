@@ -61,6 +61,7 @@ const factsOf = (labels: Record<string, string>, rounds: number): ListFact<Row>[
   ['Task', taskLabel],
   ['Severity', (f) => f.severity && countName(f.severity)],
   ['Category', (f) => categoryLabel(f.category, labels)],
+  ['Checklist line', (f) => f.label],
   ['Labelled by', (f) => (f.category === null ? null : f.judge === 'app' ? 'App' : 'Workflow')],
   ['Outcome', (f) => outcomeLabel(f.outcome)],
   ['Reason', (f) => f.reason],

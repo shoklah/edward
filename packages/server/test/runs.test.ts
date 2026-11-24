@@ -391,6 +391,7 @@ test("the findings table flattens every step's findings", async () => {
     reason: 'The shared key is intended: both tasks read the same snapshot',
     verdicts: ['open', 'open', 'open'],
     category: null,
+    label: null,
     validity: null,
     judge: null,
     relevance: null,
@@ -401,6 +402,22 @@ test("the findings table flattens every step's findings", async () => {
   expect(findings[0]).toMatchObject({ step: 'task_review', task: 1, wave: null, outcome: 'fixed', closedRound: 1 });
   expect(findings[5]).toMatchObject({ id: 'F6', task: 4, outcome: null });
   expect(findings[9]).toMatchObject({ id: 'F10', step: 'final_review', task: null });
+});
+
+test("a kit finding's row carries its checklist line, masked with showing on", async () => {
+  db.$client.close();
+  db = dbWith('report-kits', (raw) => (raw.runs[3].steps[1].findings[0].label = 'As tidepool-api does'));
+  const syncLog = runKey(fixture('report-kits').runs[3]) as string;
+  const rows = async () => (await run(syncLog)).findings;
+  expect((await rows()).filter((f) => f.step === 'kit_review').map((f) => f.label)).toEqual([
+    'As tidepool-api does',
+    'States',
+    'Every width',
+    null,
+  ]);
+  expect((await rows()).filter((f) => f.step !== 'kit_review').every((f) => f.label === null)).toBe(true);
+  setShowing(db, [projectKey('/Users/example/Work/lantern-notes')]);
+  expect((await rows()).find((f) => f.id === 'F3')!.label).toBe('As another project does');
 });
 
 test("a labelled finding carries the app's category, relevance and reason, an unlabelled one nulls", async () => {

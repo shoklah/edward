@@ -66,14 +66,22 @@ async function compliance(query = ''): Promise<ComplianceResponse> {
   return res.json();
 }
 
-test('FAMILIES holds the five families and every kind once; familyOf gives other for an unknown or null kind', () => {
-  expect(FAMILIES.map((f) => f.family)).toEqual(['review_flow', 'steps_record', 'agents_models', 'skills_offers', 'sessions']);
+test('FAMILIES holds the six families and every kind once; familyOf gives other for an unknown or null kind', () => {
+  expect(FAMILIES.map((f) => f.family)).toEqual([
+    'review_flow',
+    'steps_record',
+    'kits',
+    'agents_models',
+    'skills_offers',
+    'sessions',
+  ]);
   const kinds = FAMILIES.flatMap((f) => f.kinds);
-  expect(kinds).toHaveLength(31);
-  expect(new Set(kinds).size).toBe(31);
+  expect(kinds).toHaveLength(37);
+  expect(new Set(kinds).size).toBe(37);
   expect(familyOf('step_agent_missing')).toBe('steps_record');
   expect(familyOf('findings_unlabelled')).toBe('steps_record');
   expect(familyOf('strengths_unrecorded')).toBe('steps_record');
+  expect(familyOf('kit_unverified')).toBe('kits');
   expect(familyOf('startup_missing')).toBe('sessions');
   expect(familyOf('brand_new_check')).toBe('other');
   expect(familyOf(null)).toBe('other');
@@ -250,6 +258,27 @@ test("with showing on, the list holds the shown project's session warnings, mask
   ]);
   expect(off.warnings.filter((w) => w.runKey === null)).toHaveLength(4);
   expect(body.hidden).toBe(off.warnings.length - body.warnings.length);
+});
+
+test('the kit kinds sit in their own family, and with showing on its warnings are listed, masked', async () => {
+  importOnly('report-kits');
+  expect((await compliance()).rows).toEqual([
+    { family: 'kits', kind: 'kit_unrecorded', cells: [0, 0, 1, 0] },
+    { family: 'kits', kind: 'kit_review_missing', cells: [0, 0, 1, 0] },
+    { family: 'kits', kind: 'kit_check_missing', cells: [0, 0, 1, 0] },
+    { family: 'kits', kind: 'kit_unverified', cells: [0, 0, 2, 0] },
+  ]);
+  importOnly('report-kits', (raw) => {
+    const text = raw.runs[3].warns[0].replace('kit ui', 'kit tidepool-api');
+    raw.runs[3].warns[0] = text;
+    raw.runs[3].warnings[0].text = text;
+  });
+  setShowing(db, [projectKey(LANTERN)]);
+  const body = await compliance();
+  expect(body.warnings.map((w) => w.text)).toContain(
+    "WARN: feature/sync-log (2026-11-04): kit another project's checks ended failed on task 2",
+  );
+  expect([body.warnings.length, body.hidden]).toEqual([2, 3]);
 });
 
 test("information is the latest export's health.info lines, from the reporter", async () => {

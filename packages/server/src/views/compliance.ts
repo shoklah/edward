@@ -17,8 +17,9 @@ import { showFacts, showWarning, type Scope } from './scope.ts';
 const OTHER = 'other';
 
 /**
- * The warning kinds by family, in the page's order: PR #8's kinds (in its table's order within a family), and CR10's
- * findings_unlabelled and strengths_unrecorded under steps_record. The reporter carries no grouping.
+ * The warning kinds by family, in the page's order: PR #8's kinds (in its table's order within a family), CR10's
+ * findings_unlabelled and strengths_unrecorded under steps_record, and the kit kinds under kits. The reporter carries no
+ * grouping.
  */
 export const FAMILIES: { family: string; kinds: readonly string[] }[] = [
   {
@@ -50,6 +51,17 @@ export const FAMILIES: { family: string; kinds: readonly string[] }[] = [
       'step_agent_duplicate',
       'findings_unlabelled',
       'strengths_unrecorded',
+    ],
+  },
+  {
+    family: 'kits',
+    kinds: [
+      'kit_unrecorded',
+      'kit_review_missing',
+      'kit_check_missing',
+      'kit_unverified',
+      'kit_rules_unread',
+      'kit_file_unread',
     ],
   },
   {

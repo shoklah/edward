@@ -125,6 +125,7 @@ export function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' 
     reason: null,
     verdicts: [],
     category: null,
+    label: null,
     validity: null,
     judge: f.category ? 'app' : null,
     relevance: null,

@@ -79,6 +79,12 @@ export const KIND_LABELS: Record<string, string> = {
   step_agent_duplicate: 'Steps share an agent id',
   findings_unlabelled: 'Findings unlabelled',
   strengths_unrecorded: 'Strengths unrecorded',
+  kit_unrecorded: 'Kit not recorded',
+  kit_review_missing: 'Kit review missing',
+  kit_check_missing: 'Kit checks not run',
+  kit_unverified: 'Kit checks not passed',
+  kit_rules_unread: 'Kit rules not read',
+  kit_file_unread: 'Kit file not read',
 };
 
 /** A warning kind on screen, capitalised: its wording, a kind the dashboard doesn't know as its slug with spaces, none as
@@ -107,6 +113,7 @@ export const SPEND_GROUP_LABELS: Record<SpendGroup, string> = {
 export const FAMILY_LABELS: Record<string, string> = {
   review_flow: 'Review flow',
   steps_record: 'Steps and the record',
+  kits: 'Kits',
   agents_models: 'Agents and models',
   skills_offers: 'Skills and offers',
   sessions: 'Sessions',
