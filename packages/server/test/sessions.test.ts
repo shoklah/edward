@@ -185,6 +185,39 @@ describe('with showing on lantern-notes', () => {
     expect(body.sessions.map((s) => s.sessionId)).toEqual([null, null]);
   });
 
+  // The two-run session with more commands: one in its shown plan run's window, and some around the end of its hidden
+  // feature/webhooks run's, (2026-11-12T02:40:00Z, 2026-11-12T08:00:05.317Z] unless `change` moves it.
+  async function commands(change: (raw: any) => void = () => {}): Promise<string[]> {
+    db.$client.close();
+    rmSync(dir, { recursive: true, force: true });
+    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
+    db = dbWith((raw) => {
+      raw.sessions.find((s: any) => s.file.includes(TWO_RUNS)).commands.push(
+        { name: 'in-plan', time: '2026-11-08T08:20:00.000Z' },
+        { name: 'at-start', time: '2026-11-12T02:40:00.000Z' },
+        { name: 'at-end', time: '2026-11-12T08:00:05.317Z' },
+        { name: 'after-end', time: '2026-11-12T08:00:05.318Z' },
+      );
+      change(raw);
+    });
+    setShowing(db, [projectKey(LANTERN)]);
+    const body = await sessions('?weeks=52');
+    const inside = ['2026-11-12T02:45:10.000Z', '2026-11-12T08:00:05.317Z'];
+    expect(leaks(body, [...inside, 'tidepool-api', 'feature/webhooks'], [])).toEqual([]);
+    return twoRuns(body).timeline.filter((t) => t.kind === 'command').map((c) => c.name);
+  }
+
+  test("a command typed in a hidden held run's window is left out, every other one stays", async () => {
+    expect(await commands()).toEqual(['model', 'grill-me', 'in-plan', 'at-start', 'after-end']);
+  });
+
+  test("a hidden held run's window with no start reaches back to the transcript's", async () => {
+    const open = (raw: any) => {
+      raw.runs[5].window.start = null;
+    };
+    expect(await commands(open)).toEqual(['after-end']);
+  });
+
   test("a shown session is named by the scope, so the project's alias applies", async () => {
     setShowing(db, [projectKey(LANTERN)]);
     const body = await sessions('?weeks=4', { [LANTERN]: 'Lantern' });

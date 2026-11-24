@@ -30,16 +30,22 @@ const time = (at: string) => parseTime(at).getTime();
  * A session's timeline, in time order: its skill loads with their outcome (skillOutcomeLabel), its commands, a command
  * `x:y` never loaded when an unmet typed trigger in `typed` (the session's and its held runs') has skill `y` and its
  * time, and its shown held runs' window starts (the session's start for a run with none), with their headlines; an
- * untimed load or command is left out. Names are masked (maskText).
+ * untimed load or command is left out, and so is a command in the window of one of `hidden`, the held runs a scope
+ * hides: (start, end] as the reporter's in_window, a null start open. Names are masked (maskText).
  */
 function timelineOf(
   session: SessionEntry,
   typed: NonNullable<SessionEntry['typed']>,
   runs: { run: StoredUnit<RunEntry>; facts: RunFacts }[],
+  hidden: StoredUnit<RunEntry>[],
   scope: Scope | null,
 ): SessionRow['timeline'] {
   const unmet = typed.filter((t) => t.met === false);
   const neverLoaded = (name: string, at: string) => unmet.some((t) => t.skill === commandSkill(name) && t.time === at);
+  const inHidden = (at: string) =>
+    hidden.some(({ merged: { window } }) => {
+      return (!window?.start || time(at) > time(window.start)) && (!window?.end || time(at) <= time(window.end));
+    });
   const item = (at: string, kind: 'skill' | 'command' | 'run', name: string) => ({
     at,
     kind,
@@ -53,7 +59,7 @@ function timelineOf(
       s.time ? [{ ...item(s.time, 'skill', maskText(scope, s.name ?? '')), outcome: skillOutcomeLabel(s.outcome) }] : [],
     ),
     ...(session.commands ?? []).flatMap((c) =>
-      c.time
+      c.time && !inHidden(c.time)
         ? [{ ...item(c.time, 'command', maskText(scope, c.name ?? '')), neverLoaded: neverLoaded(c.name ?? '', c.time) }]
         : [],
     ),
@@ -159,9 +165,9 @@ export function heldRuns(runs: StoredUnit<RunEntry>[]): Map<string, StoredUnit<R
  * session holds the runs whose window is in its transcript, by window start, a run with none at the session's start;
  * its change and goal are Work's (listedChange, listedGoal). `goalOptions` covers the sessions that started in the
  * period's weeks (goalOptions). With a scope, only sessions in a shown project are listed (showSession), named by the
- * scope, with no session ID; a hidden held run is left out of its holds, timeline and path filter, the shown ones as
- * showFacts gives them; titles and names are masked (maskText); `hidden` counts the sessions that match the filters
- * but aren't shown.
+ * scope, with no session ID; a hidden held run is left out of its holds, timeline (the commands typed in its window
+ * too) and path filter, the shown ones as showFacts gives them; titles and names are masked (maskText); `hidden` counts
+ * the sessions that match the filters but aren't shown.
  */
 export function sessionsView(input: {
   runs: StoredUnit<RunEntry>[];
@@ -213,6 +219,7 @@ export function sessionsView(input: {
       return show ? [{ run, facts: show }] : [];
     });
     if (!matches(shown.map((s) => s.facts))) continue;
+    const hiddenRuns = held.filter(({ facts }) => !showFacts(scope, facts)).map(({ run }) => run);
 
     sessions.push({
       ...sessionRow(unit, runRoots, names, scope),
@@ -227,7 +234,13 @@ export function sessionsView(input: {
         headline: facts.headline,
         path: facts.path,
       })),
-      timeline: timelineOf(session, [session, ...held.map((h) => h.run.merged)].flatMap((u) => u.typed ?? []), shown, scope),
+      timeline: timelineOf(
+        session,
+        [session, ...held.map((h) => h.run.merged)].flatMap((u) => u.typed ?? []),
+        shown,
+        hiddenRuns,
+        scope,
+      ),
     });
   }
 
