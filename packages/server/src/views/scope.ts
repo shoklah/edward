@@ -20,6 +20,10 @@ export type Scope = {
 // A session ID, bare or as its `<uuid>.jsonl` file.
 const SESSION_IDS = new RegExp(`${SESSION_ID.source}(?:\\.jsonl)?`, 'gi');
 
+// The reporter's own names for who called the advisor (by_role): a main session and a subagent with no agent type, each
+// also "on Fable". Any other role is an agent type, which can name anything.
+const ROLES = ['main', 'subagent'].flatMap((role) => [role, `${role} on Fable`]);
+
 // The strings as one regex alternation, escaped and longest first, so a longer string wins where two start together.
 function anyOf(strings: string[]): string {
   const escaped = [...strings].sort((a, b) => b.length - a.length).map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -88,6 +92,11 @@ export function maskOffers(scope: Scope | null, offers: RunEntry['offers']): Run
   return offers?.map((o) => ({ ...o, skill: maskText(scope, o.skill) }));
 }
 
+/** An advisor role's name as a view shows it: the reporter's own (ROLES) as it is, any other masked (maskText). */
+export function maskRole(scope: Scope | null, role: string): string {
+  return ROLES.includes(role) ? role : maskText(scope, role);
+}
+
 /**
  * A run's facts as a view shows them: with a scope, null for a hidden project's run, else named by the scope, with its
  * branch and headline masked (maskText).
@@ -115,9 +124,10 @@ export function showWarning(scope: Scope | null, text: string): { text: string; 
 
 /**
  * The forbidden strings found in any key or string value of the JSON as it is sent, in any case as maskText masks, and
- * inside words included, but not those found only inside a shown string (forbiddenStrings): the leak check of the
- * views' tests and check:real. With `words`, only those found as whole words, by maskText's word rule, which check:real
- * counts apart. Each is named as given.
+ * inside words included, but not those found only inside a shown string (forbiddenStrings) nor a byRole's keys that are
+ * the reporter's own advisor roles (ROLES), which maskRole keeps: the leak check of the views' tests and check:real.
+ * With `words`, only those found as whole words, by maskText's word rule, which check:real counts apart. Each is named
+ * as given.
  */
 export function leaks(json: unknown, forbidden: string[], shown: string[], words = false): string[] {
   if (forbidden.length === 0) return [];
@@ -131,12 +141,15 @@ export function leaks(json: unknown, forbidden: string[], shown: string[], words
   return [...new Set(named)].map((s) => original.get(s)!);
 }
 
-// Every key and string value of a parsed JSON value.
-function textsOf(value: unknown): string[] {
+// Every key and string value of a parsed JSON value, but a byRole's keys among ROLES.
+function textsOf(value: unknown, byRole = false): string[] {
   if (typeof value === 'string') return [value];
-  if (Array.isArray(value)) return value.flatMap(textsOf);
+  if (Array.isArray(value)) return value.flatMap((item) => textsOf(item));
   if (value !== null && typeof value === 'object') {
-    return Object.entries(value).flatMap(([key, item]) => [key, ...textsOf(item)]);
+    return Object.entries(value).flatMap(([key, item]) => [
+      ...(byRole && ROLES.includes(key) ? [] : [key]),
+      ...textsOf(item, key === 'byRole'),
+    ]);
   }
   return [];
 }

@@ -281,15 +281,33 @@ test("with showing on, the sums count every project and hold no hidden project's
   expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
 });
 
-test("with showing on, no response key names a hidden project's branch", async () => {
+test("with showing on, the reporter's own advisor roles are kept, and no other key names a hidden branch", async () => {
   // A hidden tidepool-api run on a branch named main, a name the shown lantern-notes has no run on.
   db.$client.close();
   db = dbWith('main branch', (raw) => {
     raw.runs.find((run: any) => run.record.project === TIDEPOOL).record.branch = 'main';
+    // The reporter's other own roles, and an agent type named after the hidden branch.
+    Object.assign(raw.runs[5].advisor.by_role, {
+      'main on Fable': { calls: 1, flagged: true },
+      subagent: { calls: 1, flagged: false },
+      'subagent on Fable': { calls: 1, flagged: true },
+      'main-helper': { calls: 1, flagged: false },
+    });
   }, 'report-v6');
   setShowing(db, [projectKey(LANTERN)]);
   const branches = new Map([[TIDEPOOL, ['main']]]);
   const strings = forbiddenStrings([LANTERN, TIDEPOOL], branches, [LANTERN], [], []);
   expect(strings.forbidden).toContain('main');
-  expect(leaks(await models('?weeks=52'), strings.forbidden, strings.shown)).toEqual([]);
+  const body = await models('?weeks=52');
+  expect(body.advisor.facts?.byRole.main).toEqual({ calls: 7, flagged: false });
+  expect(Object.keys(body.advisor.facts!.byRole)).toEqual([
+    'another branch-helper',
+    'implementer',
+    'main',
+    'main on Fable',
+    'subagent',
+    'subagent on Fable',
+    'task-reviewer',
+  ]);
+  expect(leaks(body, strings.forbidden, strings.shown)).toEqual([]);
 });
