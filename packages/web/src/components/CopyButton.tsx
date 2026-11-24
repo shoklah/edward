@@ -9,8 +9,8 @@ const COPIED_MS = 2000;
 
 /**
  * A button that copies `text`: "Copy", or with a `label` an icon-only one of that name. For a moment after a copy its
- * icon is a check and its word "Copied", which is announced too; a failed one says so beside it, in fixed words, until
- * the next try. Its place is a row: the failure's line comes before "Copy" and after an icon, so neither moves.
+ * icon is a check and its word "Copied", which is announced too; a failed one says so in fixed words until the next
+ * try, on a line before "Copy" or after the icon, so a row's buttons stay put.
  */
 export function CopyButton({ text, label }: { text: string; label?: string }) {
   const [outcome, setOutcome] = useState<'copied' | 'failed' | null>(null);
@@ -35,16 +35,20 @@ export function CopyButton({ text, label }: { text: string; label?: string }) {
   }
 
   const Icon = copied ? Check : Copy;
+  const line = (
+    <span aria-live="polite" className={failed ? cn(WARNING_INK, label ? 'text-xs' : 'self-center text-sm') : 'sr-only'}>
+      {copied && 'Copied'}
+      {failed && "Couldn't copy it. Try again."}
+    </span>
+  );
   return (
     <>
-      <span aria-live="polite" className={failed ? cn(WARNING_INK, label ? 'order-last text-xs' : 'self-center text-sm') : 'sr-only'}>
-        {copied && 'Copied'}
-        {failed && "Couldn't copy it. Try again."}
-      </span>
+      {!label && line}
       <Button variant={label ? 'ghost' : 'outline'} size={label ? 'icon-xs' : 'default'} aria-label={label} onClick={copy}>
         <Icon aria-hidden />
         {!label && (copied ? 'Copied' : 'Copy')}
       </Button>
+      {label && line}
     </>
   );
 }

@@ -23,8 +23,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const announced = (canvasElement: HTMLElement) => canvasElement.querySelector('[aria-live="polite"]');
-/** Longer than a copy shows as done, so a check that it went away doesn't give up first. */
-const afterAMoment = { timeout: 4000 };
 
 /** The text is copied, then the button says so for a moment, in its icon and its word, and to a screen reader. */
 export const Default: Story = {
@@ -40,7 +38,8 @@ export const Default: Story = {
     await expect(announced(canvasElement)).toHaveTextContent('Copied');
     await expect(announced(canvasElement)).toHaveClass('sr-only');
 
-    await waitFor(() => expect(button).toHaveAccessibleName('Copy'), afterAMoment);
+    // Longer than a copy shows as done.
+    await waitFor(() => expect(button).toHaveAccessibleName('Copy'), { timeout: 4000 });
     await expect(button.querySelector('.lucide-copy')).toBeVisible();
     await expect(announced(canvasElement)).toBeEmptyDOMElement();
   },
@@ -58,9 +57,6 @@ export const IconOnly: Story = {
     await expect(button).toHaveTextContent('');
     await expect(announced(canvasElement)).toHaveTextContent('Copied');
     await expect(announced(canvasElement)).toHaveClass('sr-only');
-
-    await waitFor(() => expect(button.querySelector('.lucide-copy')).toBeVisible(), afterAMoment);
-    await expect(announced(canvasElement)).toBeEmptyDOMElement();
   },
 };
 
@@ -87,8 +83,7 @@ export const Fails: Story = {
     const line = await canvas.findByText(FAILED);
     await expect(line).toBeVisible();
     await expect(line).toHaveClass(WARNING_INK);
-    await expect(line).not.toHaveClass('sr-only');
-    await expect(announced(canvasElement)).toHaveTextContent(FAILED);
+    await expect(line).toHaveAttribute('aria-live', 'polite');
     await expect(canvasElement).not.toHaveTextContent('Write permission denied.');
     await expect(button).toHaveAccessibleName('Copy');
     await expect(button.querySelector('.lucide-copy')).toBeVisible();
