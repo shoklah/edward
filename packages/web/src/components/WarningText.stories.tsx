@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect } from 'storybook/test';
+import { expect, spyOn } from 'storybook/test';
+import { width } from '../test/table.ts';
 import { WarningText } from './WarningText.tsx';
 
 const meta = { component: WarningText } satisfies Meta<typeof WarningText>;
@@ -40,6 +41,33 @@ export const WithSession: Story = {
     await expect(line).toContainElement(chip);
     await expect(line).toHaveTextContent(/^Session 7d1e4b2a/);
     await expect(canvas.getByRole('button', { name: 'Copy session ID' })).toBeVisible();
+  },
+};
+
+/** In a narrow cell a failed copy's line wraps under the session's line: the word, the ID and the button stay as they were. */
+export const CopyFails: Story = {
+  args: WithSession.args,
+  decorators: [
+    width(180),
+    (Story) => (
+      <div className="wrap-anywhere">
+        <Story />
+      </div>
+    ),
+  ],
+  beforeEach: () => {
+    spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error());
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const copy = canvas.getByRole('button', { name: 'Copy session ID' });
+    const word = document.createRange();
+    word.selectNodeContents(canvas.getByText(/^Session/).firstChild!);
+    const at = () => [word, canvas.getByText('7d1e4b2a'), copy].map((part) => part.getBoundingClientRect().toJSON());
+    const before = at();
+    await userEvent.click(copy);
+    await expect(await canvas.findByText("Couldn't copy it. Try again.")).toBeVisible();
+    await expect(at()).toEqual(before);
+    await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
   },
 };
 
