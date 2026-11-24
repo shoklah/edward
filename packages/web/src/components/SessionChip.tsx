@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
  */
 export function SessionChip({ id }: { id: string }) {
   return (
-    <span className="inline-flex items-center gap-0.5 align-baseline">
+    <CopyButton key={id} text={id} label="Copy session ID">
       <Tooltip>
         <TooltipTrigger asChild>
           <span tabIndex={0} className={cn('rounded tabular-nums', TERM)}>
@@ -18,7 +18,6 @@ export function SessionChip({ id }: { id: string }) {
         </TooltipTrigger>
         <TooltipContent className="font-mono">{id}</TooltipContent>
       </Tooltip>
-      <CopyButton text={id} label="Copy session ID" />
-    </span>
+    </CopyButton>
   );
 }
