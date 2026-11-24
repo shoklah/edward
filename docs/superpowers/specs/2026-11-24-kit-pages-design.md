@@ -1,6 +1,6 @@
 # Kit pages: does a kit help, and what does it cost?
 
-Status: draft, not approved. Goal: kits. Issue: shoklah/claude-workflow-dashboard#22. Path: Full (new facts in the import's schema, a new view, route and page, showing mode, `check:real`, fixtures). Captures: `docs/design/2026-11-24-kit-pages/`, rendered on the real components with invented data, from a throwaway worktree cut from `main` at `8ceaa27`. The owner approved them on 2026-11-24 ("make sense for now, we'll see once there will be more kits"); the Kits page's were re-rendered the same day with the changes named under "After the approval".
+Status: approved by the owner on 2026-11-24, after the grilling. Goal: kits. Issue: shoklah/claude-workflow-dashboard#22. Path: Full (new facts in the import's schema, a new view, route and page, showing mode, `check:real`, fixtures). Captures: `docs/design/2026-11-24-kit-pages/`, rendered on the real components with invented data, from a throwaway worktree cut from `main` at `8ceaa27`. The owner approved them on 2026-11-24 ("make sense for now, we'll see once there will be more kits"); the Kits page's were re-rendered the same day with the changes named under "After the approval".
 
 ## Intent
 
@@ -76,6 +76,18 @@ The owner picked A.
 3. The mockups, "for now": to look at again once there are more kits.
 4. The change requests above.
 
+From the grilling (2026-11-24):
+
+5. A line's share acted on is of every finding, Deferred and To owner included; their columns say why it is low.
+6. The reviews table is a yardstick beside the reviews the owner already trusts, not a proof that the kit helps; no figures of runs without the kit.
+7. Where it ran is cut by project and path; no task kind is asked of the workflow.
+8. By version follows the period like the rest of the page.
+9. Warnings comes last; Home and Compliance raise them.
+10. A kit warning on a run that uses no kit is left to Compliance.
+11. In showing mode, hidden projects are one "Other projects" item.
+12. Both chips, "Not verified" and "Checks failed".
+13. No issue to bring the page back: the non-goals' note is enough.
+
 ## The design
 
 ### Which runs and which kit
@@ -111,7 +123,7 @@ A line's name is a button (`aria-pressed`, the link's underline). Choosing it ma
 
 **4. By version.** One row per version, newest first (by its newest run's finish). Runs, Reviews, Found nothing, Findings per review (one decimal, the three severities), Critical and important, Minor (as above), and Checks, last result: Passed, Failed, Couldn't run (`kit_checks` of the kit; a run that carries none adds nothing, since it recorded no result, and its `kit_check_missing` warning says so). An unknown version is the dash, read "not known", and last.
 
-**5. Warnings.** The current warnings of the six kit kinds on the period's Small and Full runs that use the chosen kit, or that use no kit at all (a run whose plan marks a kit but whose record and steps name none: it shows under every kit, since a warning doesn't carry one). A `DataList`: Kind (names the row), Run (`RunLink`), Project, Since you last looked; the warning's text in the opened row. Newest run first. Resolved ones stay on Compliance.
+**5. Warnings.** The current warnings of the six kit kinds on the period's runs that use the chosen kit. A kit warning on a run that uses no kit (its plan marks one, its record and steps name none) shows on Compliance only. A `DataList`: Kind (names the row), Run (`RunLink`), Project, Since you last looked; the warning's text in the opened row. Newest run first. Resolved ones stay on Compliance.
 
 ### Cost
 
@@ -142,7 +154,7 @@ As every view: sums count every project; only lists are filtered.
 
 - **Loading:** "Loading the kits…". **Error:** "Couldn't load the kits. Check that the dashboard server is running, then refresh."
 - **No kit in any stored run:** "No kit has run yet. A kit shows here once a run that uses one is imported." and no Kit filter.
-- **The kit ran in none of the period's runs:** "The ui kit ran in none of these runs." in place of the first four sections. In both of these states Warnings still shows when it has any.
+- **The kit ran in none of the period's runs:** "The ui kit ran in none of these runs." in place of the five sections.
 - **No finding by the kit's reviews:** Checklist lines' empty row, "No findings".
 - **No warning:** "No kit warnings in these runs."
 
