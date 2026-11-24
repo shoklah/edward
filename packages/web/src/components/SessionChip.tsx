@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { Copy } from 'lucide-react';
 import { cn } from 'cn';
-import { Button } from './ui/button.tsx';
+import { CopyButton } from './CopyButton.tsx';
 import { TERM } from './Panel.tsx';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
 
@@ -10,11 +8,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.tsx';
  * The name is the ID's first 8 characters until the reporter gives sessions a title (CR9).
  */
 export function SessionChip({ id }: { id: string }) {
-  const [copied, setCopied] = useState(false);
-  async function copy() {
-    await navigator.clipboard.writeText(id);
-    setCopied(true);
-  }
   return (
     <span className="inline-flex items-center gap-0.5 align-baseline">
       <Tooltip>
@@ -25,12 +18,7 @@ export function SessionChip({ id }: { id: string }) {
         </TooltipTrigger>
         <TooltipContent className="font-mono">{id}</TooltipContent>
       </Tooltip>
-      <Button variant="ghost" size="icon-xs" aria-label="Copy session ID" onClick={copy}>
-        <Copy aria-hidden />
-      </Button>
-      <span aria-live="polite" className="text-xs text-muted-foreground">
-        {copied && 'Copied'}
-      </span>
+      <CopyButton text={id} label="Copy session ID" />
     </span>
   );
 }

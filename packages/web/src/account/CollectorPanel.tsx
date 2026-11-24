@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Copy } from 'lucide-react';
 import type { AccountResponse } from '@cwd/shared';
 import { createToken, resetCollector, revokeToken } from '../api.ts';
+import { CopyButton } from '../components/CopyButton.tsx';
 import { EmptyRow } from '../components/Num.tsx';
 import { ColumnHead, Pairs, Panel, ScrollTable, State } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
@@ -102,10 +102,7 @@ export function CollectorPanel({ account }: { account: AccountResponse }) {
           </DialogHeader>
           {token && <code className="rounded-md border bg-muted px-3 py-2 text-sm break-all">EDWARD_TOKEN={token}</code>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => navigator.clipboard.writeText(`EDWARD_TOKEN=${token}`)}>
-              <Copy aria-hidden />
-              Copy
-            </Button>
+            <CopyButton text={`EDWARD_TOKEN=${token}`} />
             <DialogClose asChild>
               <Button>Done</Button>
             </DialogClose>
