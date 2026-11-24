@@ -12,7 +12,18 @@ const COPIED_MS = 2000;
  * a moment after a copy its icon is a check and its word "Copied", which is announced too; a failed one says so in fixed
  * words until the next try, on a line before "Copy" or after the icon, so a row's buttons stay put.
  */
-export function CopyButton({ text, label, children }: { text: string; label?: string; children?: ReactNode }) {
+export function CopyButton({
+  text,
+  label,
+  children,
+  failureClassName,
+}: {
+  text: string;
+  label?: string;
+  children?: ReactNode;
+  /** The failure's line's own layout, where it must not widen its parent. */
+  failureClassName?: string;
+}) {
   const [outcome, setOutcome] = useState<'copied' | 'failed' | null>(null);
   const copied = outcome === 'copied';
   const failed = outcome === 'failed';
@@ -36,7 +47,10 @@ export function CopyButton({ text, label, children }: { text: string; label?: st
 
   const Icon = copied ? Check : Copy;
   const line = (
-    <span aria-live="polite" className={failed ? cn(WARNING_INK, label ? 'text-xs' : 'self-center text-sm') : 'sr-only'}>
+    <span
+      aria-live="polite"
+      className={failed ? cn(WARNING_INK, label ? 'text-xs' : 'self-center text-sm', failureClassName) : 'sr-only'}
+    >
       {copied && 'Copied'}
       {failed && "Couldn't copy it. Try again."}
     </span>

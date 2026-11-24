@@ -38,21 +38,23 @@ test("the Full run's page has no sideways scroll at 375 px", async ({ page }) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
-test("at 375 px a failed copy of the session's ID says so without moving its button, fits the page and passes axe", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 });
-  await openFullRun(page);
-  await page.evaluate(() => {
-    navigator.clipboard.writeText = () => Promise.reject(new DOMException('', 'NotAllowedError'));
+for (const width of [375, 768]) {
+  test(`at ${width} px a failed copy of the session's ID says so without moving its button, fits the page and passes axe`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 812 });
+    await openFullRun(page);
+    await page.evaluate(() => {
+      navigator.clipboard.writeText = () => Promise.reject(new DOMException('', 'NotAllowedError'));
+    });
+    const copy = page.getByRole('button', { name: 'Copy session ID' }).first();
+    await copy.scrollIntoViewIfNeeded();
+    const before = await copy.boundingBox();
+    await copy.click();
+    await expect(page.getByText("Couldn't copy it. Try again.")).toBeVisible();
+    expect(await copy.boundingBox()).toEqual(before);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   });
-  const copy = page.getByRole('button', { name: 'Copy session ID' }).first();
-  await copy.scrollIntoViewIfNeeded();
-  const before = await copy.boundingBox();
-  await copy.click();
-  await expect(page.getByText("Couldn't copy it. Try again.")).toBeVisible();
-  expect(await copy.boundingBox()).toEqual(before);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-});
+}
 
 test('an unknown run key says so at once', async ({ page }) => {
   await page.goto('/runs/0000000000000000');

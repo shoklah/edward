@@ -230,7 +230,8 @@ function Chain({ run }: { run: RunPageResponse }) {
       {session && (
         <Under>
           {`in session ${sessionName(session.title)} `}
-          {session.sessionId && <SessionChip id={session.sessionId} />}
+          {/* A failed copy's line wraps inside the box: a wider box could drop to the chain's next row. */}
+          {session.sessionId && <SessionChip id={session.sessionId} failureClassName="block w-0 min-w-full" />}
         </Under>
       )}
     </ChainBox>,
