@@ -11,6 +11,7 @@ import {
   type ComplianceQuery,
   type ContextQuery,
   type FindingsQuery,
+  type KitsQuery,
   LABELLER_MAX_DAILY,
   LABELLER_MODELS,
   type RunEntry,
@@ -73,6 +74,7 @@ import { complianceView } from './views/compliance.ts';
 import { contextView } from './views/context.ts';
 import { findingsView } from './views/findings.ts';
 import { homeView } from './views/home.ts';
+import { kitsView } from './views/kits.ts';
 import { modelsView } from './views/models.ts';
 import { runPageView } from './views/run.ts';
 import { rootOf, runsList, storedBranches, storedNames, storedSessionRoots } from './views/runs.ts';
@@ -398,6 +400,26 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     const runs = listUnits(c.var.db, 'run');
     const sessions = listUnits(c.var.db, 'session');
     return c.json(spendView({ runs, sessions, query, now: deps.now(), scope: scopeFor(c, runs, sessions) }));
+  });
+
+  // Kit pages, task 3: the Kits page, one kit's reviews, findings, runs and warnings over the period.
+  app.get('/api/kits', (c) => {
+    const query: KitsQuery = { ...periodQuery(c), kit: c.req.query('kit') || undefined };
+    const runs = listUnits(c.var.db, 'run');
+    const list = activeList(c.var.db);
+    const labels = list ? currentLabels(c.var.db, labelInputs(runs), list.number) : new Map();
+    return c.json(
+      kitsView({
+        runs,
+        warnings: listWarnings(c.var.db),
+        labels,
+        list,
+        query,
+        now: deps.now(),
+        seenAt: getSeenAt(c.var.db),
+        scope: scopeFor(c, runs),
+      }),
+    );
   });
 
   // Work page, task 3: the Changes view, the period's changes by goal.
