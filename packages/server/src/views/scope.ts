@@ -22,7 +22,7 @@ const SESSION_IDS = new RegExp(`${SESSION_ID.source}(?:\\.jsonl)?`, 'gi');
 
 // The reporter's own names for who called the advisor (by_role): a main session and a subagent with no agent type, each
 // also "on Fable". Any other role is an agent type, which can name anything.
-const ROLES = ['main', 'subagent'].flatMap((role) => [role, `${role} on Fable`]);
+const ROLES = ['main', 'main on Fable', 'subagent', 'subagent on Fable'];
 
 // The strings as one regex alternation, escaped and longest first, so a longer string wins where two start together.
 function anyOf(strings: string[]): string {

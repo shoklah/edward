@@ -26,12 +26,16 @@ import { goalOptions, inGoal, levels, listedChange, listedGoal } from './work.ts
 
 const time = (at: string) => parseTime(at).getTime();
 
+/** Whether a time is in a run's window, (start, end] as the reporter's in_window, a null start or end open. */
+const inWindow = (at: string, window: RunEntry['window']) =>
+  (!window?.start || time(at) > time(window.start)) && (!window?.end || time(at) <= time(window.end));
+
 /**
  * A session's timeline, in time order: its skill loads with their outcome (skillOutcomeLabel), its commands, a command
  * `x:y` never loaded when an unmet typed trigger in `typed` (the session's and its held runs') has skill `y` and its
  * time, and its shown held runs' window starts (the session's start for a run with none), with their headlines; an
- * untimed load or command is left out, and so is a command in the window of one of `hidden`, the held runs a scope
- * hides: (start, end] as the reporter's in_window, a null start open. Names are masked (maskText).
+ * untimed load or command is left out, and so is a command in the window (inWindow) of one of `hidden`, the held runs
+ * a scope hides. Names are masked (maskText).
  */
 function timelineOf(
   session: SessionEntry,
@@ -42,10 +46,7 @@ function timelineOf(
 ): SessionRow['timeline'] {
   const unmet = typed.filter((t) => t.met === false);
   const neverLoaded = (name: string, at: string) => unmet.some((t) => t.skill === commandSkill(name) && t.time === at);
-  const inHidden = (at: string) =>
-    hidden.some(({ merged: { window } }) => {
-      return (!window?.start || time(at) > time(window.start)) && (!window?.end || time(at) <= time(window.end));
-    });
+  const inHidden = (at: string) => hidden.some((run) => inWindow(at, run.merged.window));
   const item = (at: string, kind: 'skill' | 'command' | 'run', name: string) => ({
     at,
     kind,
@@ -219,7 +220,7 @@ export function sessionsView(input: {
       return show ? [{ run, facts: show }] : [];
     });
     if (!matches(shown.map((s) => s.facts))) continue;
-    const hiddenRuns = held.filter(({ facts }) => !showFacts(scope, facts)).map(({ run }) => run);
+    const hiddenRuns = held.map(({ run }) => run).filter((run) => !shown.some((s) => s.run === run));
 
     sessions.push({
       ...sessionRow(unit, runRoots, names, scope),

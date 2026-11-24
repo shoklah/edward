@@ -25,7 +25,7 @@ let db: Db;
 
 /** A fresh database holding `name` (report-v6 unless given), changed first by `change`. */
 function dbWith(change: (raw: any) => void = () => {}, name = 'report-v6'): Db {
-  const fresh = openDb(join(dir, `${name}.sqlite`));
+  const fresh = openDb(join(mkdtempSync(join(dir, 'db ')), 'dashboard.sqlite'));
   const raw = fixture(name);
   change(raw);
   const loaded = loadReport(JSON.parse(JSON.stringify(raw)));
@@ -130,8 +130,6 @@ describe('with showing off', () => {
 
   test("a held run with no window start is held first, and its timeline entry is at the session's start", async () => {
     db.$client.close();
-    rmSync(dir, { recursive: true, force: true });
-    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
     db = dbWith((raw) => {
       raw.runs[5].window.start = null;
     });
@@ -189,8 +187,6 @@ describe('with showing on lantern-notes', () => {
   // feature/webhooks run's, (2026-11-12T02:40:00Z, 2026-11-12T08:00:05.317Z] unless `change` moves it.
   async function commands(change: (raw: any) => void = () => {}): Promise<string[]> {
     db.$client.close();
-    rmSync(dir, { recursive: true, force: true });
-    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
     db = dbWith((raw) => {
       raw.sessions.find((s: any) => s.file.includes(TWO_RUNS)).commands.push(
         { name: 'in-plan', time: '2026-11-08T08:20:00.000Z' },
@@ -227,8 +223,6 @@ describe('with showing on lantern-notes', () => {
 
   test('names and titles are masked, and the response leaks nothing', async () => {
     db.$client.close();
-    rmSync(dir, { recursive: true, force: true });
-    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
     const change = (raw: any) => {
       const session = raw.sessions.find((s: any) => s.file.includes(TWO_RUNS));
       session.title = 'Port tidepool-api webhooks to lantern';
@@ -338,8 +332,6 @@ describe('changes and goals, on report-work', () => {
 
   test('with showing on, headlines and goal names are masked', async () => {
     db.$client.close();
-    rmSync(dir, { recursive: true, force: true });
-    dir = mkdtempSync(join(tmpdir(), 'cwd sessions '));
     db = dbWith((raw) => {
       raw.runs.find((r: any) => r.key === OFFLINE_RUN).headline = 'Queue edits as tidepool-api does';
       for (const unit of [...raw.runs, ...raw.sessions]) {
