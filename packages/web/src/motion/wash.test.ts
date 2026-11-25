@@ -189,6 +189,21 @@ describe('items that leave a list', () => {
     await vi.waitFor(() => expect(layer()).toBeNull());
   });
 
+  test('say how long they take, and what condenses after them shows in no frame that still has one', async () => {
+    expect(press().left([...'abcd'])).toBe(0);
+    const line = document.body.appendChild(document.createElement('p'));
+    const ms = press().left([]);
+    expect(ms).toBe(260 + 2 * 34);
+    condense(line, { delay: ms });
+    const shown: number[] = [];
+    while (layer()) {
+      shown.push(Number(getComputedStyle(line).opacity));
+      await new Promise(requestAnimationFrame);
+    }
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.filter(Boolean)).toEqual([]);
+  });
+
   test('that is gone wash away from their own places, only those that were in the window', () => {
     const rects = [...'abc'].map((key) => rect(document.getElementById(key)!));
     const seen = press();
@@ -223,7 +238,7 @@ describe('items that leave a list', () => {
   test('leave nothing once cleared, before they leave or as they do', () => {
     const seen = press();
     wash.clear();
-    seen.left([]);
+    expect(seen.left([])).toBe(0);
     expect(layer()).toBeNull();
     press().left([]);
     expect(copies()).toHaveLength(3);
@@ -234,14 +249,14 @@ describe('items that leave a list', () => {
   test('leave nothing with motion off at the press or when they leave, nor under 768 px', async () => {
     const seen = press();
     on.mockRestore();
-    seen.left([]);
+    expect(seen.left([])).toBe(0);
     expect(layer()).toBeNull();
     const still = press();
     on = motionOn();
-    still.left([]);
+    expect(still.left([])).toBe(0);
     expect(layer()).toBeNull();
     await page.viewport(767, 600);
-    press().left([]);
+    expect(press().left([])).toBe(0);
     expect(layer()).toBeNull();
     await page.viewport(768, 600);
     press().left([]);

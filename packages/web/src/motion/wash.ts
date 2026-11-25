@@ -123,9 +123,10 @@ let arrived = false;
 let clears = 0;
 
 /** What leaves a list, whose children's keys are `keys`: those in the window are copied, as they stand; `left`, told the
- * keys that remain once it is drawn again, washes the others away over it, the last first. */
-export function wash(list: HTMLElement, keys: string[]): { left(remaining: string[]): void } {
-  if (!motionRuns() || !wide()) return { left() {} };
+ * keys that remain once it is drawn again, washes the others away over it, the last first, and returns how many ms that
+ * takes, 0 when none do. */
+export function wash(list: HTMLElement, keys: string[]): { left(remaining: string[]): number } {
+  if (!motionRuns() || !wide()) return { left: () => 0 };
   const made = clears;
   // The list may be gone by then; its panel isn't.
   const panel = list.closest('.glass')!;
@@ -144,7 +145,7 @@ export function wash(list: HTMLElement, keys: string[]): { left(remaining: strin
   return {
     left(remaining) {
       const leaving = copies.filter(({ key }) => !remaining.includes(key)).map(({ copy }) => copy);
-      if (leaving.length === 0 || made !== clears || !motionRuns()) return;
+      if (leaving.length === 0 || made !== clears || !motionRuns()) return 0;
       const now = panel.getBoundingClientRect();
       const at = new DOMRect(clipped.left + now.left - was.left, clipped.top + now.top - was.top, clipped.width, clipped.height);
       const layer = attach('items', at, leaving);
@@ -159,6 +160,7 @@ export function wash(list: HTMLElement, keys: string[]): { left(remaining: strin
       });
       // A cancelled animation's end is a rejection.
       Promise.allSettled(ends).then(() => layer.remove());
+      return 260 + 34 * (leaving.length - 1);
     },
   };
 }

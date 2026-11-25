@@ -85,9 +85,9 @@ export function Feed({ items }: { items: FeedItem[] }) {
   useFlow(list, keys);
   useLayoutEffect(() => {
     if (!pressed.current) return;
-    pressed.current.left(keys);
+    const delay = pressed.current.left(keys);
     pressed.current = null;
-    if (nothing.current) condense(nothing.current);
+    if (nothing.current) condense(nothing.current, { delay });
   }, [keys.join('\n')]);
   async function onMarkAllSeen() {
     const press = wash(list.current!, keys);

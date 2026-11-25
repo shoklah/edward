@@ -243,11 +243,13 @@ export const MarkAllSeen: Story = {
     const { copies, ...leaving } = await waitFor(() => {
       const layer = document.querySelector('[data-copy="items"]')!;
       expect(layer).not.toBeNull();
-      for (const animation of layer.getAnimations({ subtree: true })) animation.currentTime = 0;
+      const line = canvas.getByText(EMPTY);
+      for (const animation of [...layer.getAnimations({ subtree: true }), ...line.getAnimations()]) animation.currentTime = 0;
       return {
         copies: [...layer.children].map((el) => ({ place: el.getBoundingClientRect().toJSON(), font: getComputedStyle(el).font })),
         washed: played(layer),
-        condensed: played(canvas.getByText(EMPTY)),
+        condensed: played(line),
+        delay: line.getAnimations()[0].effect!.getTiming().delay,
         listed: canvasElement.querySelectorAll('li').length,
       };
     });
@@ -255,8 +257,15 @@ export const MarkAllSeen: Story = {
     await expect(leaving.washed.map(({ verb, ms }) => [verb, ms])).toEqual(items.map(() => ['wash', 260]));
     await expect(leaving.condensed).toEqual([{ verb: 'condense', ms: 420, el: canvas.getByText(EMPTY) }]);
     await expect(leaving.listed).toBe(0);
-    await waitFor(() => expect(document.querySelector('[data-copy]')).toBeNull());
-    await expect(canvas.getByText(EMPTY)).toBeVisible();
+    // The last item's wash, then the line.
+    await expect(leaving.delay).toBe(260 + 3 * 34);
+    const early: string[] = [];
+    while (document.querySelector('[data-copy]')) {
+      early.push(getComputedStyle(canvas.getByText(EMPTY)).opacity);
+      await new Promise(requestAnimationFrame);
+    }
+    await expect(early.filter((opacity) => opacity !== '0')).toEqual([]);
+    await waitFor(() => expect(getComputedStyle(canvas.getByText(EMPTY)).opacity).toBe('1'));
   },
 };
 
