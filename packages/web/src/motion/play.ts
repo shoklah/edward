@@ -1,8 +1,8 @@
 /** DESIGN.md's four verbs (Motion); every animation carries its own as its `id`. */
-export type Verb = 'wash' | 'condense' | 'ripple' | 'flow';
+type Verb = 'wash' | 'condense' | 'ripple' | 'flow';
 
 /** A damped spring as a `linear()` easing: a damping near 1 is stiff, near 0.4 is jelly. */
-export function spring(damping: number): string {
+function spring(damping: number): string {
   const steps = 40;
   const speed = 5.8 / damping;
   const turn = speed * Math.sqrt(1 - damping * damping);

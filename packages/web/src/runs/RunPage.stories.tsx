@@ -624,7 +624,7 @@ export const DetailCondenses: Story = {
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const flow = within(await canvas.findByRole('region', { name: 'Flow' }));
-    const on = motionOn();
+    motionOn();
     const condensed = () => played(canvasElement).filter(({ verb }) => verb === 'condense');
     for (const [box, title] of [[/^Wave A check/, 'Wave A check'], [/^Task 1(?!\d)/, 'Task 1']] as const) {
       await userEvent.click(flow.getByRole('button', { name: box }));
@@ -633,6 +633,5 @@ export const DetailCondenses: Story = {
     }
     await userEvent.click(flow.getByRole('button', { name: 'Close Task 1' }));
     await expect(played(canvasElement)).toEqual([]);
-    on.mockRestore();
   },
 };

@@ -82,7 +82,7 @@ export const Flows: Story = {
   decorators: [(Story) => <div className="overflow-y-auto"><Story /></div>],
   play: async ({ canvas, canvasElement, userEvent }) => {
     const last = await canvas.findByRole('link', { name: 'Models and advisor' });
-    const on = motionOn();
+    motionOn();
     await expect(played(canvasElement)).toEqual([]);
     await userEvent.click(last);
     await waitFor(() => expect(last).toHaveAttribute('aria-current', 'page'));
@@ -97,7 +97,6 @@ export const Flows: Story = {
     });
     await expect(under.size).toBeGreaterThan(1);
     finish(canvasElement);
-    on.mockRestore();
   },
 };
 
@@ -106,7 +105,7 @@ export const FlowsTwice: Story = {
   play: async ({ canvas, userEvent }) => {
     const [home, last] = [await canvas.findByRole('link', { name: 'Home' }), canvas.getByRole('link', { name: 'Models and advisor' })];
     const nav = canvas.getByRole('navigation');
-    const on = motionOn();
+    motionOn();
     const press = async (link: HTMLElement) => {
       await userEvent.click(link);
       await waitFor(() => expect(link).toHaveAttribute('aria-current', 'page'));
@@ -121,7 +120,6 @@ export const FlowsTwice: Story = {
     await expect(getComputedStyle(nav).overflow).toBe('clip');
     second.finish();
     await waitFor(() => expect(getComputedStyle(nav).overflow).toBe('visible'));
-    on.mockRestore();
   },
 };
 

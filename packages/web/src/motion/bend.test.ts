@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { page } from 'vitest/browser';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { motionOn } from '../test/motion.ts';
-import { bend, endBends, refracts, type Front } from './bend.ts';
+import { bend, endBends, reaches, type Front } from './bend.ts';
 import { Filters } from './Filters.tsx';
 
 const LONG: Front = { x: 300, y: 200, R: 1000, ms: 5000, pow: 1.8 };
@@ -35,14 +35,10 @@ const outsideChromium = () => vi.spyOn(Navigator.prototype as unknown as { userA
 /** The window's own scroll event. */
 const scroll = () => document.dispatchEvent(new Event('scroll', { bubbles: true }));
 
-test('it refracts only in Chromium from 768 px', async () => {
-  expect(refracts()).toBe(true);
-  await page.viewport(767, 800);
-  expect(refracts()).toBe(false);
-  await page.viewport(768, 800);
-  expect(refracts()).toBe(true);
-  outsideChromium();
-  expect(refracts()).toBe(false);
+test('the front reaches the source at once and the far corner before it is done', () => {
+  const front = { R: 1000, ms: 900, pow: 1.8 };
+  expect(reaches(0, front)).toBe(0);
+  expect(reaches(2000, front)).toBeCloseTo((1 - 0.03 ** (1 / 1.8)) * 900);
 });
 
 test("the page's bend ends at the window's first scroll, the wash's doesn't", () => {

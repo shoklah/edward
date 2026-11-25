@@ -6,6 +6,16 @@ import { drop as fall } from './water.ts';
 /** A small ripple of light: a changed number's own, and the one of an import that changed nothing in the window. */
 export const SMALL = { R: 110, ms: 1300, amp: 0.75, pow: 1.6, train: 60 };
 
+/** Where each new drop stands, all read before the first of a commit's drops writes. */
+const places = new WeakMap<Element, ReturnType<typeof placeOf>>();
+
+function placeOf(el: Element) {
+  const [was, is] = [...el.querySelectorAll<HTMLElement>(':scope > span')];
+  const cell = el.closest('td, th, dd, button') ?? el;
+  const [inner, outer, old] = [el, cell, was].map((e) => e.getBoundingClientRect());
+  return { was, is, inner, outer, width: old.width, align: getComputedStyle(cell).textAlign };
+}
+
 /** A changed number: its old look stands over it for `delay` ms, until the front is there, then melts off as the new one
  * forms inside a drop of glass that evaporates; without `drop` the two swap at once. Nothing around it moves: the glass
  * and the old number stand in its cell, clipped to it, and where the old one no longer fits the new one shows at once. */
@@ -13,10 +23,10 @@ export function Drop({ old, children, delay, drop, onDone }: { old: string; chil
   const box = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     const el = box.current!;
-    const [was, is] = [...el.querySelectorAll<HTMLElement>(':scope > span')];
+    if (!places.has(el)) for (const drop of document.querySelectorAll('[data-drop]:not([style])')) places.set(drop, placeOf(drop));
+    const { was, is, inner, outer, width, align } = places.get(el)!;
+    places.delete(el);
     const glass = el.querySelector('i');
-    const cell = el.closest('td, th, dd, button') ?? el;
-    const [inner, outer] = [el, cell].map((e) => e.getBoundingClientRect());
     const [left, top] = [Math.max(0, inner.left - outer.left), Math.max(0, inner.top - outer.top)];
     const [right, bottom] = [Math.max(0, outer.right - inner.right), Math.max(0, outer.bottom - inner.bottom)];
     const sides = [top, right, bottom, left];
@@ -26,14 +36,17 @@ export function Drop({ old, children, delay, drop, onDone }: { old: string; chil
     const [x, y] = [Math.min(11, Math.min(left, right) / 2), Math.min(3, Math.min(top, bottom) / 2)];
     if (glass) glass.style.inset = px([top - y, right - x, bottom - y, left - x]);
     // The old number stands where it stood, whatever its width.
-    const align = getComputedStyle(cell).textAlign;
     was.style.top = `${top}px`;
-    if (align === 'center') [was.style.left, was.style.translate] = [`${left + inner.width / 2}px`, '-50%'];
-    else if (align === 'right' || align === 'end') was.style.right = `${right}px`;
-    else was.style.left = `${left}px`;
+    let stood = inner.left;
+    if (align === 'center') {
+      [was.style.left, was.style.translate] = [`${left + inner.width / 2}px`, '-50%'];
+      stood += (inner.width - width) / 2;
+    } else if (align === 'right' || align === 'end') {
+      was.style.right = `${right}px`;
+      stood += inner.width - width;
+    } else was.style.left = `${left}px`;
     // Cropped, it would read as another number (half a pixel is a rectangle's rounding).
-    const stood = was.getBoundingClientRect();
-    if (stood.left < outer.left - 0.5 || stood.right > outer.right + 0.5) {
+    if (stood < outer.left - 0.5 || stood + width > outer.right + 0.5) {
       onDone();
       return;
     }
@@ -65,10 +78,11 @@ export function Drop({ old, children, delay, drop, onDone }: { old: string; chil
       return;
     }
     last.onfinish = onDone;
-    const ripple = window.setTimeout(() => {
+    const rippled = () => {
       const { x, y } = centre(el.getBoundingClientRect());
-      if (glass) fall(x, y, SMALL);
-    }, delay + 60);
+      fall(x, y, SMALL);
+    };
+    const ripple = glass ? window.setTimeout(rippled, delay + 60) : 0;
     return () => {
       clearTimeout(ripple);
       for (const animation of animations) animation?.cancel();

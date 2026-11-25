@@ -70,13 +70,12 @@ export const OnImport: Story = {
     const numbers = [...canvasElement.querySelectorAll('p > span')];
     const read = () => numbers.map(accessibleText);
     await expect(read()).toEqual(['1,234', 'not known']);
-    const on = motionOn();
+    motionOn();
     await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
     await expect(numbers.map((el) => el.querySelector('[data-drop="drop"]')!.children[1].textContent)).toEqual(['1,234', '–']);
     await expect(played(numbers[0]).map(({ verb, ms }) => [verb, ms])).toEqual([['ripple', 374], ['ripple', 1054], ['ripple', 2550]]);
     await eachFrame(canvasElement, () => expect(read()).toEqual(['1,240', '7']));
     await waitFor(() => expect(numbers.map((el) => [el.childNodes.length, el.innerHTML])).toEqual([[1, '1,240'], [1, '7']]));
-    on.mockRestore();
   },
 };
 
@@ -100,11 +99,10 @@ export const OnImportNoRoom: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
     const cell = canvas.getByRole('cell');
     await expect(cell).toHaveTextContent('1,234,567');
-    const on = motionOn();
+    motionOn();
     await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
     await expect(cell.firstElementChild!.innerHTML).toBe('2');
     await expect(played(canvasElement)).toEqual([]);
-    on.mockRestore();
   },
 };
 

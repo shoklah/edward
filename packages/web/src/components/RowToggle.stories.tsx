@@ -63,8 +63,7 @@ export const WithLink: Story = {
 export const Turns: Story = {
   args: { open: true },
   beforeEach: () => {
-    const on = motionOn();
-    return () => on.mockRestore();
+    motionOn();
   },
   render: function Render(args) {
     const [open, setOpen] = useState(args.open);

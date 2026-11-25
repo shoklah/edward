@@ -60,7 +60,7 @@ export const Flows: Story = {
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const admin = await canvas.findByRole('link', { name: 'Admin' });
-    const on = motionOn();
+    motionOn();
     await userEvent.click(admin);
     await waitFor(() => expect(admin).toHaveAttribute('aria-current', 'page'));
     await expect(played(canvasElement)).toEqual([{ verb: 'flow', ms: 420, el: admin }]);
@@ -70,7 +70,6 @@ export const Flows: Story = {
     pill.currentTime = 0;
     await expect(crossed(canvas.getByRole('navigation'), admin)).toEqual([canvas.getByRole('link', { name: 'rowan-k' })]);
     finish(canvasElement);
-    on.mockRestore();
   },
 };
 

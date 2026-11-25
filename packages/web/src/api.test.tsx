@@ -106,10 +106,10 @@ test.each([
   let answer = (_: Response) => {};
   vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise((resolve) => (answer = resolve)));
   const copies = () => document.querySelectorAll('[data-copy]').length;
-  attach('page', new DOMRect(), []);
+  attach('page', []);
   const answered = post();
   expect(copies()).toBe(0);
-  attach('page', new DOMRect(), []);
+  attach('page', []);
   expect(copies()).toBe(1);
   answer(new Response(null, { status: 204 }));
   await answered;

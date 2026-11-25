@@ -127,7 +127,7 @@ export const RingFlows: Story = {
     const task1 = canvas.getByRole('button', { name: /^Task 1(?!\d)/ });
     const check = canvas.getByRole('button', { name: /^Wave A check/ });
     const pressed = () => [task1, check].map((box) => box.getAttribute('aria-pressed'));
-    const on = motionOn();
+    motionOn();
     await expect(rings(canvasElement)).toHaveLength(0);
     await userEvent.click(task1);
     await expect(rings(canvasElement)).toHaveLength(1);
@@ -153,7 +153,6 @@ export const RingFlows: Story = {
     await expect(rings(canvasElement)).toHaveLength(0);
     await expect(played(canvasElement)).toEqual([]);
     await expect(pressed()).toEqual(['false', 'false']);
-    on.mockRestore();
   },
 };
 
@@ -186,7 +185,7 @@ export const RingFits: Story = {
     const boxes = canvas.getAllByRole('button');
     const top = boxes[0].offsetTop;
     const last = boxes.filter((box) => box.offsetTop === top).at(-1)!;
-    const on = motionOn();
+    motionOn();
     await userEvent.click(boxes[0]);
     await expect(overflow()).toBe('visible');
     await userEvent.click(last);
@@ -200,7 +199,6 @@ export const RingFits: Story = {
     await userEvent.click(boxes[0]);
     await expect(rings(canvasElement)).toHaveLength(0);
     await waitFor(() => expect(overflow()).toBe('visible'));
-    on.mockRestore();
   },
 };
 

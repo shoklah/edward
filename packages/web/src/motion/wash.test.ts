@@ -4,7 +4,7 @@ import { finish, motionOn, played } from '../test/motion.ts';
 import { condense } from './condense.ts';
 import { centre, sourceOf } from './place.ts';
 import { FIRM } from './play.ts';
-import { attach, copyOf, frontAt, wash } from './wash.ts';
+import { attach, copyOf, pageCopy, wash } from './wash.ts';
 
 afterEach(() => document.body.replaceChildren());
 
@@ -64,12 +64,6 @@ describe('the source of a wave', () => {
   });
 });
 
-test('the front reaches the source at once and the far corner before it is done', () => {
-  const front = { R: 1000, ms: 900, pow: 1.8 };
-  expect(frontAt(0, front)).toBe(0);
-  expect(frontAt(2000, front)).toBeCloseTo((1 - 0.03 ** (1 / 1.8)) * 900);
-});
-
 test('a copy keeps what the reader saw: a picked option, a ticked box, scrolled regions, and no id, filter, drop or password', () => {
   document.body.innerHTML = `
     <main id="main" style="width: 300px; filter: blur(1px)">
@@ -85,7 +79,7 @@ test('a copy keeps what the reader saw: a picked option, a ticked box, scrolled 
   main.querySelector<HTMLInputElement>('[type=password]')!.value = 'typed on';
   main.querySelector('[data-scroll-cue]')!.scrollLeft = 40;
   const at = main.getBoundingClientRect();
-  const layer = attach('page', at, [copyOf(main)]);
+  const layer = attach('page', [pageCopy(main)]);
   const copy = layer.firstElementChild as HTMLElement;
   expect(copy.querySelector('select')!.selectedIndex).toBe(2);
   expect(copy.querySelector<HTMLInputElement>('[type=checkbox]')!.checked).toBe(true);
@@ -124,7 +118,7 @@ test('a copy keeps the ids its own url() references point to, renamed, so its gr
 
 test('clear drops every copy', () => {
   const el = document.body.appendChild(document.createElement('p'));
-  for (const kind of ['page', 'items', 'prepare'] as const) attach(kind, el.getBoundingClientRect(), [copyOf(el)]);
+  for (const kind of ['page', 'items', 'prepare'] as const) attach(kind, [copyOf(el)]);
   expect(document.querySelectorAll('[data-copy]')).toHaveLength(3);
   wash.clear();
   expect(document.querySelectorAll('[data-copy]')).toHaveLength(0);

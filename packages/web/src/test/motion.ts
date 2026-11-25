@@ -3,8 +3,9 @@ import { expect, spyOn } from 'storybook/test';
 import { useLanding } from '../motion/index.ts';
 
 const matchMedia = window.matchMedia.bind(window);
+const FIRST = '2000-01-01T00:00:00.000Z';
 
-/** Turns motion on, which the tests' browser has reduced, until `mockRestore`. */
+/** Turns motion on, which the tests' browser has reduced, until `mockRestore`; a story's end restores it too. */
 export function motionOn(): { mockRestore(): void } {
   return spyOn(window, 'matchMedia').mockImplementation((query) =>
     query === '(prefers-reduced-motion: reduce)' ? ({ matches: false } as MediaQueryList) : matchMedia(query),
@@ -69,13 +70,12 @@ export function accessibleText(el: Element): string {
 
 /** What `draw` draws before an import and, once the Import button is pressed, `landed` with it. */
 export function Import({ draw }: { draw: (landed: boolean) => ReactNode }): ReactNode {
-  const [at, setAt] = useState('2000-01-01T00:00:00.000Z');
-  const [first] = useState(at);
+  const [at, setAt] = useState(FIRST);
   useLanding('/api/story', { lastImportAt: at, lastGoodImportAt: at, error: null, importing: false }, true);
   return createElement(
     Fragment,
     null,
     createElement('button', { type: 'button', onClick: () => setAt(new Date().toISOString()) }, 'Import'),
-    draw(at !== first),
+    draw(at !== FIRST),
   );
 }

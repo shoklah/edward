@@ -5,12 +5,17 @@ import { motionRuns } from './play.ts';
 export type Front = { x: number; y: number; R: number; ms: number; pow: number };
 
 /** Whether an element can be drawn through the filters: only Chromium refracts, and only from 768 px. */
-export function refracts(): boolean {
+function refracts(): boolean {
   return (navigator as { userAgentData?: unknown }).userAgentData !== undefined && wide();
 }
 
 /** Takes the running filter or cut off. */
 let end: (() => void) | null = null;
+
+/** Whether a filter or cut runs. */
+export function bending(): boolean {
+  return end !== null;
+}
 
 /** Takes every running filter or cut off at once. */
 export function endBends(): void {
@@ -37,7 +42,15 @@ function run(ms: number, draw: (done: number) => void, off: () => void): void {
   tick(start);
 }
 
-const frontAt = ({ R, pow }: Front, done: number) => R * (1 - (1 - done) ** pow);
+/** How far a front is at a share of its time. */
+export function frontAt({ R, pow }: Pick<Front, 'R' | 'pow'>, done: number): number {
+  return R * (1 - (1 - done) ** pow);
+}
+
+/** How many ms until a front is `distance` px from its source; what is past its end, just before it is done. */
+export function reaches(distance: number, { R, ms, pow }: Pick<Front, 'R' | 'ms' | 'pow'>): number {
+  return (1 - (1 - Math.min(0.97, distance / R)) ** (1 / pow)) * ms;
+}
 
 /** Draws `el` through a filter along a front: `bend` bends it, until the window scrolls, and `wash` also removes what
  * the front has passed, calling `ended` as it comes off. Where nothing refracts, the first does nothing and the second

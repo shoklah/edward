@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { notifyManager, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { BrushCleaning } from 'lucide-react';
 import type { FeedItem } from '@cwd/shared';
@@ -96,10 +96,10 @@ export function Feed({ items }: { items: FeedItem[] }) {
       await markSeen();
       await queryClient.invalidateQueries({ queryKey: ['/api/home'] });
     } finally {
-      // A frame later: what was read again is drawn by a timer of the query client's, which a frame could come before.
-      setTimeout(() => {
+      // After what was read again is drawn, which the query client has scheduled already.
+      notifyManager.schedule(() => {
         if (pressed.current === press) pressed.current = null;
-      }, 16);
+      });
     }
   }
   return (

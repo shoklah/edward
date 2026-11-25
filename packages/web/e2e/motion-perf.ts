@@ -7,7 +7,7 @@ import { once } from 'node:events';
 import { createServer, type AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Page } from '@playwright/test';
-import { landImport } from './motion.ts';
+import { hold, landImport } from './motion.ts';
 
 /** A frame at 120 Hz. */
 const FRAME = 1000 / 120;
@@ -75,8 +75,7 @@ const MOMENTS: Record<string, (page: Page) => Promise<number[][]>> = {
     const samples: number[][] = [];
     for (const path of ['/', '/weeks', '/', '/weeks']) {
       await load(page, path);
-      let release = () => {};
-      const held = new Promise<void>((resolve) => (release = resolve));
+      const { held, release } = hold();
       // Refresh is pressed here, before the frames are counted, and answered once they are.
       await landImport(page, { '/api/home': another, '/api/weeks': another }, held);
       const sample = measure(page, 5500, '[data-drop]');

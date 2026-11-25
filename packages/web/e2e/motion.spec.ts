@@ -1,10 +1,25 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
-import { added, frames, landImport, playing, takePlayed, watchAdded, watchPlayed, type Played } from './motion.ts';
+import { added, answerEdited, frames, hold, landImport, playing, takePlayed, watchAdded, watchPlayed, type Played } from './motion.ts';
 import { settled } from './settled.ts';
+import { startShowing, stopShowing } from './showing.ts';
 
-// The one e2e file with motion on: the others run under reduced motion (`playwright.config.ts`).
+// The one spec with motion on: the others run under reduced motion (`playwright.config.ts`), as its last describe does.
+
+const FULL_TITLE = 'Queue edits offline and replay them on reconnect';
+const NOTHING = 'Nothing new. Finished runs and new warnings show here until you mark them seen.';
+const rail = (page: Page) => page.getByRole('complementary').getByRole('navigation', { name: 'Main' });
+const flow = (page: Page) => page.getByRole('group', { name: "The run's flow" });
+/** Home's count of this week's runs on the Full path. */
+const fullRuns = (page: Page) => page.locator('table[aria-label="Runs"] tr', { hasText: 'Full' }).locator('td').first();
+const moreRuns = (home: any) => { home.thisWeek.runs.full += 3; };
+const newWarning = (home: any) => { home.feed.unshift({ ...home.feed.find((item: any) => item.type === 'warning'), text: 'WARN: simplify never ran' }); };
+/** Mark all seen is answered here, so the server's own seen time stays. */
+const answerSeen = async (page: Page) => {
+  await page.route('**/api/seen', (route) => route.fulfill({ status: 204 }));
+  await answerEdited(page, '/api/home', (home) => { home.feed = []; });
+};
 
 test.use({ reducedMotion: 'no-preference' });
 test.beforeEach(({ page }) => pinClock(page));
@@ -39,7 +54,6 @@ test('hover, presses and focus are instant; a thumb, a dialog and a tooltip have
 test.describe('the page switch', () => {
   test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
 
-  const rail = (page: Page) => page.getByRole('complementary').getByRole('navigation', { name: 'Main' });
   const copy = (page: Page) => page.locator('[data-copy="page"]');
   /** Until the wave and what condensed in it are over. */
   const rested = async (page: Page) => {
@@ -141,38 +155,29 @@ test.describe('the page switch', () => {
   test("run to run never shows the old run's title", async ({ page }) => {
     await page.goto('/runs/97d6367dec7d9739', { waitUntil: 'networkidle' });
     const main = page.getByRole('main');
-    const old = 'Queue edits offline and replay them on reconnect';
-    await expect(main.getByRole('heading', { level: 1, name: old })).toBeVisible();
-    let release = () => {};
-    const held = new Promise<void>((resolve) => (release = resolve));
+    await expect(main.getByRole('heading', { level: 1, name: FULL_TITLE })).toBeVisible();
+    const { held, release } = hold();
     await page.route('**/api/runs/51120289e82db399', async (route) => {
       await held;
       await route.continue();
     });
     await main.getByRole('link', { name: 'Plan run' }).click();
     await expect(main.getByText('Loading the run…')).toBeVisible();
-    await expect(main.getByText(old)).toHaveCount(0);
+    await expect(main.getByText(FULL_TITLE)).toHaveCount(0);
     release();
     await expect(main.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(main.getByRole('heading', { level: 1, name: old })).toHaveCount(0);
+    await expect(main.getByRole('heading', { level: 1, name: FULL_TITLE })).toHaveCount(0);
   });
 
   test.describe('showing mode', () => {
-    test.afterEach(async ({ request }) => {
-      const response = await request.post('/api/showing', { data: { projects: [] }, headers: { 'X-Dashboard-Refresh': '1' } });
-      expect(response.status()).toBe(204);
-    });
+    test.afterEach(({ request }) => stopShowing(request));
 
     test('showing mode makes no copy and hides at once', async ({ page }) => {
       await watchAdded(page);
       await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
-      await page.getByRole('switch', { name: 'Showing mode' }).click();
-      const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
-      await dialog.getByRole('checkbox', { name: 'lantern-notes' }).check();
-      await dialog.getByRole('button', { name: 'Start showing' }).click();
+      await startShowing(page);
       await expect(page.getByRole('complementary').getByText('Showing: lantern-notes')).toBeVisible();
       await expect(page.getByText(/in other projects, counted in totals and charts only/)).toBeVisible();
-      await expect(dialog).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.innerHTML)).not.toContain('tidepool-api');
       expect(await added(page)).toMatchObject({ copies: 0, canvases: 0 });
     });
@@ -318,33 +323,29 @@ test.describe('the page switch', () => {
 });
 
 test.describe('a run', () => {
-  const FULL_TITLE = 'Queue edits offline and replay them on reconnect';
   const FULL_RUN = '/runs/97d6367dec7d9739';
   test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
 
-  const flow = (page: Page) => page.getByRole('group', { name: "The run's flow" });
   const title = (page: Page) => page.getByRole('main').getByRole('heading', { level: 1, name: FULL_TITLE });
   const rested = (page: Page) => expect.poll(() => playing(page)).toEqual([]);
 
   const drawn = (all: Played[]) => all.filter((a) => a.inFlow && !a.ring);
 
   test('a run opened by its link: the title travels, then the graph draws itself', async ({ page }) => {
+    await watchPlayed(page);
     await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
     await page.getByRole('link', { name: FULL_TITLE }).click();
     await expect(page.getByRole('heading', { level: 1, name: FULL_TITLE })).toBeVisible();
     // The graph starts in the frame after its page.
     await frames(page);
-    const anims = await page.evaluate(() => document.getAnimations().filter((a) => a.id).map((a) => {
-      const el = (a.effect as KeyframeEffect).target!;
-      return { verb: a.id, tag: el.tagName, flow: !!el.closest('[aria-label="The run\'s flow"]'), ...a.effect!.getComputedTiming() };
-    }));
-    expect(anims.filter((a) => a.tag === 'H1')).toMatchObject([{ verb: 'flow', duration: 620 }]);
-    const drawn = anims.filter((a) => a.flow);
-    expect(drawn.filter((a) => a.tag === 'BUTTON').every((a) => a.verb === 'condense' && a.duration === 180)).toBe(true);
-    const delays = drawn.filter((a) => a.verb === 'condense').map((a) => a.delay!);
+    const all = await takePlayed(page);
+    expect(all.filter((a) => a.tag === 'H1')).toMatchObject([{ verb: 'flow', ms: 620 }]);
+    const graph = drawn(all);
+    expect(graph.filter((a) => a.tag === 'BUTTON').every((a) => a.verb === 'condense' && a.ms === 180)).toBe(true);
+    const delays = graph.filter((a) => a.verb === 'condense').map((a) => a.delay);
     expect(Math.max(...delays) - Math.min(...delays)).toBeCloseTo(900, 0);
-    expect(drawn.some((a) => a.tag === 'path' && a.verb === 'flow' && a.duration === 260)).toBe(true);
-    await expect.poll(() => playing(page)).toEqual([]);
+    expect(graph.some((a) => a.tag === 'path' && a.verb === 'flow' && a.ms === 260)).toBe(true);
+    await rested(page);
   });
 
   test("the title travels from its link's place and size, and the graph waits for its panel to be opaque", async ({ page }) => {
@@ -401,10 +402,7 @@ test.describe('a run', () => {
   });
 
   test.describe('showing mode', () => {
-    test.afterEach(async ({ request }) => {
-      const response = await request.post('/api/showing', { data: { projects: [] }, headers: { 'X-Dashboard-Refresh': '1' } });
-      expect(response.status()).toBe(204);
-    });
+    test.afterEach(({ request }) => stopShowing(request));
 
     test("a run reached by a press, with a step selected, doesn't move again when showing mode starts or stops", async ({ page }) => {
       await watchPlayed(page);
@@ -432,11 +430,7 @@ test.describe('a run', () => {
         expect(await takePlayed(page)).toEqual([]);
       };
       await still(async () => {
-        await page.getByRole('switch', { name: 'Showing mode' }).click();
-        const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
-        await dialog.getByRole('checkbox', { name: 'lantern-notes' }).check();
-        await dialog.getByRole('button', { name: 'Start showing' }).click();
-        await expect(dialog).toHaveCount(0);
+        await startShowing(page);
       });
       await still(() => page.getByRole('complementary').getByRole('button', { name: 'Stop showing' }).click());
     });
@@ -500,7 +494,6 @@ test.describe('an import', () => {
 
   const drops = (page: Page) => page.locator('[data-drop]');
   const filter = (page: Page) => page.locator('#main').evaluate((el) => el.style.filter);
-  const moreRuns = (home: any) => { home.thisWeek.runs.full += 3; };
 
   test('an import with a change in the window starts the wave', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
@@ -515,9 +508,7 @@ test.describe('an import', () => {
 
   test('a new feed item lands as a drop', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
-    await landImport(page, {
-      '/api/home': (home) => home.feed.unshift({ ...home.feed.find((item: any) => item.type === 'warning'), text: 'WARN: simplify never ran' }),
-    });
+    await landImport(page, { '/api/home': newWarning });
     await expect(page.locator('li', { hasText: 'Simplify never ran' })).toBeAttached();
     const landed = () =>
       page.evaluate(() =>
@@ -539,8 +530,7 @@ test.describe('an import', () => {
   test('a landing of /api/showing alone starts neither', async ({ page }) => {
     await watchAdded(page);
     await page.goto('/', { waitUntil: 'networkidle' });
-    let release = () => {};
-    const held = new Promise<void>((resolve) => (release = resolve));
+    const { held, release } = hold();
     await page.route('**/api/home', async (route) => {
       await held;
       await route.continue();
@@ -559,11 +549,9 @@ test.describe('an import', () => {
   test('with a dialog open the new numbers show at once, with the small ripple', async ({ page }) => {
     await watchAdded(page);
     await page.goto('/', { waitUntil: 'networkidle' });
-    // The week's runs on the Full path, this week's.
-    const full = page.locator('table[aria-label="Runs"] tr', { hasText: 'Full' }).locator('td').first();
+    const full = fullRuns(page);
     const was = Number(await full.textContent());
-    let release = () => {};
-    const held = new Promise<void>((resolve) => (release = resolve));
+    const { held, release } = hold();
     await landImport(page, { '/api/home': moreRuns }, held);
     await page.getByRole('complementary').getByRole('switch', { name: 'Showing mode' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -625,16 +613,19 @@ test.describe('an import', () => {
         while (bobs().length === 0) await new Promise(requestAnimationFrame);
         const seen = new Set<string>();
         // Stepped, all at once, since a browser's own frames can miss a bob's farthest, early on.
-        for (const bob of bobs()) bob.pause();
+        // Kept: one stepped past its end is no longer listed.
+        const all = bobs();
+        for (const bob of all) bob.pause();
         for (let ms = 0; ms <= 1200; ms += ms < 200 ? 1 : 20) {
-          for (const bob of bobs()) bob.currentTime = bob.effect!.getTiming().delay! + ms;
+          for (const bob of all) bob.currentTime = bob.effect!.getTiming().delay! + ms;
           seen.add(JSON.stringify([document.documentElement.scrollWidth, document.documentElement.scrollHeight]));
         }
+        for (const bob of all) bob.finish();
         return [...seen].map((s) => JSON.parse(s));
       });
       await landImport(page, { '/api/home': moreRuns, '/api/weeks': (weeks) => { for (const w of weeks.weeks) w.laterFixes += 1; } });
       expect(await sizes, `${path} at ${width} px`).toEqual([rest]);
-      await expect.poll(() => page.evaluate(() => getComputedStyle(document.getElementById('root')!).overflow), { timeout: 15_000 }).toBe('visible');
+      await expect.poll(() => page.evaluate(() => getComputedStyle(document.getElementById('root')!).overflow)).toBe('visible');
       await page.unrouteAll();
     }
   });
@@ -645,16 +636,10 @@ test.describe('Mark all seen', () => {
 
   const mark = (page: Page) => page.getByRole('button', { name: 'Mark all seen' });
   const items = (page: Page) => page.getByRole('region', { name: 'Since you last looked list' }).getByRole('listitem');
-  const NOTHING = 'Nothing new. Finished runs and new warnings show here until you mark them seen.';
 
   test('washes the items away over the list that is gone, and nothing scrolls', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
-    // Answered here, so the server's own seen time stays.
-    await page.route('**/api/seen', (route) => route.fulfill({ status: 204 }));
-    await page.route('**/api/home', async (route) => {
-      const response = await route.fetch();
-      await route.fulfill({ response, json: { ...(await response.json()), feed: [] } });
-    });
+    await answerSeen(page);
     const left = page.evaluate(async () => {
       const root = document.documentElement;
       const region = document.querySelector('[data-scroll-cue="block"]')!.getBoundingClientRect().toJSON();
@@ -716,7 +701,6 @@ test.describe('reduced motion', () => {
     await watchAdded(page);
     await watchPlayed(page);
     const main = page.getByRole('main');
-    const rail = page.getByRole('complementary').getByRole('navigation', { name: 'Main' });
     /** The moment just seen to change the page played nothing and left nothing. */
     const still = async (moment: string) => {
       await frames(page);
@@ -727,7 +711,7 @@ test.describe('reduced motion', () => {
     };
 
     await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
-    await rail.getByRole('link', { name: 'Weeks' }).click();
+    await rail(page).getByRole('link', { name: 'Weeks' }).click();
     await expect(main.getByRole('heading', { level: 1, name: 'Weeks' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'By week table', exact: true })).toBeVisible();
     await still('a rail press');
@@ -736,17 +720,15 @@ test.describe('reduced motion', () => {
     await expect(main.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
     await still('Back');
 
-    const title = 'Queue edits offline and replay them on reconnect';
-    await main.getByRole('link', { name: title }).click();
-    await expect(main.getByRole('heading', { level: 1, name: title })).toBeVisible();
-    const flow = page.getByRole('group', { name: "The run's flow" });
-    await expect(flow.getByRole('button').first()).toBeVisible();
+    await main.getByRole('link', { name: FULL_TITLE }).click();
+    await expect(main.getByRole('heading', { level: 1, name: FULL_TITLE })).toBeVisible();
+    await expect(flow(page).getByRole('button').first()).toBeVisible();
     await still('a run opened by its link');
 
     for (const task of ['Task 1', 'Task 2']) {
-      await flow.getByRole('button', { name: new RegExp(`^${task}(?!\\d)`) }).click();
+      await flow(page).getByRole('button', { name: new RegExp(`^${task}(?!\\d)`) }).click();
       await expect(page.getByRole('region', { name: task, exact: true })).toBeVisible();
-      await expect(flow.locator('[data-ring]')).toHaveCount(1);
+      await expect(flow(page).locator('[data-ring]')).toHaveCount(1);
       await still(`${task}'s box selected`);
     }
     await expect(page.getByRole('region', { name: 'Task 1', exact: true })).toHaveCount(0);
@@ -763,31 +745,24 @@ test.describe('reduced motion', () => {
     expect(await names()).not.toEqual(listed);
     await still('a column sorted');
 
-    await rail.getByRole('link', { name: 'Home' }).click();
-    const full = page.locator('table[aria-label="Runs"] tr', { hasText: 'Full' }).locator('td').first();
+    await rail(page).getByRole('link', { name: 'Home' }).click();
+    const full = fullRuns(page);
     await expect(full).toBeVisible();
     const was = Number(await full.textContent());
-    await landImport(page, { '/api/home': (home) => (home.thisWeek.runs.full += 3) });
+    await landImport(page, { '/api/home': moreRuns });
     await expect(full).toHaveText(String(was + 3));
     await still('an import with a change');
 
     // Loaded again, since an import lands once.
     await page.unrouteAll();
     await page.goto('/', { waitUntil: 'networkidle' });
-    await landImport(page, {
-      '/api/home': (home) => home.feed.unshift({ ...home.feed.find((item: any) => item.type === 'warning'), text: 'WARN: simplify never ran' }),
-    });
+    await landImport(page, { '/api/home': newWarning });
     await expect(page.locator('li', { hasText: 'Simplify never ran' })).toBeVisible();
     await still('an import adding a feed item');
 
-    // Answered here, so the server's own seen time stays.
-    await page.route('**/api/seen', (route) => route.fulfill({ status: 204 }));
-    await page.route('**/api/home', async (route) => {
-      const response = await route.fetch();
-      await route.fulfill({ response, json: { ...(await response.json()), feed: [] } });
-    });
+    await answerSeen(page);
     await page.getByRole('button', { name: 'Mark all seen' }).click();
-    await expect(page.getByText('Nothing new. Finished runs and new warnings show here until you mark them seen.')).toBeVisible();
+    await expect(page.getByText(NOTHING)).toBeVisible();
     await still('Mark all seen');
   });
 });

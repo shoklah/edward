@@ -29,7 +29,7 @@ function Start({ draw }: { draw: (started: boolean) => ReactNode }) {
 /** A drop: the old number melts off and the new one forms inside a drop of glass, which then evaporates. */
 export const Dropping: Story = {
   play: async ({ args, canvas, canvasElement, userEvent }) => {
-    const on = motionOn();
+    motionOn();
     await userEvent.click(canvas.getByRole('button'));
     const drop = canvasElement.querySelector('[data-drop="drop"]')!;
     await expect([...drop.children].map((el) => [el.tagName, el.getAttribute('aria-hidden'), el.textContent])).toEqual([
@@ -47,7 +47,6 @@ export const Dropping: Story = {
     await expect(args.onDone).not.toHaveBeenCalled();
     finish(drop);
     await waitFor(() => expect(args.onDone).toHaveBeenCalledTimes(1));
-    on.mockRestore();
   },
 };
 
@@ -55,7 +54,7 @@ export const Dropping: Story = {
 export const Swapping: Story = {
   args: { drop: false, delay: 5000 },
   play: async ({ args, canvas, canvasElement, userEvent }) => {
-    const on = motionOn();
+    motionOn();
     await userEvent.click(canvas.getByRole('button'));
     const [was, is] = canvasElement.querySelector('[data-drop="swap"]')!.children;
     const seen = () => [was, is].map((el) => getComputedStyle(el).opacity);
@@ -64,7 +63,6 @@ export const Swapping: Story = {
     finish(canvasElement);
     await expect(seen()).toEqual(['0', '1']);
     await waitFor(() => expect(args.onDone).toHaveBeenCalledTimes(1));
-    on.mockRestore();
   },
 };
 
@@ -102,7 +100,7 @@ export const Inside: Story = {
     };
     const [at, numbers] = [rects(), cells.map(text)];
     fits(container);
-    const on = motionOn();
+    motionOn();
     await userEvent.click(canvas.getByRole('button'));
     /** Where a number rests: its box less what the drop adds round it. */
     const rest = (cell: Element) => {
@@ -143,7 +141,6 @@ export const Inside: Story = {
     });
     await expect(shown).toBeGreaterThan(0);
     await waitFor(() => expect(args.onDone).toHaveBeenCalledTimes(3));
-    on.mockRestore();
   },
 };
 
@@ -173,7 +170,7 @@ export const Narrower: Story = {
   play: async ({ args, canvas, canvasElement, userEvent }) => {
     const numbers = [...canvasElement.querySelectorAll('td > span')];
     const at = numbers.map((el) => el.getBoundingClientRect());
-    const on = motionOn();
+    motionOn();
     await userEvent.click(canvas.getByRole('button'));
     const boxes = [...canvasElement.querySelectorAll('[data-drop]')];
     await expect(boxes.map((box) => box.getAttribute('data-drop'))).toEqual(['drop', 'drop', 'swap', 'swap']);
@@ -190,6 +187,5 @@ export const Narrower: Story = {
     await expect(args.onDone).not.toHaveBeenCalled();
     finish(canvasElement);
     await waitFor(() => expect(args.onDone).toHaveBeenCalledTimes(4));
-    on.mockRestore();
   },
 };

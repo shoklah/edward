@@ -127,7 +127,7 @@ export const OnImport: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
     const cell = canvas.getByRole('button', { name: 'alpha, week of Nov 1: 1' });
     const at = cell.getBoundingClientRect().toJSON();
-    const on = motionOn();
+    motionOn();
     await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
     const drop = cell.querySelector('[data-drop="drop"]')!;
     await expect(canvasElement.querySelectorAll('[data-drop]')).toHaveLength(1);
@@ -139,6 +139,5 @@ export const OnImport: Story = {
       expect(cell.getBoundingClientRect().toJSON()).toEqual(at);
     });
     await waitFor(() => expect(cell.innerHTML).toBe('3'));
-    on.mockRestore();
   },
 };

@@ -15,7 +15,11 @@ function drawMaps(): { ring: string; disc: string } {
       const q = Math.hypot(u, v) || 1e-6;
       const e = (q - 0.8) / 0.07;
       const push = q < 1 ? Math.exp(-e * e) * Math.sin(e * 2.4) : 0;
-      data.data.set([128 + 127 * push * (u / q), 128 + 127 * push * (v / q), 128, 255], 4 * (j * n + i));
+      const at = 4 * (j * n + i);
+      data.data[at] = 128 + 127 * push * (u / q);
+      data.data[at + 1] = 128 + 127 * push * (v / q);
+      data.data[at + 2] = 128;
+      data.data[at + 3] = 255;
     }
   }
   g.putImageData(data, 0, 0);

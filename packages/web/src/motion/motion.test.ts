@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import css from '../index.css?raw';
 import { eachFrame, finish, fits, motionOn, played } from '../test/motion.ts';
-import { CALM, EASE_OUT, FIRM, JELLY, SOFT, motionRuns, play, spring } from './play.ts';
+import { CALM, EASE_OUT, FIRM, JELLY, SOFT, motionRuns, play } from './play.ts';
 
 const sources = import.meta.glob<string>('../**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true });
 const outside = Object.entries(sources).filter(
@@ -16,7 +16,7 @@ test('nothing outside motion/ animates or carries a transition or animation clas
 });
 
 test('a spring is a linear() easing from 0 to 1, and FIRM is index.css\'s --spring-firm', () => {
-  for (const easing of [spring(0.75), FIRM, SOFT, JELLY, CALM]) {
+  for (const easing of [FIRM, SOFT, JELLY, CALM]) {
     const points = easing.match(/^linear\((.*)\)$/)![1].split(',').map(Number);
     expect(points).toHaveLength(41);
     expect([points[0], points.at(-1)]).toEqual([0, 1]);

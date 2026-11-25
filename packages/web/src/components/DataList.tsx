@@ -173,7 +173,7 @@ export function DataList<T extends RowData>({
           {rows.length === 0 && empty !== undefined && <EmptyRow columns={columns.length}>{empty}</EmptyRow>}
           {table.getRowModel().rows.map((row) => {
             const r = row.original;
-            const key = rowKey(r, row.index);
+            const key = all[row.index];
             const isOpen = opened(key);
             // With nothing to open but its folded columns (no `extra`, every fact empty), a row opens only while they
             // fold, and not at all without them.

@@ -1,7 +1,8 @@
+import { frontAt, type Front } from './bend.ts';
 import { motionRuns } from './play.ts';
 
 /** One drop's wave: its reach in px, its time, its strength, how it slows (`pow`) and the length of its train in px. */
-export type Drop = { R: number; ms: number; amp: number; pow: number; train: number };
+export type Drop = Pick<Front, 'R' | 'ms' | 'pow'> & { amp: number; train: number };
 
 /** The most drops the shader sums. */
 const MOST = 14;
@@ -97,7 +98,7 @@ function frame(now: number): void {
   const shape = new Float32Array(MOST * 2);
   drops.slice(-MOST).forEach(({ x, y, start, seed, R, ms, amp, pow, train }, i) => {
     const done = Math.max(0, now - start) / ms;
-    src.set([x, y, R * (1 - (1 - done) ** pow), amp * Math.min(1, done * 10) * (1 - done) ** 0.8], i * 4);
+    src.set([x, y, frontAt({ R, pow }, done), amp * Math.min(1, done * 10) * (1 - done) ** 0.8], i * 4);
     shape.set([train, seed], i * 2);
   });
   gl.uniform2f(at.size, canvas.width, canvas.height);

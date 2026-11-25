@@ -2,13 +2,13 @@ import { createElement, useEffect, useLayoutEffect, useRef, useState, type React
 import { flushSync } from 'react-dom';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import type { StatusResponse } from '@cwd/shared';
-import { bend } from './bend.ts';
+import { bend, reaches, type Front } from './bend.ts';
 import { clip } from './clip.ts';
 import { Drop, SMALL } from './Drop.tsx';
 import { centre, importSource, inWindow, reach } from './place.ts';
 import { JELLY, motionRuns, play } from './play.ts';
 import { drop } from './water.ts';
-import { frontAt, panelsOf } from './wash.ts';
+import { panelsOf } from './wash.ts';
 
 /** What a commit changed: the front's delay is measured at `at`. With `counts` false it starts no wave, and lands only in
  * one something else starts; a `number` may get one of the wave's drops. */
@@ -17,22 +17,15 @@ type Item = { at: Element; counts: boolean; number: boolean; land: (delay: numbe
 /** What this commit noticed, and the import whose data it drew. Both are settled before it is painted. */
 let noticed: Item[] = [];
 let landed: string | null = null;
-let settling = false;
 
 /** The last wave: its import, its front (for what it delays) and how many numbers got a drop. */
-let wave: { of: string; x: number; y: number; R: number; ms: number; pow: number; start: number; drops: number } | null = null;
+let wave: (Front & { of: string; start: number; drops: number }) | null = null;
 const MOST_DROPS = 9;
-
-function settleSoon(): void {
-  if (settling) return;
-  settling = true;
-  queueMicrotask(settle);
-}
 
 /** Tells that a commit changed `item`, to land if the commit also draws an import's data. */
 export function notice(item: Item): void {
   noticed.push(item);
-  settleSoon();
+  queueMicrotask(settle);
 }
 
 /** Whether the reader is neither in a dialog nor choosing nor typing. */
@@ -44,9 +37,10 @@ function free(): boolean {
  * landing, what it noticed is forgotten. */
 function settle(): void {
   const [items, of] = [noticed, landed];
-  [noticed, landed, settling] = [[], null, false];
+  [noticed, landed] = [[], null];
   if (of === null || !motionRuns() || !free()) return;
-  const shown = items.filter(({ at }) => inWindow(at));
+  // All read before the wave writes.
+  const shown = items.filter(({ at }) => inWindow(at)).map((item) => ({ ...item, to: centre(item.at.getBoundingClientRect()) }));
   if (wave?.of !== of) {
     if (!shown.some(({ counts }) => counts)) return;
     wave = startWave(of);
@@ -58,8 +52,7 @@ function settle(): void {
   const dropping = Array.from({ length: left }, (_, i) => numbers[Math.floor((i * numbers.length) / left)]);
   flushSync(() => {
     for (const item of shown) {
-      const to = centre(item.at.getBoundingClientRect());
-      const delay = frontAt(Math.hypot(to.x - front.x, to.y - front.y), front) - (performance.now() - front.start);
+      const delay = reaches(Math.hypot(item.to.x - front.x, item.to.y - front.y), front) - (performance.now() - front.start);
       item.land(Math.max(0, delay), dropping.includes(item));
     }
   });
@@ -68,27 +61,24 @@ function settle(): void {
 /** An import's wave: a drop hits its source, the page bends under it and each panel bobs as it passes. */
 function startWave(of: string): NonNullable<typeof wave> {
   const { x, y } = importSource();
-  const front = { x, y, R: reach(x, y) * 1.05, ms: 2000, pow: 1.35 };
+  const front: Front = { x, y, R: reach(x, y) * 1.05, ms: 2000, pow: 1.35 };
   const { R, pow } = front;
+  const main = document.getElementById('main');
+  const panels = main ? panelsOf(main).map((panel) => ({ panel, to: centre(panel.getBoundingClientRect()) })) : [];
   drop(x, y, { R, ms: 2240, amp: 1.5, pow, train: 230 });
   setTimeout(() => drop(x, y, { R: R / 2, ms: 1600, amp: 0.8, pow, train: 120 }), 420);
   const line = document.querySelector('[data-imported]');
   if (line) play('ripple', line, [{ transform: 'scale(0.86, 1.3)' }, { transform: 'none' }], 900, { easing: JELLY });
-  const main = document.getElementById('main');
-  if (main) {
-    // Until the last panel's bob is over.
-    clip(new Promise((end) => setTimeout(end, front.ms + 1200)));
-    if (!document.querySelector('[data-copy="page"]')) bend(main, { ...front, ms: 2240 }, 'bend');
-    for (const panel of panelsOf(main)) {
-      const to = centre(panel.getBoundingClientRect());
-      const [dx, dy] = [to.x - x, to.y - y];
-      const distance = Math.hypot(dx, dy) || 1;
-      const away = `translate(${(dx / distance) * 8}px, ${(dy / distance) * 8}px) scale(1.007, 0.996)`;
-      play('ripple', panel, [{ transform: 'none' }, { transform: away, offset: 0.25, easing: JELLY }, { transform: 'none' }], 1200, {
-        delay: Math.max(0, frontAt(distance, front) - 120),
-      });
-    }
-  }
+  if (main && !document.querySelector('[data-copy="page"]')) bend(main, { ...front, ms: 2240 }, 'bend');
+  const bobs = panels.map(({ panel, to }) => {
+    const [dx, dy] = [to.x - x, to.y - y];
+    const distance = Math.hypot(dx, dy) || 1;
+    const away = `translate(${(dx / distance) * 8}px, ${(dy / distance) * 8}px) scale(1.007, 0.996)`;
+    return play('ripple', panel, [{ transform: 'none' }, { transform: away, offset: 0.25, easing: JELLY }, { transform: 'none' }], 1200, {
+      delay: Math.max(0, reaches(distance, front) - 120),
+    });
+  });
+  clip(Promise.allSettled(bobs.map((bob) => bob?.finished)));
   return { of, ...front, start: performance.now(), drops: 0 };
 }
 
@@ -112,7 +102,7 @@ function useLater(key: string, status: StatusResponse | undefined, drawn: boolea
 export function useLanding(path: string, status: StatusResponse | undefined, drawn: boolean | undefined): void {
   useLater(path, status, drawn, (at) => {
     landed = at;
-    settleSoon();
+    queueMicrotask(settle);
   });
 }
 

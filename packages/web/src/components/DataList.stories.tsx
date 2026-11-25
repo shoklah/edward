@@ -391,16 +391,14 @@ export const NoStalePage: Story = {
   },
 };
 
-const motion = () => {
-  const on = motionOn();
-  return () => on.mockRestore();
-};
 /** What plays in the list's rows, the chevrons aside. */
 const moved = (el: HTMLElement) => played(el.querySelector('tbody')!).filter((p) => !(p.el instanceof SVGElement));
 
 /** A sort: the rows on the page flow to their places, and those new to it condense. */
 export const SortFlows: Story = {
-  beforeEach: motion,
+  beforeEach: () => {
+    motionOn();
+  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const was = new Set(bodyRows(canvasElement));
     const sort = canvas.getByRole('button', { name: 'Count' });
@@ -423,7 +421,9 @@ export const SortFlows: Story = {
 
 /** A row opened: its content condenses, the rows below flow, the last first; closing plays nothing. */
 export const OpenFlows: Story = {
-  beforeEach: motion,
+  beforeEach: () => {
+    motionOn();
+  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const toggle = canvas.getByRole('button', { name: 'Item 1' });
     const below = bodyRows(canvasElement).slice(1);
@@ -451,7 +451,9 @@ export const OpenFlows: Story = {
 export const FlowsInside: Story = {
   args: { extra: () => <p style={{ height: 120 }}>More</p> },
   decorators: [width(700)],
-  beforeEach: motion,
+  beforeEach: () => {
+    motionOn();
+  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const container = canvas.getByRole('region', { name: 'Items' });
     const inside = () => eachFrame(canvasElement, () => fits(container));
@@ -472,7 +474,9 @@ export const FlowsInside: Story = {
 
 /** A page and a filter change at once. */
 export const PageStill: Story = {
-  beforeEach: motion,
+  beforeEach: () => {
+    motionOn();
+  },
   render: function Render(args) {
     const [rows, setRows] = useState(ROWS);
     return (
@@ -497,7 +501,9 @@ export const PageStill: Story = {
 /** An import lands only a row that is new to the list, as a drop: one it brings onto the page, its opened row too, is
  * drawn at once. */
 export const ImportOldRows: Story = {
-  beforeEach: motion,
+  beforeEach: () => {
+    motionOn();
+  },
   render: (args) => (
     <div className="flex flex-col gap-6">
       <div data-testid="gone">

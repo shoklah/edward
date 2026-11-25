@@ -21,20 +21,20 @@ export function wide(): boolean {
   return window.matchMedia('(min-width: 768px)').matches;
 }
 
-/** The last link pressed: where it stood then and its text's size, whether it was in the page or in a dialog, and when. */
-let pressed: { rect: DOMRect; size: number; inPage: boolean; inDialog: boolean; at: number } | null = null;
+/** The last link pressed, unless in a dialog: where it stood then, its text's size when it was in the page, and when. */
+let pressed: { rect: DOMRect; link: { size: number } | null; at: number } | null = null;
 document.addEventListener(
   'click',
   ({ target }) => {
     const link = target instanceof Element && target.closest('a[href]');
     if (!link) return;
-    pressed = {
-      rect: link.getBoundingClientRect(),
-      size: parseFloat(getComputedStyle(link).fontSize),
-      inPage: link.closest('#main') !== null,
-      inDialog: link.closest('[role="dialog"]') !== null,
-      at: performance.now(),
-    };
+    pressed = link.closest('[role="dialog"]')
+      ? null
+      : {
+          rect: link.getBoundingClientRect(),
+          link: link.closest('#main') && { size: parseFloat(getComputedStyle(link).fontSize) },
+          at: performance.now(),
+        };
   },
   true,
 );
@@ -42,18 +42,22 @@ document.addEventListener(
 /** Where a wave starts when nothing it could start from shows. */
 const TOP_LEFT = new DOMRect(12, 12, 60, 36);
 
+/** The rectangle of the first of `places` that shows, else the top left. */
+function firstShown(...places: string[]): DOMRect {
+  const shown = places.flatMap((place) => [...document.querySelectorAll(place)]).find((el) => el.checkVisibility());
+  return shown?.getBoundingClientRect() ?? TOP_LEFT;
+}
+
 /** Where a load started at `now` was called from: the link just pressed, once (with its text's size when it was in the
  * page), else the rail's current entry, the Menu button or the top left, whichever shows. */
 export function sourceOf(now: number): { rect: DOMRect; link: { size: number } | null } {
   const last = pressed;
   pressed = null;
-  if (last && now - last.at < 1000 && !last.inDialog) return { rect: last.rect, link: last.inPage ? { size: last.size } : null };
-  const shown = [...document.querySelectorAll('aside nav a[aria-current="page"], header [aria-haspopup="dialog"]')].find((el) => el.checkVisibility());
-  return { rect: shown?.getBoundingClientRect() ?? TOP_LEFT, link: null };
+  if (last && now - last.at < 1000) return { rect: last.rect, link: last.link };
+  return { rect: firstShown('aside nav a[aria-current="page"]', 'header [aria-haspopup="dialog"]'), link: null };
 }
 
 /** Where an import's wave starts: the "Imported" line, else the Refresh button, else the top left, whichever shows. */
 export function importSource(): { x: number; y: number } {
-  const shown = ['[data-imported]', '[data-refresh]'].flatMap((place) => [...document.querySelectorAll(place)]).find((el) => el.checkVisibility());
-  return centre(shown?.getBoundingClientRect() ?? TOP_LEFT);
+  return centre(firstShown('[data-imported]', '[data-refresh]'));
 }

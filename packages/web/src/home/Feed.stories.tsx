@@ -213,8 +213,7 @@ export const MarkAllSeen: Story = {
   beforeEach: () => {
     Object.assign(routes, { '/api/status': ok, '/api/home': fullHome, '/api/seen': 204 });
     mockApi(routes);
-    const on = motionOn();
-    return () => on.mockRestore();
+    motionOn();
   },
   // The page's way of feeding the list: the live home query.
   render: function Render() {
@@ -282,8 +281,7 @@ export const Lands: Story = {
   beforeEach: () => {
     Object.assign(routes, { '/api/status': ok, '/api/home': fullHome });
     mockApi(routes);
-    const on = motionOn();
-    return () => on.mockRestore();
+    motionOn();
   },
   render: function Render() {
     const queryClient = useQueryClient();
@@ -340,8 +338,7 @@ export const SeenNotReadAgain: Story = {
   beforeEach: () => {
     Object.assign(routes, { '/api/status': ok, '/api/home': fullHome, '/api/seen': 204 });
     mockApi(routes);
-    const on = motionOn();
-    return () => on.mockRestore();
+    motionOn();
   },
   render: Lands.render,
   play: async ({ canvas, userEvent }) => {

@@ -329,9 +329,9 @@
   border-radius: var(--radius-control);
 }
 
-/* DESIGN.md's Motion for the generated components, unlayered for the same reason: hover, presses and focus are instant,
-   a switch's thumb flows, and a dialog and a tooltip condense, a dialog going back faster than it came. */
-[data-variant][data-size], [data-slot='input'], [data-slot='table-row'], [data-slot='switch'], [data-slot='dialog-close'] {
+/* DESIGN.md's Motion, unlayered for the same reason: hover, presses and focus are instant everywhere, the generated
+   components included, a switch's thumb flows, and a dialog and a tooltip condense, a dialog going back faster than it came. */
+*, ::before, ::after {
   transition: none;
 }
 [data-slot='switch-thumb'] {

@@ -4,7 +4,7 @@ import { EASE_OUT, motionRuns, play } from './play.ts';
 import { opaqueIn, takeArrival } from './wash.ts';
 
 /** How far `(x, y)` is from `el`'s rectangle, both in its graph's own pixels, which no condensing panel scales. */
-function away({ x, y }: DOMPoint, { offsetLeft, offsetTop, offsetWidth, offsetHeight }: HTMLElement): number {
+function away({ x, y }: DOMPoint, { offsetLeft, offsetTop, offsetWidth, offsetHeight }: Pick<HTMLElement, 'offsetLeft' | 'offsetTop' | 'offsetWidth' | 'offsetHeight'>): number {
   const over = (at: number, start: number, size: number) => Math.max(start - at, 0, at - start - size);
   return Math.hypot(over(x, offsetLeft, offsetWidth), over(y, offsetTop, offsetHeight));
 }
@@ -15,16 +15,19 @@ export function draw(frame: HTMLElement, after: number): void {
   if (!motionRuns()) return;
   const items = [...frame.querySelectorAll<HTMLElement>(':scope > * > :not(svg, [data-ring])')];
   const delays = items.map((_, i) => after + (900 * i) / (items.length - 1));
-  items.forEach((item, i) => condense(item, { ms: 180, from: 'scale(0.95)', easing: EASE_OUT, delay: delays[i], origin: 'center' }));
-  for (const path of frame.querySelectorAll<SVGPathElement>(':scope > * > svg > path')) {
+  // All read before the first is moved.
+  const boxes = items.map(({ offsetLeft, offsetTop, offsetWidth, offsetHeight }) => ({ offsetLeft, offsetTop, offsetWidth, offsetHeight }));
+  const lines = [...frame.querySelectorAll<SVGPathElement>(':scope > * > svg > path')].map((path) => {
     const start = path.getPointAtLength(0);
-    const far = items.map((item) => away(start, item));
-    const delay = delays[far.indexOf(Math.min(...far))] + 60;
+    const far = boxes.map((box) => away(start, box));
+    return { path, delay: delays[far.indexOf(Math.min(...far))] + 60, length: path.getTotalLength() };
+  });
+  items.forEach((item, i) => condense(item, { ms: 180, from: 'scale(0.95)', easing: EASE_OUT, delay: delays[i], origin: 'center' }));
+  for (const { path, delay, length } of lines) {
     if (path.hasAttribute('stroke-dasharray') || path.getAttribute('stroke')!.startsWith('url(')) {
       condense(path, { ms: 160, from: 'none', easing: EASE_OUT, delay });
       continue;
     }
-    const length = path.getTotalLength();
     const held = { strokeDasharray: length, markerEnd: 'none' };
     play('flow', path, [{ ...held, strokeDashoffset: length }, { ...held, strokeDashoffset: 0 }], 260, { delay });
   }
