@@ -1,6 +1,7 @@
 import {
   OUTCOME_GROUPS,
   addKnown,
+  isKitStep,
   type FindingRow,
   type Outcome,
   type RunPageResponse,
@@ -32,8 +33,6 @@ export type Stage = { kind: TimelineGroup['kind']; at: string | null; parallel: 
 const isRound = (s: TimelineStep) => s.step === 'fix_check' || s.step === 'final_fix_check';
 /** A unit of no task, not a kit's. */
 const NOWHERE = { task: null, kit: false, kits: [] };
-/** A kit's own step, as the server's `timeline` tells them apart. */
-const isKit = (s: TimelineStep) => s.step === 'kit_review' || s.kit != null;
 
 function unitOf(id: string, name: string, steps: TimelineStep[], where: Pick<Unit, 'task' | 'kit' | 'kits'>): Unit {
   const review = steps.find((s) => !isRound(s)) ?? null;
@@ -56,7 +55,7 @@ function unitKit(run: RunKits, name: string | null, task: number | null, cost: n
   return {
     name,
     version: run.kits.find((k) => k.name === name)?.version ?? null,
-    result: run.kitChecks.filter((c) => c.kit === name && c.task === task).at(-1)?.result ?? null,
+    result: run.kitChecks.findLast((c) => c.kit === name && c.task === task)?.result ?? null,
     cost,
   };
 }
@@ -70,10 +69,10 @@ function ownKits(run: RunKits, steps: TimelineStep[], task: number | null): Unit
 
 /** A task's units: its review, with the kits it carries, and beside it its kit's review when it has one. */
 function taskUnits(run: RunKits, { task, steps }: { task: number; steps: TimelineStep[] }): Unit[] {
-  const kit = steps.filter(isKit);
+  const kit = steps.filter(isKitStep);
   const kits = run.kits.filter((k) => k.tasks.includes(task)).map((k) => unitKit(run, k.name, task, null));
   return [
-    unitOf(`t${task}`, `Task ${task}`, steps.filter((s) => !isKit(s)), { task, kit: false, kits }),
+    unitOf(`t${task}`, `Task ${task}`, steps.filter((s) => !isKitStep(s)), { task, kit: false, kits }),
     ...(kit.length ? [unitOf(`k${task}`, `Task ${task} kit review`, kit, { task, kit: true, kits: ownKits(run, kit, task) })] : []),
   ];
 }
@@ -110,8 +109,8 @@ export function stagesOf(timeline: TimelineGroup[], run: RunKits = { kits: [], k
       case 'simplify':
         return stage([], g.steps.length ? [unitOf('simplify', STEP_LABELS.simplify, g.steps, NOWHERE)] : []);
       case 'final': {
-        const main = g.steps.filter((s) => !isKit(s));
-        const kit = g.steps.filter(isKit);
+        const main = g.steps.filter((s) => !isKitStep(s));
+        const kit = g.steps.filter(isKitStep);
         return side([
           ...(main.length ? [unitOf('final', 'Final review', main, NOWHERE)] : []),
           ...(kit.length ? [unitOf('kit', 'Kit review', kit, { ...NOWHERE, kit: true, kits: ownKits(run, kit, null) })] : []),

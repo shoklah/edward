@@ -115,6 +115,7 @@ export const categoryLabels: Record<string, string> = {
 /** A finding; a category given with no judge is the app's label. */
 export function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' | 'summary'>): FindingRow {
   return {
+    kit: null,
     task: null,
     wave: null,
     round: 0,
@@ -546,7 +547,7 @@ export const runKits: RunPageResponse = {
         longTask(1, [
           review({}),
           kitReview({ cost: 1.32, counts: { important: 1, minor: 1 }, findings: [K1, K2] }),
-          step({ step: 'fix_check', round: 1, agent: 'kit-reviewer', model: 'claude-opus-5-5', effort: 'high', kit: 'ui', cost: 0.3, counts: { fixed: 1 } }),
+          kitReview({ step: 'fix_check', round: 1, cost: 0.3, counts: { fixed: 1 } }),
         ]),
       ],
       steps: [],

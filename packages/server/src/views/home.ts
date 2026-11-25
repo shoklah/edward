@@ -26,6 +26,7 @@ import {
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import {
   currentWarnings,
+  newSince,
   period,
   periodUnits,
   sessionWarningShown,
@@ -232,7 +233,7 @@ export function homeView(input: {
     const facts = storedFacts(unit, names);
     return { unit, facts, finished: parseTime(facts.finishedAt!) };
   });
-  const isNew = (firstSeenAt: Date) => seenAt === null || firstSeenAt > seenAt;
+  const isNew = newSince(seenAt);
   const sums = weekSums(
     runs.map((r) => r.unit.merged),
     input.sessions.map((s) => s.merged),

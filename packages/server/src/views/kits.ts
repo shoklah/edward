@@ -2,7 +2,6 @@ import {
   addKnown,
   modelsCost,
   OUTCOME_GROUPS,
-  parseTime,
   splitFindings,
   toPath,
   type Finding,
@@ -22,8 +21,9 @@ import { categoryLabels, type ActiveList } from '../categories.ts';
 import type { StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
 import { familyOf } from './compliance.ts';
-import { currentWarnings, period, runView, storedFacts, storedNames } from './runs.ts';
+import { currentWarnings, finishTime, newSince, period, runView, storedFacts, storedNames } from './runs.ts';
 import { maskText, showFacts, showWarning, type Scope } from './scope.ts';
+import { foundSomething } from './steps.ts';
 
 type Dispatch = NonNullable<RunEntry['dispatches']>[number];
 type ReviewStep = KitsResponse['reviews'][number]['step'];
@@ -98,7 +98,7 @@ export function reviewSums(runs: RunEntry[], kit: string | null, step: ReviewSte
     ofKit ? k === kit : k === undefined && [step, ...RECHECKS[step]].includes(d.kind ?? '');
   return {
     ran: ran.length,
-    foundNothing: ran.filter((s) => !Object.values(s.counts ?? {}).some(Boolean)).length,
+    foundNothing: ran.filter((s) => !foundSomething(s.counts ?? {})).length,
     critical: found('critical'),
     important: found('important'),
     minor: found('minor'),
@@ -118,9 +118,9 @@ function groupBy<K, T>(items: T[], keyOf: (item: T) => K): Map<K, T[]> {
   return groups;
 }
 
+const nullLast = (a: string | null, b: string | null) => Number(a === null) - Number(b === null);
 // By name, null last.
-const byName = (a: string | null, b: string | null) =>
-  a === null || b === null ? Number(a === null) - Number(b === null) : a.localeCompare(b);
+const byName = (a: string | null, b: string | null) => nullLast(a, b) || (a ?? '').localeCompare(b ?? '');
 
 /** A checklist line's findings, by severity and by how they ended. */
 function lineOf(label: string | null, findings: Finding[]): KitLine {
@@ -214,29 +214,26 @@ export function kitsView(input: {
     [...kits].sort((a, b) => using(b).length - using(a).length)[0] ??
     null;
 
-  // Stored runs always have a finish time: the import skips a run without one.
-  const finished = (run: (typeof all)[number]) => parseTime(run.facts.finishedAt!).getTime();
-  const runs = kit === null ? [] : using(kit).sort((a, b) => finished(b) - finished(a));
+  const runs = (kit === null ? [] : using(kit))
+    .sort((a, b) => finishTime(b.facts) - finishTime(a.facts))
+    .map((run) => ({ ...run, shown: showFacts(scope, run.facts) }));
   const entries = runs.map((run) => run.entry);
 
   const kitReview = (s: Pick<Step, 'step' | 'kit'>) => s.step === 'kit_review' && s.kit === kit;
   const kitFindings = entries.flatMap((run) => (run.steps ?? []).filter(kitReview).flatMap((s) => s.findings ?? []));
   const findings = runs.flatMap(({ unit }): KitFinding[] => {
     // runView masks the stored run itself, and gives null for a hidden project's.
-    const shown = runView(unit, [], names, scope, labels, list);
-    if (!shown) return [];
-    const { project, branch, headline } = shown.facts;
-    return shown.timeline
-      .flatMap((group) => [...group.tasks.flatMap((task) => task.steps), ...group.steps])
-      .filter(kitReview)
-      .flatMap((s) => s.findings.map((f) => ({ ...f, runKey: unit.key, project, branch, headline })));
+    const view = runView(unit, [], names, scope, labels, list);
+    if (!view) return [];
+    const { project, branch, headline } = view.facts;
+    return view.findings.filter(kitReview).map((f) => ({ ...f, runKey: unit.key, project, branch, headline }));
   });
 
+  const isNew = newSince(seenAt);
   const current = currentWarnings(runs.map((run) => run.unit), [], input.warnings).filter(
     (w) => familyOf(w.warningKind) === 'kits',
   );
-  const warnings = runs.flatMap(({ unit, facts }): KitWarning[] => {
-    const shown = showFacts(scope, facts);
+  const warnings = runs.flatMap(({ unit, shown }): KitWarning[] => {
     if (!shown) return [];
     const { project, branch, headline } = shown;
     return current
@@ -248,11 +245,11 @@ export function kitsView(input: {
         project,
         branch,
         headline,
-        isNew: seenAt === null || w.firstSeenAt > seenAt,
+        isNew: isNew(w.firstSeenAt),
       }));
   });
 
-  const projects = groupBy(runs, ({ facts }) => (showFacts(scope, facts) ? facts.projectKey : null));
+  const projects = groupBy(runs, ({ shown }) => shown?.projectKey ?? null);
   const versions = groupBy(entries, (run) => entriesOf(run, kit)[0]?.version ?? null);
   return {
     kits,
@@ -264,23 +261,19 @@ export function kitsView(input: {
     findings,
     hiddenFindings: kitFindings.length - findings.length,
     projects: [...projects]
-      .map(([key, of]) => ({
-        project: key === null ? null : showFacts(scope, of[0].facts)!.project,
-        runs: of.length,
+      .map(([, of]) => ({ project: of[0].shown?.project ?? null, of }))
+      .sort((a, b) => nullLast(a.project, b.project) || b.of.length - a.of.length || byName(a.project, b.project))
+      .map(({ project, of }) => ({
+        project,
         paths: (['full', 'small'] as const).flatMap((path) => {
           const onPath = of.filter((run) => run.facts.path === path).map((run) => run.entry);
           return onPath.length > 0 ? [pathOf(path, onPath, kit)] : [];
         }),
-      }))
-      .sort(
-        (a, b) =>
-          Number(a.project === null) - Number(b.project === null) || b.runs - a.runs || byName(a.project, b.project),
-      )
-      .map(({ project, paths }) => ({ project, paths })),
+      })),
     versions: [...versions]
       .map(([version, of]) => versionOf(version, of, kit))
       // In first-seen order, so newest run first.
-      .sort((a, b) => Number(a.version === null) - Number(b.version === null)),
+      .sort((a, b) => nullLast(a.version, b.version)),
     warnings,
     hiddenWarnings: current.length - warnings.length,
     categoryLabels: categoryLabels(list),

@@ -38,6 +38,11 @@ export const OUTCOME_GROUPS: Record<Outcome | 'none', 'acted_on' | 'no_action' |
   none: 'left_for_later',
 };
 
+/** A kit's own step: its review, or a re-check that carries the kit. */
+export function isKitStep(step: Pick<Step, 'step' | 'kit'>): boolean {
+  return step.step === 'kit_review' || step.kit != null;
+}
+
 // A session ID, and a session transcript's file name, as the reporter writes it in a session warning.
 export const SESSION_ID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 export const SESSION_FILE = new RegExp(`(${SESSION_ID.source})\\.jsonl`, 'i');

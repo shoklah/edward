@@ -26,7 +26,7 @@ import type { AppDeps, AppEnv } from './app.ts';
 import { activeList, labellable } from './categories.ts';
 import { COLLECT_MAX_ERROR } from './collector.ts';
 import { recordImportFailure, splitCursor } from './db/import.ts';
-import { currentLabels, labelInputs, pendingInputs, tokensSince } from './db/labels.ts';
+import { currentLabels, labelInputs, pendingInputs, tokensSince, type StoredLabel } from './db/labels.ts';
 import {
   clearCursor,
   getCursor,
@@ -145,6 +145,14 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     );
   };
 
+  // The active list and the runs' labels under it, none while there is no list.
+  const labelsFor = (c: Context<AppEnv>, runs: StoredUnit<RunEntry>[]) => {
+    const list = activeList(c.var.db);
+    const inputs = labelInputs(runs);
+    const labels: Map<string, StoredLabel> = list ? currentLabels(c.var.db, inputs, list.number) : new Map();
+    return { list, inputs, labels };
+  };
+
   // Task 4: the import's status, the refresh and "mark all seen"; hosted, the caller's login and the accounts it views.
   app.get('/api/status', (c) => {
     const { account, viewing } = c.var;
@@ -213,8 +221,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
     if (!run) return c.notFound();
     const runs = listUnits(c.var.db, 'run');
     const sessions = listUnits(c.var.db, 'session');
-    const list = activeList(c.var.db);
-    const labels = list ? currentLabels(c.var.db, labelInputs([run]), list.number) : new Map();
+    const { list, labels } = labelsFor(c, [run]);
     const view = runPageView({
       run,
       runs,
@@ -261,9 +268,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
   // is set.
   app.get('/api/findings', (c) => {
     const runs = listUnits(c.var.db, 'run');
-    const inputs = labelInputs(runs);
-    const list = activeList(c.var.db);
-    const labels = list ? currentLabels(c.var.db, inputs, list.number) : new Map();
+    const { inputs, list, labels } = labelsFor(c, runs);
     const now = deps.now();
     const own = deps.hosted && getLabeller(deps.hosted.accounts, (c.var.viewing ?? (c.var.account as Account)).id);
     const active = own ? (own.keySet ? { model: own.model } : null) : deps.labeller;
@@ -406,8 +411,7 @@ export function registerRoutes(app: Hono<AppEnv>, deps: AppDeps): void {
   app.get('/api/kits', (c) => {
     const query: KitsQuery = { ...periodQuery(c), kit: c.req.query('kit') || undefined };
     const runs = listUnits(c.var.db, 'run');
-    const list = activeList(c.var.db);
-    const labels = list ? currentLabels(c.var.db, labelInputs(runs), list.number) : new Map();
+    const { list, labels } = labelsFor(c, runs);
     return c.json(
       kitsView({
         runs,

@@ -205,10 +205,10 @@ else {
   // The kit reviews and their dispatches' cost, summed over kits plus those in no kit; a count only, since a project can
   // name a kit.
   const sum = (values: (number | null | undefined)[]) => values.reduce<number>((n, value) => n + (value ?? 0), 0);
-  const kitNames = [...new Set(entries.flatMap(kitsOf))];
-  const kitRan = sum([...kitNames, null].map((kit) => reviewSums(entries, kit, 'kit_review').ran));
+  const kitKeys = [...new Set(entries.flatMap(kitsOf)), null];
+  const kitRan = sum(kitKeys.map((kit) => reviewSums(entries, kit, 'kit_review').ran));
   const kitCost = sum(
-    [...kitNames, null].flatMap((kit) =>
+    kitKeys.flatMap((kit) =>
       entries.map((run) => dispatchCost(run, (d, k) => d.kind === 'kit_review' && k === kit)),
     ),
   );
@@ -217,12 +217,9 @@ else {
     'kits',
     '2 compared, ',
     kitReview
-      ? Object.entries({
-          ran: kitRan === (kitReview.ran ?? 0),
-          cost: cents(kitCost) === cents(kitReview.cost ?? 0),
-        })
-          .filter(([, same]) => !same)
-          .map(([name]) => name)
+      ? [kitRan === (kitReview.ran ?? 0), cents(kitCost) === cents(kitReview.cost ?? 0)]
+          .filter((same) => !same)
+          .map(() => '')
       : null,
     false,
   );

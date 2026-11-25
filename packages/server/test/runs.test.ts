@@ -380,6 +380,7 @@ test("the findings table flattens every step's findings", async () => {
   expect(findings[3]).toEqual({
     id: 'F4',
     step: 'task_review',
+    kit: null,
     task: null,
     wave: 'A',
     round: 0,

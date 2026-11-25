@@ -4,14 +4,24 @@ import type { KitLine, KitsQuery, KitsResponse, KitWarning } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { PROJECT_COLUMN, RUN_COLUMN, SEEN_COLUMN, WARNING_COLUMN } from '../compliance/CompliancePage.tsx';
 import { DataList, type ListColumn, type ListFact } from '../components/DataList.tsx';
-import { EmptyRow, GroupHead, Lines, NUM, Num, Text } from '../components/Num.tsx';
+import { EmptyRow, GroupHead, Lines, NUM, NumCell, SubHeads, Text } from '../components/Num.tsx';
 import { LINK, Line, PageTitle, Section, State } from '../components/Panel.tsx';
 import { ShareBar } from '../components/ShareBar.tsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.tsx';
-import { STEP_LABELS, formatCompactFixed, formatDollars, hiddenLabel, kindLabel, pathLabel, plural } from '../lib/format.ts';
+import {
+  STEP_LABELS,
+  countName,
+  formatCompactFixed,
+  formatDollars,
+  hiddenLabel,
+  kindLabel,
+  outcomeLabel,
+  pathLabel,
+  plural,
+} from '../lib/format.ts';
 import { FindingsTable } from '../runs/FindingsTable.tsx';
 import { ListFilters, listPath, useProjects } from '../runs/RunsPage.tsx';
-import { FoundCells, FoundHeads, SubHeads, together } from './FoundPair.tsx';
+import { FoundCells, FoundHeads, together } from './FoundPair.tsx';
 
 /** A section's table, which scrolls in its own region, "<title> table". */
 function KitTable({ title, children }: { title: string; children: ReactNode }) {
@@ -31,13 +41,7 @@ function Heads({ columns, text = false }: { columns: string[]; text?: boolean })
   ));
 }
 
-function NumCell({ value, format }: { value: number | null; format?: (n: number) => string }) {
-  return (
-    <TableCell className={NUM}>
-      <Num value={value} format={format} />
-    </TableCell>
-  );
-}
+const SEVERITIES = ['critical', 'important', 'minor'].map(countName);
 
 /** The kit's reviews beside the task and final reviews of the same runs. */
 function ReviewsTable({ reviews }: { reviews: KitsResponse['reviews'] }) {
@@ -47,9 +51,11 @@ function ReviewsTable({ reviews }: { reviews: KitsResponse['reviews'] }) {
         <TableRow>
           <Heads columns={['Review']} text />
           <Heads columns={['Ran', 'Found nothing']} />
-          <GroupHead span={2}>Critical</GroupHead>
-          <GroupHead span={2}>Important</GroupHead>
-          <GroupHead span={2}>Minor</GroupHead>
+          {SEVERITIES.map((severity) => (
+            <GroupHead key={severity} span={2}>
+              {severity}
+            </GroupHead>
+          ))}
           <Heads columns={['Not valid', 'Re-checks', 'Est. cost ($)']} />
         </TableRow>
         <TableRow>
@@ -77,8 +83,8 @@ function ReviewsTable({ reviews }: { reviews: KitsResponse['reviews'] }) {
   );
 }
 
-const FOUND = ['Critical', 'Important', 'Minor', 'Total'];
-const ENDED = ['Acted on', 'Deferred', 'To owner', 'Open', 'No action'];
+const FOUND = [...SEVERITIES, 'Total'];
+const ENDED = ['Acted on', ...(['deferred', 'to_owner', 'open'] as const).map(outcomeLabel), 'No action'];
 const LINE_COLUMN_COUNT = 12;
 
 /** The kit's checklist lines, their findings by severity and by how they ended; a line's name is a button that chooses
@@ -90,7 +96,7 @@ function LinesTable({
 }: {
   lines: KitLine[];
   chosen: KitLine | undefined;
-  onChoose: (line: KitLine | null) => void;
+  onChoose: (label: KitLine['label'] | undefined) => void;
 }) {
   return (
     <KitTable title="Checklist lines">
@@ -117,7 +123,7 @@ function LinesTable({
                 <button
                   type="button"
                   aria-pressed={pressed}
-                  onClick={() => onChoose(pressed ? null : line)}
+                  onClick={() => onChoose(pressed ? undefined : line.label)}
                   className={cn('rounded-sm', LINK)}
                 >
                   <Text value={line.label} unknown="no line" />
@@ -191,7 +197,7 @@ function WhereTable({ projects }: { projects: KitsResponse['projects'] }) {
   );
 }
 
-const CHECKS = ['Passed', 'Failed', "Couldn't run"];
+const CHECKS = ['passed', 'failed', 'couldnt_run'].map(countName);
 
 /** The kit's versions, newest first, with their last check results. */
 function VersionsTable({ versions }: { versions: KitsResponse['versions'] }) {
@@ -260,10 +266,10 @@ function KitSections({
 }: {
   response: KitsResponse;
   chosen: KitLine | undefined;
-  onChoose: (line: KitLine | null) => void;
+  onChoose: (label: KitLine['label'] | undefined) => void;
 }) {
   const { hiddenFindings, hiddenWarnings } = response;
-  const listed = chosen ? response.findings.filter((f) => f.label === chosen.label) : [];
+  const listed = response.findings.filter((f) => f.label === chosen?.label);
   return (
     <>
       <ReviewsTable reviews={response.reviews} />
@@ -277,11 +283,7 @@ function KitSections({
               categoryLabels={response.categoryLabels}
               run
               skip={['step']}
-              heading={
-                chosen.label === null
-                  ? `${plural(listed.length, 'finding')} with no line`
-                  : `${plural(listed.length, 'finding')} of "${chosen.label}"`
-              }
+              heading={`${plural(listed.length, 'finding')} ${chosen.label === null ? 'with no line' : `of "${chosen.label}"`}`}
             />
           )}
         </div>
@@ -312,7 +314,8 @@ function KitSections({
  */
 export function KitsPage() {
   const [query, setQuery] = useState<KitsQuery>({ weeks: 4 });
-  const [line, setLine] = useState<Pick<KitLine, 'label'> | null>(null);
+  // The chosen line's label, null for the findings with no line, undefined while none is chosen.
+  const [line, setLine] = useState<KitLine['label']>();
   const kits = useLiveQuery<KitsResponse>(listPath('/api/kits', query));
   // The Kit filter's names, from a query of their own, so the filter stays when a pick fails.
   const options = useLiveQuery<KitsResponse>(listPath('/api/kits', { weeks: 4 })).data;
@@ -320,10 +323,10 @@ export function KitsPage() {
   const data = kits.data;
   const set = (change: Partial<KitsQuery>) => {
     setQuery({ ...query, ...change });
-    setLine(null);
+    setLine(undefined);
   };
   // A chosen line counts only while its row is in the table, which an import or showing mode can take away.
-  const chosen = line ? data?.lines.find(({ label }) => label === line.label) : undefined;
+  const chosen = data?.lines.find(({ label }) => label === line);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">

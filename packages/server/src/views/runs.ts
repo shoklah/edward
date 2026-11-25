@@ -1,5 +1,6 @@
 import {
   contextFacts,
+  isKitStep,
   modelsCost,
   parseTime,
   projectNames,
@@ -34,9 +35,6 @@ const WEEK = 7 * 24 * 60 * 60 * 1000;
 // A logged step, by its place in the exported steps, whose kind the reporter gave; it always gives one. `cost` is its
 // tied dispatch's, on a kit's own step only.
 type KnownStep = Step & { index: number; cost: number | null; step: StepKind };
-
-// A kit's own step: its review, or a re-check that carries the kit.
-const isKit = (s: Pick<Step, 'step' | 'kit'>) => s.step === 'kit_review' || s.kit != null;
 
 // A finding's label fields: the workflow's it carries, and the app's.
 type LabelOf = (
@@ -117,6 +115,11 @@ export function currentWarnings(
   return warnings.filter((w) => warns[w.kind].get(w.key)?.includes(w.text) ?? false);
 }
 
+/** Whether what was first seen then is new since the owner last looked, at `seenAt`. */
+export function newSince(seenAt: Date | null): (firstSeenAt: Date) => boolean {
+  return (firstSeenAt) => seenAt === null || firstSeenAt > seenAt;
+}
+
 /** Whether a stored session's warning is listed under `scope`: showSession of the session's project, by its key. */
 export function sessionWarningShown(scope: Scope | null, sessions: StoredUnit<SessionEntry>[]): (key: string) => boolean {
   const projects = new Map(sessions.map((unit) => [unit.key, unit.merged.project]));
@@ -192,6 +195,11 @@ export function periodStoredUnits(
   };
 }
 
+/** A run's finish time, for ordering; a stored run always has one. */
+export function finishTime({ finishedAt }: Pick<RunFacts, 'finishedAt'>): number {
+  return parseTime(finishedAt ?? '').getTime();
+}
+
 /** The stored runs in the query's period (periodStoredUnits), as their merged entries, and its weeks. */
 export function periodRuns(
   runs: StoredUnit<RunEntry>[],
@@ -246,13 +254,12 @@ export function runsList(
   const inPeriod = period(query, now, scope).matches;
   const inWeeks = period({ weeks: query.weeks }, now, null).matches;
   const warned = new Set(currentWarnings(runs, [], warnings).map((w) => w.key));
-  const finished = (row: { finishedAt: string | null }) => parseTime(row.finishedAt ?? '').getTime();
   const matches = (row: RunFacts) =>
     inPeriod(row) && (!query.warnings || warned.has(row.key)) && inGoal(work, scope, row.key, query.goal);
   const shown = rows.filter(matches);
   return {
     runs: shown
-      .sort((a, b) => finished(b) - finished(a))
+      .sort((a, b) => finishTime(b) - finishTime(a))
       .map((row) => ({ ...row, change: runChange(work, scope, row.key), goal: listedGoal(work, scope, row.key) })),
     projects: [...new Map(rows.filter((row) => row.project).map((row) => [row.projectKey, row.project]))]
       .map(([key, name]) => ({ key, name }))
@@ -266,6 +273,7 @@ function findingRows(step: KnownStep, labelOf: LabelOf): FindingRow[] {
   return (step.findings ?? []).map((f) => ({
     id: f.id ?? null,
     step: step.step,
+    kit: step.kit ?? null,
     task: step.task ?? null,
     wave: step.wave ?? null,
     round: step.round ?? null,
@@ -359,7 +367,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
         (s) =>
           s.step === 'final_review' ||
           s.step === 'final_fix_check' ||
-          (isKit(s) && s.task == null && s.wave == null),
+          (isKitStep(s) && s.task == null && s.wave == null),
       ),
     ),
     end,
@@ -392,7 +400,7 @@ export function runView(
       return {
         ...s,
         index: i,
-        cost: isKit(s) ? modelsCost(dispatch?.models) : null,
+        cost: isKitStep(s) ? modelsCost(dispatch?.models) : null,
         agent: maskText(scope, s.agent),
         model: maskText(scope, dispatch?.model ?? s.model),
         effort: maskText(scope, dispatch?.effort ?? s.effort),

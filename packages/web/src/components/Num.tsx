@@ -21,6 +21,15 @@ export function GroupHead({ span, className, children }: { span: number; classNa
 /** A sub-column's header, under its group. */
 export const SUB = 'h-8 font-medium text-muted-foreground';
 
+/** A group's numeric sub-column headers. */
+export function SubHeads({ columns }: { columns: string[] }) {
+  return columns.map((column) => (
+    <TableHead key={column} className={cn(SUB, NUM)}>
+      {column}
+    </TableHead>
+  ));
+}
+
 /** An unknown value: a muted dash, read out as "not known"; with `backdrop`, in primary ink, since it sits on the
  * backdrop (a goal section's totals). */
 export function Unknown({ label = 'not known', backdrop = false }: { label?: string; backdrop?: boolean }) {
@@ -36,6 +45,15 @@ export function Unknown({ label = 'not known', backdrop = false }: { label?: str
 export function Num({ value, format = formatWhole }: { value: number | null | undefined; format?: (n: number) => string }) {
   if (value == null) return <Unknown />;
   return <span className={cn(value === 0 && 'text-muted-foreground')}>{format(value)}</span>;
+}
+
+/** A number's whole cell. */
+export function NumCell(props: ComponentProps<typeof Num>) {
+  return (
+    <TableCell className={NUM}>
+      <Num {...props} />
+    </TableCell>
+  );
 }
 
 /** A text value, unknown as the muted dash. */
@@ -95,9 +113,7 @@ export function Lines({
       : (i: number) => (
           <>
             <TableCell className="text-muted-foreground">{counts![i][0]}</TableCell>
-            <TableCell className={NUM}>
-              <Num value={counts![i][1]} />
-            </TableCell>
+            <NumCell value={counts![i][1]} />
           </>
         );
   const lines = Math.max(1, count);
@@ -140,9 +156,7 @@ export function PairCells({ pairs, line, unset, none }: { pairs: Pair[]; line: n
       <TableCell>
         <Text value={pair.effort} unknown={unset} />
       </TableCell>
-      <TableCell className={NUM}>
-        <Num value={pair.count} />
-      </TableCell>
+      <NumCell value={pair.count} />
     </>
   );
 }

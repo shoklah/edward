@@ -30,11 +30,12 @@ export type RunsResponse = {
  * the finding carries one, else the app's, and `judge` says whose it is (null while it has neither); `validity` is the
  * workflow's call. `relevance` and `labelReason` are the app's call and reason (`reason` stays the session's), and
  * `appCategory` and `appRelevance` the app's label only where it differs from the workflow's category or validity. `label`
- * is the kit's checklist line a kit finding names, null without one.
+ * is the kit's checklist line a kit finding names, null without one, and `kit` its step's.
  */
 export type FindingRow = {
   id: string | null;
   step: StepKind;
+  kit: string | null;
   task: number | null;
   wave: string | null;
   round: number | null;
