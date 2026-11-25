@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
-import { SOFT, motionRuns, play } from './play.ts';
+import { condense } from './condense.ts';
+import { CALM, SOFT, motionRuns, play } from './play.ts';
 
 /** What last flows in each container clipped for it. */
 const flowing = new WeakMap<HTMLElement, Animation>();
@@ -48,4 +49,74 @@ export function usePill(nav: RefObject<HTMLElement | null>, path: string): void 
     const to = now.getBoundingClientRect();
     flow(now, { x: from.left - to.left, y: from.top - to.top }, el, '::before');
   }, [nav, path]);
+}
+
+/** A list's rows: told why by the press that changes them, before the state, they flow to their places and the new ones
+ * condense; a change with no reason is drawn at once. `keys` are those of the list's children, in order, and `all` every
+ * row's, on the page or not. */
+export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all: string[] = keys): (why: 'sort' | 'open') => void {
+  const places = useRef<ReadonlyMap<string, number>>(new Map());
+  const reason = useRef<'sort' | 'open' | null>(null);
+  // Not `getBoundingClientRect`, which a scroll moves and a flow under way too.
+  const measure = () => new Map(keys.map((key, i) => [key, (list.current!.children[i] as HTMLElement).offsetTop]));
+
+  useLayoutEffect(() => {
+    const was = places.current;
+    const why = reason.current;
+    reason.current = null;
+    if (!motionRuns()) {
+      places.current = new Map();
+      return;
+    }
+    const now = measure();
+    places.current = now;
+    const rows = keys.map((key, i) => ({ key, el: list.current!.children[i] as HTMLElement, isNew: !was.has(key) }));
+    // What still flows would come from a list that is gone.
+    if ([...was.keys()].join('\n') !== keys.join('\n')) {
+      for (const { el } of rows) for (const animation of el.getAnimations()) animation.cancel();
+    }
+    if (!why || (why === 'open' && !rows.some(({ isNew }) => isNew))) return;
+    const end = list.current!.getBoundingClientRect().bottom;
+    // A row starts no lower than where its foot meets the list's end, in real pixels: the places are whole ones, and even
+    // part of a pixel past the end scrolls the list.
+    const gap = ({ key, el }: (typeof rows)[number]) => {
+      const from = was.get(key)! - now.get(key)!;
+      return from > 0 ? Math.min(from, end - el.getBoundingClientRect().bottom) : from;
+    };
+    const moving = rows.map((row) => ({ ...row, from: row.isNew ? 0 : gap(row) })).filter(({ isNew, from }) => isNew || from);
+    if (why === 'sort') {
+      for (const [i, row] of moving.entries()) {
+        const delay = 18 * Math.min(i, 8);
+        if (row.isNew) condense(row.el, { ms: 520, easing: CALM, delay });
+        else slide(row.el, row.from, 520, delay);
+      }
+      return;
+    }
+    const below = moving.filter(({ isNew }) => !isNew);
+    for (const [i, row] of below.entries()) slide(row.el, row.from, 460, 12 * Math.max(0, Math.min(below.length, 8) - 1 - i));
+    for (const { el } of rows.filter(({ isNew }) => isNew)) {
+      const content = el.querySelector(':scope > td > div');
+      if (content) condense(content, { ms: 480, from: 'scale(0.96, 0.6)', easing: CALM });
+    }
+  });
+
+  return (why) => {
+    if (!motionRuns()) return;
+    places.current = measure();
+    reason.current = why;
+  };
+}
+
+/** A list's row flows down or up from `y`, with no stretch, so it stays inside its list. */
+function slide(el: Element, y: number, ms: number, delay: number): void {
+  play('flow', el, [{ transform: `translateY(${y}px)` }, { transform: 'none' }], ms, { easing: CALM, delay });
+}
+
+/** A chevron turns from its closed place when its row opens. */
+export function useTurn(icon: RefObject<SVGSVGElement | null>, open: boolean): void {
+  const was = useRef(open);
+  useLayoutEffect(() => {
+    if (open && !was.current) play('flow', icon.current!, [{ transform: 'rotate(-90deg)' }, { transform: 'none' }], 160, { easing: CALM });
+    was.current = open;
+  }, [icon, open]);
 }
