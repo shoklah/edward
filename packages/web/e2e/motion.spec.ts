@@ -655,3 +655,72 @@ test.describe('an import', () => {
     }
   });
 });
+
+test.describe('Mark all seen', () => {
+  test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
+
+  const mark = (page: Page) => page.getByRole('button', { name: 'Mark all seen' });
+  const items = (page: Page) => page.getByRole('region', { name: 'Since you last looked list' }).getByRole('listitem');
+  const NOTHING = 'Nothing new. Finished runs and new warnings show here until you mark them seen.';
+
+  test('washes the items away over the list that is gone, and nothing scrolls', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    // Answered here, so the server's own seen time stays.
+    await page.route('**/api/seen', (route) => route.fulfill({ status: 204 }));
+    await page.route('**/api/home', async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, json: { ...(await response.json()), feed: [] } });
+    });
+    const left = page.evaluate(async () => {
+      const root = document.documentElement;
+      const region = document.querySelector('[data-scroll-cue="block"]')!.getBoundingClientRect().toJSON();
+      const shown = [...document.querySelectorAll('[data-scroll-cue="block"] li')].filter((el) => el.getBoundingClientRect().top < region.bottom).length;
+      const size = () => [root.scrollWidth, root.scrollHeight].join();
+      const sizes = new Set([size()]);
+      let layer: HTMLElement | null = null;
+      while (!layer) {
+        await new Promise(requestAnimationFrame);
+        layer = document.querySelector('[data-copy="items"]');
+      }
+      const all = layer.getAnimations({ subtree: true });
+      for (const animation of all) animation.pause();
+      const end = Math.max(...all.map((a) => a.effect!.getComputedTiming().endTime as number));
+      for (let ms = 0; ms < end; ms += 10) {
+        for (const animation of all) animation.currentTime = ms;
+        sizes.add(size());
+      }
+      const found = {
+        region: JSON.stringify(layer.getBoundingClientRect().toJSON()) === JSON.stringify(region),
+        all: all.length === shown && layer.childElementCount === shown,
+        washes: all.every((a) => a.id === 'wash'),
+        sizes: sizes.size,
+      };
+      for (const animation of all) animation.finish();
+      return found;
+    });
+    await expect(items(page).first()).toBeVisible();
+    await mark(page).click();
+    expect(await left).toEqual({ region: true, all: true, washes: true, sizes: 1 });
+    await expect(page.getByText(NOTHING)).toBeVisible();
+    await expect(page.locator('[data-copy]')).toHaveCount(0);
+    await settled(page.getByRole('main'));
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  });
+
+  test('with a failing POST leaves the list and no copy', async ({ page }) => {
+    await watchAdded(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const count = await items(page).count();
+    expect(count).toBeGreaterThan(0);
+    await page.route('**/api/seen', (route) => route.fulfill({ status: 500 }));
+    const answered = page.waitForResponse('**/api/seen');
+    await mark(page).click();
+    await (await answered).finished();
+    await expect(items(page)).toHaveCount(count);
+    await page.waitForTimeout(100);
+    // Nor is the press still waiting for the next change of the list.
+    await landImport(page, { '/api/home': (home) => (home.feed = []) });
+    await expect(page.getByText(NOTHING)).toBeAttached();
+    expect(await added(page)).toMatchObject({ copies: 0 });
+  });
+});

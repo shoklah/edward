@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { BrushCleaning } from 'lucide-react';
@@ -12,7 +12,7 @@ import { RunLink } from '../components/RunLink.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { formatMinutes, formatUsagePercent, pathLabel } from '../lib/format.ts';
-import { useFlow } from '../motion/index.ts';
+import { condense, useFlow, wash } from '../motion/index.ts';
 
 /** An item (docs/design/2026-11-18-feed-items): a small muted caption, its status a swatch beside the word (the
  * warning orange or the finished green) and its time; then its message in medium weight, a warning's text or a finished
@@ -78,10 +78,29 @@ export function Feed({ items }: { items: FeedItem[] }) {
   const queryClient = useQueryClient();
   const viewing = useStatus().data?.account?.viewing;
   const list = useRef<HTMLUListElement>(null);
-  useFlow(list, items.map(itemKey));
+  const nothing = useRef<HTMLParagraphElement>(null);
+  /** "Mark all seen" pressed, until its answer is drawn. */
+  const pressed = useRef<ReturnType<typeof wash> | null>(null);
+  const keys = items.map(itemKey);
+  useFlow(list, keys);
+  useLayoutEffect(() => {
+    if (!pressed.current) return;
+    pressed.current.left(keys);
+    pressed.current = null;
+    if (nothing.current) condense(nothing.current);
+  }, [keys.join('\n')]);
   async function onMarkAllSeen() {
-    await markSeen();
-    await queryClient.invalidateQueries({ queryKey: ['/api/home'] });
+    const press = wash(list.current!, keys);
+    pressed.current = press;
+    try {
+      await markSeen();
+      await queryClient.invalidateQueries({ queryKey: ['/api/home'] });
+    } finally {
+      // A frame later: what was read again is drawn by a timer of the query client's, which a frame could come before.
+      setTimeout(() => {
+        if (pressed.current === press) pressed.current = null;
+      }, 16);
+    }
   }
   return (
     <Panel
@@ -102,7 +121,7 @@ export function Feed({ items }: { items: FeedItem[] }) {
       className="min-h-0 text-sm"
     >
       {items.length === 0 ? (
-        <p className="text-muted-foreground">Nothing new. Finished runs and new warnings show here until you mark them seen.</p>
+        <p ref={nothing} className="text-muted-foreground">Nothing new. Finished runs and new warnings show here until you mark them seen.</p>
       ) : (
         <div
           data-scroll-cue="block"

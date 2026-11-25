@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { motionOn, played } from '../test/motion.ts';
+import { page } from 'vitest/browser';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { finish, motionOn, played } from '../test/motion.ts';
 import { condense } from './condense.ts';
 import { centre, sourceOf } from './place.ts';
 import { FIRM } from './play.ts';
@@ -128,6 +129,125 @@ test('clear drops every copy', () => {
   wash.clear();
   expect(document.querySelectorAll('[data-copy]')).toHaveLength(0);
   expect(el.isConnected).toBe(true);
+});
+
+describe('items that leave a list', () => {
+  let on: { mockRestore(): void };
+  beforeEach(async () => {
+    await page.viewport(1000, 600);
+    on = motionOn();
+    document.body.innerHTML = `
+      <div style="height: 2000px">
+        <section class="glass" style="position: absolute; left: 60px; top: 150px; width: 300px; padding: 10px; font: 14px / 20px serif">
+          <div data-scroll-cue style="height: 100px; overflow: hidden; mask-image: linear-gradient(black, transparent)">
+            <ul style="margin: 0; padding: 0">${[...'abcd'].map((key) => `<li id="${key}" style="height: 40px; list-style: none">${key}</li>`).join('')}</ul>
+          </div>
+        </section>
+      </div>`;
+  });
+  afterEach(() => {
+    on.mockRestore();
+    window.scrollTo(0, 0);
+  });
+
+  const list = () => document.querySelector('ul')!;
+  const press = () => wash(list(), [...'abcd']);
+  const layer = () => document.querySelector<HTMLElement>('[data-copy="items"]');
+  const copies = () => [...(layer()?.children ?? [])] as HTMLElement[];
+  const rect = (el: Element) => el.getBoundingClientRect().toJSON();
+
+  test('wash away over it once told which remain, the last first, where its panel now is', async () => {
+    const seen = press();
+    expect(document.querySelector('[data-copy]')).toBeNull();
+    window.scrollTo(0, 100);
+    seen.left(['b']);
+    const all = layer()!;
+    expect(copies().map((el) => el.textContent)).toEqual(['a', 'c']);
+    expect(rect(all)).toEqual(rect(document.querySelector('[data-scroll-cue]')!));
+    expect(all.getBoundingClientRect().top).toBe(60);
+    expect(copies().map(rect)).toEqual([...'ac'].map((key) => rect(document.getElementById(key)!)));
+    expect([all.inert, all.ariaHidden]).toEqual([true, 'true']);
+    const style = getComputedStyle(all);
+    expect(style).toMatchObject({ position: 'fixed', zIndex: 'auto', overflow: 'hidden', pointerEvents: 'none' });
+    expect(style.maskImage).toBe('linear-gradient(rgb(0, 0, 0), rgba(0, 0, 0, 0))');
+    expect(getComputedStyle(copies()[0]).font).toBe('14px / 20px serif');
+    expect(all.querySelectorAll('[id]')).toHaveLength(0);
+
+    expect(played(all)).toEqual(copies().map((el) => ({ verb: 'wash', ms: 260, el })));
+    const [first, last] = copies().map((el) => el.getAnimations()[0]);
+    expect([first, last].map(({ effect }) => effect!.getTiming().delay)).toEqual([34, 0]);
+    expect(first.effect!.getTiming()).toMatchObject({ easing: 'ease-in', fill: 'both' });
+    expect((first.effect as KeyframeEffect).getKeyframes().map(({ computedOffset, opacity, transform }) => [computedOffset, opacity, transform])).toEqual([
+      [0, '1', undefined],
+      [0.4, '0.9', 'translateY(6px) scale(0.99, 1.08)'],
+      [1, '0', 'translateY(46px) scale(0.86, 1.35)'],
+    ]);
+    last.finish();
+    await last.finished;
+    expect(all.isConnected).toBe(true);
+    first.finish();
+    await vi.waitFor(() => expect(layer()).toBeNull());
+  });
+
+  test('that is gone wash away from their own places, only those that were in the window', () => {
+    const rects = [...'abc'].map((key) => rect(document.getElementById(key)!));
+    const seen = press();
+    document.querySelector('[data-scroll-cue]')!.replaceWith('Nothing new.');
+    seen.left([]);
+    expect(copies().map(rect)).toEqual(rects);
+  });
+
+  test('never make the page scroll', () => {
+    const size = () => [document.documentElement.scrollWidth, document.documentElement.scrollHeight];
+    const rest = size();
+    document.querySelector<HTMLElement>('section')!.style.left = '750px';
+    const seen = press();
+    seen.left([]);
+    for (let ms = 0; ms <= 360; ms += 20) {
+      for (const animation of layer()!.getAnimations({ subtree: true })) animation.currentTime = ms;
+      expect(size()).toEqual([Math.max(rest[0], 1070), rest[1]]);
+    }
+  });
+
+  test('leave nothing when cut short', async () => {
+    press().left([]);
+    for (const el of copies()) el.getAnimations()[0].cancel();
+    await vi.waitFor(() => expect(layer()).toBeNull());
+  });
+
+  test('leave nothing when all remain', () => {
+    press().left([...'abcd']);
+    expect(layer()).toBeNull();
+  });
+
+  test('leave nothing once cleared, before they leave or as they do', () => {
+    const seen = press();
+    wash.clear();
+    seen.left([]);
+    expect(layer()).toBeNull();
+    press().left([]);
+    expect(copies()).toHaveLength(3);
+    wash.clear();
+    expect(layer()).toBeNull();
+  });
+
+  test('leave nothing with motion off at the press or when they leave, nor under 768 px', async () => {
+    const seen = press();
+    on.mockRestore();
+    seen.left([]);
+    expect(layer()).toBeNull();
+    const still = press();
+    on = motionOn();
+    still.left([]);
+    expect(layer()).toBeNull();
+    await page.viewport(767, 600);
+    press().left([]);
+    expect(layer()).toBeNull();
+    await page.viewport(768, 600);
+    press().left([]);
+    expect(copies()).toHaveLength(3);
+    finish(document.body);
+  });
 });
 
 test("what condenses plays from its place squeezed and unseen to the element's own state", () => {

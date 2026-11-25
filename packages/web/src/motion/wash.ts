@@ -48,17 +48,24 @@ export function copyOf(el: HTMLElement): HTMLElement {
   return copy;
 }
 
-/** Puts copies in the page at `at`, in an inert layer over the backdrop and under the live page. */
+function put({ style }: HTMLElement, { left, top, width, height }: DOMRect): void {
+  Object.assign(style, { position: 'absolute', left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px`, margin: '0' });
+}
+
+/** Puts copies in the page in an inert layer: at `at`, over the backdrop and under the live page, or a list's `items`, put
+ * in it already, over the live page in a layer that is `at`. */
 export function attach(kind: 'page' | 'items' | 'prepare', at: DOMRect, copies: Node[]): HTMLElement {
   const layer = document.createElement('div');
   layer.dataset.copy = kind;
   layer.ariaHidden = 'true';
   layer.inert = true;
-  layer.style.cssText = 'position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none';
   layer.append(...copies);
-  for (const { style } of layer.children as HTMLCollectionOf<HTMLElement>) {
-    Object.assign(style, { position: 'absolute', left: `${at.left}px`, top: `${at.top}px`, width: `${at.width}px`, height: `${at.height}px`, margin: '0' });
+  if (kind === 'items') put(layer, at);
+  else {
+    Object.assign(layer.style, { inset: '0', zIndex: '-1' });
+    for (const copy of layer.children as HTMLCollectionOf<HTMLElement>) put(copy, at);
   }
+  Object.assign(layer.style, { position: 'fixed', overflow: 'hidden', pointerEvents: 'none' });
   document.body.append(layer);
   for (const el of layer.querySelectorAll('*')) {
     const place = scrolled.get(el);
@@ -112,15 +119,57 @@ let stopWave: (() => void) | null = null;
 let prepared = false;
 /** Whether a page switch brought the reader here and nothing has read so yet. */
 let arrived = false;
+/** How many times the copies have been dropped: a list's are only for the page they were made in. */
+let clears = 0;
 
-export const wash = {
-  /** Drops every copy, made or pending, and ends the bends. */
-  clear(): void {
-    pending = null;
-    stopWave?.();
-    for (const layer of document.querySelectorAll('[data-copy]')) layer.remove();
-    endBends();
-  },
+/** What leaves a list, whose children's keys are `keys`: those in the window are copied, as they stand; `left`, told the
+ * keys that remain once it is drawn again, washes the others away over it, the last first. */
+export function wash(list: HTMLElement, keys: string[]): { left(remaining: string[]): void } {
+  if (!motionRuns() || !wide()) return { left() {} };
+  const made = clears;
+  // The list may be gone by then; its panel isn't.
+  const panel = list.closest('.glass')!;
+  const was = panel.getBoundingClientRect();
+  const region = list.closest('[data-scroll-cue]')!;
+  const clipped = region.getBoundingClientRect();
+  // What the copies take from where they stand: the panel's text, and the region's faded edges.
+  const [{ font }, { maskImage }] = [getComputedStyle(list), getComputedStyle(region)];
+  const copies = [...list.children].flatMap((el, i) => {
+    if (!inWindow(el)) return [];
+    const copy = copyOf(el as HTMLElement);
+    const { left, top, width, height } = el.getBoundingClientRect();
+    put(copy, new DOMRect(left - clipped.left, top - clipped.top, width, height));
+    return [{ key: keys[i], copy }];
+  });
+  return {
+    left(remaining) {
+      const leaving = copies.filter(({ key }) => !remaining.includes(key)).map(({ copy }) => copy);
+      if (leaving.length === 0 || made !== clears || !motionRuns()) return;
+      const now = panel.getBoundingClientRect();
+      const at = new DOMRect(clipped.left + now.left - was.left, clipped.top + now.top - was.top, clipped.width, clipped.height);
+      const layer = attach('items', at, leaving);
+      Object.assign(layer.style, { font, maskImage });
+      const ends = leaving.map((copy, i) => {
+        const frames = [
+          { opacity: 1 },
+          { opacity: 0.9, transform: 'translateY(6px) scale(0.99, 1.08)', offset: 0.4 },
+          { opacity: 0, transform: 'translateY(46px) scale(0.86, 1.35)' },
+        ];
+        return play('wash', copy, frames, 260, { easing: 'ease-in', delay: 34 * (leaving.length - 1 - i), fill: 'both' })?.finished;
+      });
+      // A cancelled animation's end is a rejection.
+      Promise.allSettled(ends).then(() => layer.remove());
+    },
+  };
+}
+
+/** Drops every copy, made or pending, and ends the bends. */
+wash.clear = (): void => {
+  pending = null;
+  clears += 1;
+  stopWave?.();
+  for (const layer of document.querySelectorAll('[data-copy]')) layer.remove();
+  endBends();
 };
 
 /** Whether a page switch brought the reader here, once: not on a first load. */

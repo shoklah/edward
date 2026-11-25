@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, waitFor, within, type Mock } from 'storybook/test';
 import type { HomeResponse, StatusResponse } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { emptyHome, fullHome } from '../test/home.ts';
@@ -156,7 +156,7 @@ export const Many: Story = {
     // fades at the top, both ends once scrolled, its head alone at the end.
     const mask = () => getComputedStyle(list).maskImage;
     const [clear, ink] = ['rgba(0, 0, 0, 0)', 'rgb(0, 0, 0)'];
-    await expect(mask()).toBe(`linear-gradient(${ink} calc(100% - 48px), ${clear})`);
+    await waitFor(() => expect(mask()).toBe(`linear-gradient(${ink} calc(100% - 48px), ${clear})`));
     list.scrollTop = (list.scrollHeight - list.clientHeight) / 2;
     await waitFor(() => expect(mask()).toBe(`linear-gradient(${clear}, ${ink} 48px, ${ink} calc(100% - 48px), ${clear})`));
     list.scrollTop = list.scrollHeight;
@@ -190,33 +190,73 @@ export const Unknowns: Story = {
 // The server's answers for MarkAllSeen; the home answer turns empty once the POST lands, as the server's would.
 const routes: Record<string, object | number> = {};
 
-/** Marking all seen posts once, then the home data is read again and the feed empties. */
+/** The requests of `path`. */
+const asked = (path: string) => (fetch as unknown as Mock<typeof fetch>).mock.calls.filter(([asked]) => asked === path);
+
+/** Holds the home answers until told. */
+function holdHome(): () => void {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  const answers = fetch as unknown as Mock<typeof fetch>;
+  const answer = answers.getMockImplementation()!;
+  answers.mockImplementation(async (path) => {
+    const response = await answer(path);
+    if (path === '/api/home') await held;
+    return response;
+  });
+  return release;
+}
+
+/** Marking all seen posts once, then the home data is read again and the feed empties, its items washing away. */
 export const MarkAllSeen: Story = {
   args: { items: fullHome.feed },
   beforeEach: () => {
     Object.assign(routes, { '/api/status': ok, '/api/home': fullHome, '/api/seen': 204 });
     mockApi(routes);
+    const on = motionOn();
+    return () => on.mockRestore();
   },
   // The page's way of feeding the list: the live home query.
   render: function Render() {
     const home = useLiveQuery<HomeResponse>('/api/home');
     return <Feed items={home.data?.feed ?? []} />;
   },
-  play: async ({ canvas, userEvent }) => {
-    await expect(await canvas.findAllByRole('listitem')).toHaveLength(4);
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const items = await canvas.findAllByRole('listitem');
+    await expect(items).toHaveLength(4);
+    const places = items.map((item) => item.getBoundingClientRect().toJSON());
+    const font = getComputedStyle(items[0]).font;
     routes['/api/home'] = emptyHome;
+    const release = holdHome();
 
     const mark = canvas.getByRole('button', { name: 'Mark all seen' });
     // Every button is a pill (DESIGN.md), through index.css's one rule.
     await expect(getComputedStyle(mark).borderTopLeftRadius).toBe('9999px');
     await userEvent.click(mark);
+    await waitFor(() => expect(asked('/api/home')).toHaveLength(2));
+    await expect(asked('/api/seen')).toEqual([['/api/seen', { method: 'POST', headers: { 'X-Dashboard-Refresh': '1' } }]]);
+    await expect(canvas.getAllByRole('listitem')).toEqual(items);
+    await expect(document.querySelector('[data-copy]')).toBeNull();
 
-    await expect(await canvas.findByText(EMPTY)).toBeVisible();
-    const posts = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.filter(
-      ([path]) => path === '/api/seen',
-    );
-    await expect(posts).toEqual([['/api/seen', { method: 'POST', headers: { 'X-Dashboard-Refresh': '1' } }]]);
-    await waitFor(() => expect(canvas.queryAllByRole('listitem')).toHaveLength(0));
+    release();
+    // Read in one go, since it lasts a moment.
+    const { copies, ...leaving } = await waitFor(() => {
+      const layer = document.querySelector('[data-copy="items"]')!;
+      expect(layer).not.toBeNull();
+      for (const animation of layer.getAnimations({ subtree: true })) animation.currentTime = 0;
+      return {
+        copies: [...layer.children].map((el) => ({ place: el.getBoundingClientRect().toJSON(), font: getComputedStyle(el).font })),
+        washed: played(layer),
+        condensed: played(canvas.getByText(EMPTY)),
+        listed: canvasElement.querySelectorAll('li').length,
+      };
+    });
+    await expect(copies).toEqual(places.map((place) => ({ place, font })));
+    await expect(leaving.washed.map(({ verb, ms }) => [verb, ms])).toEqual(items.map(() => ['wash', 260]));
+    await expect(leaving.condensed).toEqual([{ verb: 'condense', ms: 420, el: canvas.getByText(EMPTY) }]);
+    await expect(leaving.listed).toBe(0);
+    await waitFor(() => expect(document.querySelector('[data-copy]')).toBeNull());
+    await expect(canvas.getByText(EMPTY)).toBeVisible();
   },
 };
 
@@ -282,6 +322,56 @@ export const Lands: Story = {
     const region = canvas.getByRole('region', { name: 'Since you last looked list' });
     await eachFrame(canvasElement, () => fits(region));
     await expect(first.getBoundingClientRect().height).toBeGreaterThan(170);
+  },
+};
+
+/** Marked seen, with the home data not read again: what leaves the feed later is no answer to that press. */
+export const SeenNotReadAgain: Story = {
+  args: { items: fullHome.feed },
+  beforeEach: () => {
+    Object.assign(routes, { '/api/status': ok, '/api/home': fullHome, '/api/seen': 204 });
+    mockApi(routes);
+    const on = motionOn();
+    return () => on.mockRestore();
+  },
+  render: Lands.render,
+  play: async ({ canvas, userEvent }) => {
+    await expect(await canvas.findAllByRole('listitem')).toHaveLength(4);
+    routes['/api/home'] = 500;
+    await userEvent.click(canvas.getByRole('button', { name: 'Mark all seen' }));
+    await waitFor(() => expect(asked('/api/home')).toHaveLength(2));
+    await new Promise((done) => setTimeout(done, 100));
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(4);
+
+    Object.assign(routes, { '/api/status': { ...ok, lastGoodImportAt: '2026-11-12T11:00:00.000Z' }, '/api/home': emptyHome });
+    await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
+    const moving = await waitFor(() => [...played(canvas.getByText(EMPTY)), ...document.querySelectorAll('[data-copy]')]);
+    await expect(moving).toEqual([]);
+  },
+};
+
+/** Marked seen as an import lands in the same answer: the seen items wash away and the import's item lands. */
+export const SeenAsAnImportLands: Story = {
+  args: { items: fullHome.feed },
+  beforeEach: SeenNotReadAgain.beforeEach,
+  render: Lands.render,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await expect(await canvas.findAllByRole('listitem')).toHaveLength(4);
+    const landing = { ...fullHome.feed[2], text: 'Simplify never ran' };
+    Object.assign(routes, { '/api/status': { ...ok, lastGoodImportAt: '2026-11-12T12:00:00.000Z' }, '/api/home': { ...fullHome, feed: [landing] } });
+    const release = holdHome();
+    await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
+    await waitFor(() => expect(asked('/api/home')).toHaveLength(2));
+    await userEvent.click(canvas.getByRole('button', { name: 'Mark all seen' }));
+    await waitFor(() => expect(asked('/api/seen')).toHaveLength(1));
+    release();
+    const list = canvas.getByRole('list');
+    await waitFor(() => {
+      expect([...document.querySelectorAll('[data-copy="items"] > *')].flatMap(played).map(({ verb }) => verb)).toEqual(Array(4).fill('wash'));
+      expect(played(list)).toEqual([{ verb: 'ripple', ms: 680, el: list.firstElementChild }]);
+    });
+    finish(canvasElement);
+    await waitFor(() => expect(document.querySelector('[data-copy]')).toBeNull());
   },
 };
 
