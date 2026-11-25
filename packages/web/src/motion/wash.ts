@@ -150,17 +150,18 @@ export function wash(list: HTMLElement, keys: string[]): { left(remaining: strin
       const at = new DOMRect(clipped.left + now.left - was.left, clipped.top + now.top - was.top, clipped.width, clipped.height);
       const layer = attach('items', at, leaving);
       Object.assign(layer.style, { font, maskImage });
+      const steps = Math.min(leaving.length - 1, 8);
       const ends = leaving.map((copy, i) => {
         const frames = [
           { opacity: 1 },
           { opacity: 0.9, transform: 'translateY(6px) scale(0.99, 1.08)', offset: 0.4 },
           { opacity: 0, transform: 'translateY(46px) scale(0.86, 1.35)' },
         ];
-        return play('wash', copy, frames, 260, { easing: 'ease-in', delay: 34 * (leaving.length - 1 - i), fill: 'both' })?.finished;
+        return play('wash', copy, frames, 260, { easing: 'ease-in', delay: 34 * Math.max(0, steps - i), fill: 'both' })?.finished;
       });
       // A cancelled animation's end is a rejection.
       Promise.allSettled(ends).then(() => layer.remove());
-      return 260 + 34 * (leaving.length - 1);
+      return 260 + 34 * steps;
     },
   };
 }

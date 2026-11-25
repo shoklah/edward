@@ -204,6 +204,14 @@ describe('items that leave a list', () => {
     expect(shown.filter(Boolean)).toEqual([]);
   });
 
+  test('follow one another by 34 ms, at most 272, those nearest the foot together', () => {
+    const keys = [...'abcdefghijkl'];
+    document.querySelector<HTMLElement>('[data-scroll-cue]')!.style.height = '300px';
+    list().innerHTML = keys.map((key) => `<li style="height: 20px; list-style: none">${key}</li>`).join('');
+    expect(wash(list(), keys).left([])).toBe(532);
+    expect(copies().map((el) => el.getAnimations()[0].effect!.getTiming().delay)).toEqual([272, 238, 204, 170, 136, 102, 68, 34, 0, 0, 0, 0]);
+  });
+
   test('that is gone wash away from their own places, only those that were in the window', () => {
     const rects = [...'abc'].map((key) => rect(document.getElementById(key)!));
     const seen = press();

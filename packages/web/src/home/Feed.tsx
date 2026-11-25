@@ -87,7 +87,7 @@ export function Feed({ items }: { items: FeedItem[] }) {
     if (!pressed.current) return;
     const delay = pressed.current.left(keys);
     pressed.current = null;
-    if (nothing.current) condense(nothing.current, { delay });
+    if (nothing.current) condense(nothing.current, { ms: 160, delay });
   }, [keys.join('\n')]);
   async function onMarkAllSeen() {
     const press = wash(list.current!, keys);

@@ -255,7 +255,7 @@ export const MarkAllSeen: Story = {
     });
     await expect(copies).toEqual(places.map((place) => ({ place, font })));
     await expect(leaving.washed.map(({ verb, ms }) => [verb, ms])).toEqual(items.map(() => ['wash', 260]));
-    await expect(leaving.condensed).toEqual([{ verb: 'condense', ms: 420, el: canvas.getByText(EMPTY) }]);
+    await expect(leaving.condensed).toEqual([{ verb: 'condense', ms: 160, el: canvas.getByText(EMPTY) }]);
     await expect(leaving.listed).toBe(0);
     // The last item's wash, then the line.
     await expect(leaving.delay).toBe(260 + 3 * 34);
