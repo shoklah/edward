@@ -10,8 +10,9 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvas }) => {
     const links = await canvas.findAllByRole('link');
-    await expect(links.map((link) => link.textContent)).toEqual(['Home', 'Weeks', 'Work', 'Findings', 'Context', 'Spend', 'Compliance', 'Steps and rules', 'Skills', 'Models and advisor']);
+    await expect(links.map((link) => link.textContent)).toEqual(['Home', 'Weeks', 'Work', 'Findings', 'Context', 'Spend', 'Compliance', 'Steps and rules', 'Skills', 'Kits', 'Models and advisor']);
     await expect(canvas.getByRole('link', { name: 'Skills' })).toHaveAttribute('href', '/skills');
+    await expect(canvas.getByRole('link', { name: 'Kits' })).toHaveAttribute('href', '/kits');
     await expect(canvas.getByRole('link', { name: 'Models and advisor' })).toHaveAttribute('href', '/models');
     await expect(canvas.getByRole('link', { name: 'Findings' })).toHaveAttribute('href', '/findings');
     await expect(canvas.getByRole('link', { name: 'Context' })).toHaveAttribute('href', '/context');
@@ -24,7 +25,7 @@ export const Default: Story = {
     await expect(canvas.getAllByRole('group')).toHaveLength(3);
     await expect(within(canvas.getByRole('group', { name: 'Activity' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['Work', 'Findings']);
     await expect(within(canvas.getByRole('group', { name: 'Usage and cost' })).getAllByRole('link')).toHaveLength(2);
-    await expect(within(canvas.getByRole('group', { name: 'Workflow' })).getAllByRole('link')).toHaveLength(4);
+    await expect(within(canvas.getByRole('group', { name: 'Workflow' })).getAllByRole('link')).toHaveLength(5);
     for (const link of links) {
       const icons = link.querySelectorAll('svg');
       await expect(icons).toHaveLength(1);

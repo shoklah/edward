@@ -14,7 +14,7 @@ test('the shell has no axe violations', async ({ page }) => {
 
 // Every page fits the viewport at a phone's, a tablet's and a desktop's width: what is wider (a table, a chart grid)
 // scrolls inside its own region, never the page, and a region that scrolls can take the keyboard's focus (axe).
-const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/work/changes/6acb252ca65f81f8', '/work/goals/843fdb9f8959fb12', '/findings', '/context', '/compliance', '/steps', '/skills', '/models', '/spend', '/weeks', '/nope'];
+const PAGES = ['/', '/work', '/work?view=runs', '/work?view=sessions', '/work/changes/6acb252ca65f81f8', '/work/goals/843fdb9f8959fb12', '/findings', '/context', '/compliance', '/steps', '/skills', '/kits', '/models', '/spend', '/weeks', '/nope'];
 // The heatmap cell a page's list waits on: Findings' and Compliance's lists show only once a cell is selected.
 const SELECT: Record<string, string> = {
   '/findings': 'Correctness, week of Nov 8: 3',
@@ -156,7 +156,7 @@ test('under 768 px the menu is behind a Menu button', async ({ page }) => {
   const pages = page.getByRole('dialog', { name: 'Pages' });
   await menu.click();
   await expect(pages.getByText('edward', { exact: true })).toBeVisible();
-  await expect(pages.getByRole('navigation', { name: 'Main' }).getByRole('link')).toHaveCount(10);
+  await expect(pages.getByRole('navigation', { name: 'Main' }).getByRole('link')).toHaveCount(11);
   await page.keyboard.press('Escape');
   await expect(pages).toBeHidden();
   await menu.click();
