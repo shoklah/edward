@@ -4,17 +4,17 @@ const html = document.documentElement, main = $('#main');
 const tpl = (id) => document.getElementById('t-' + id).content.cloneNode(true);
 
 const MOMENTS = {
-  switch: ['Page switch', { off: 'Off', settle: 'Settle: fade and rise', cross: 'Crossfade', dir: 'Slide, by rail order' }],
-  rail: ['Rail pill', { off: 'Off', glide: 'Glides' }],
+  switch: ['Page switch', { off: 'Off', settle: 'Settle: fade and rise', cross: 'Crossfade', dir: 'Slide, by rail order', drops: 'Melt and inflate: droplets', drop: 'Melt and inflate: one drop' }],
+  rail: ['Rail pill', { off: 'Off', glide: 'Glides', flow: 'Flows like a drop' }],
   title: ['Open a run', { off: 'As page switch', morph: 'Title travels' }],
-  values: ['Values change', { off: 'Off', glow: 'Glow', swap: 'Swap', both: 'Swap and glow' }],
+  values: ['Values change', { off: 'Off', glow: 'Glow', swap: 'Swap', both: 'Swap and glow', ripple: 'Wave, values condense' }],
   eye: ["edward's eye", { off: 'Off', blink: 'Blinks on an import' }],
-  row: ['Row opens', { off: 'Off', fade: 'Content fades in', slide: 'Rows below slide too' }],
-  sort: ['Sort', { off: 'Off', move: 'Rows move' }],
+  row: ['Row opens', { off: 'Off', fade: 'Content fades in', slide: 'Rows below slide too', liquid: 'Inflates, rows flow' }],
+  sort: ['Sort', { off: 'Off', move: 'Rows move', liquid: 'Rows flow' }],
   graph: ['Run graph opens', { off: 'Off', stages: 'Stage by stage', draw: 'Draws itself' }],
-  ring: ['Graph selection', { off: 'Off', detail: 'Detail fades in', glide: 'Ring glides too' }],
-  feedIn: ['Feed item arrives', { off: 'Off', drop: 'Drops in, others move' }],
-  feedOut: ['Mark all seen', { off: 'Off', fade: 'Fades out', sweep: 'Swept off' }],
+  ring: ['Graph selection', { off: 'Off', detail: 'Detail fades in', glide: 'Ring glides too', flow: 'Ring flows, detail inflates' }],
+  feedIn: ['Feed item arrives', { off: 'Off', drop: 'Drops in, others move', drip: 'A drop lands' }],
+  feedOut: ['Mark all seen', { off: 'Off', fade: 'Fades out', sweep: 'Swept off', melt: 'Melts away' }],
   showing: ['Showing mode', { off: 'Off', settle: 'Bar and page settle' }],
 };
 const PRESETS = {
@@ -22,8 +22,10 @@ const PRESETS = {
   quiet: { label: 'A Quiet', set: { switch: 'settle', values: 'swap', row: 'fade', ring: 'detail', feedIn: 'drop', feedOut: 'fade', showing: 'settle' } },
   moments: { label: 'B Moments', set: { switch: 'settle', rail: 'glide', values: 'glow', eye: 'blink', row: 'slide', sort: 'move', graph: 'stages', ring: 'glide', feedIn: 'drop', feedOut: 'sweep', showing: 'settle' } },
   playful: { label: 'C Playful', set: { switch: 'dir', rail: 'glide', title: 'morph', values: 'both', eye: 'blink', row: 'slide', sort: 'move', graph: 'draw', ring: 'glide', feedIn: 'drop', feedOut: 'sweep', showing: 'settle' } },
+  drops: { label: 'D1 Droplets', set: { switch: 'drops', rail: 'flow', title: 'morph', values: 'ripple', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
+  drop: { label: 'D2 One drop', set: { switch: 'drop', rail: 'flow', title: 'morph', values: 'ripple', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
 };
-let S = {}, preset = 'moments', k = 1, reduced = false;
+let S = {}, preset = 'drops', k = 1, reduced = false;
 const sysReduced = matchMedia('(prefers-reduced-motion: reduce)');
 const on = (m) => (reduced || sysReduced.matches ? 'off' : S[m] ?? 'off');
 
@@ -32,10 +34,10 @@ function play(el, frames, ms, opts = {}) {
 }
 function cls(el, c) { el.classList.remove(c); void el.offsetWidth; el.classList.add(c); el.addEventListener('animationend', (e) => { if (e.target === el) el.classList.remove(c); }, { once: true }); }
 /** FLIP: what `els` hold moves from where it was before `change` to where it is after. */
-function flip(els, change, ms = 200) {
+function flip(els, change, ms = 200, o = {}) {
   const was = els().map((el) => [el, el.getBoundingClientRect().top]);
-  change();
-  for (const [el, y] of was) { if (!el.isConnected) continue; const d = y - el.getBoundingClientRect().top; if (Math.abs(d) > 0.5) play(el, [{ transform: `translateY(${d}px)` }, { transform: 'none' }], ms, { easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }); }
+  change(); let n = 0;
+  for (const [el, y] of was) { if (!el.isConnected) continue; const d = y - el.getBoundingClientRect().top; if (Math.abs(d) > 0.5) play(el, [{ transform: `translateY(${d}px)` }, { transform: 'none' }], ms, { easing: o.easing ?? 'cubic-bezier(0.65, 0, 0.35, 1)', delay: (o.stagger ?? 0) * (o.last ? Math.max(0, Math.min(was.length, 8) - 1 - n++) : Math.min(n++, 8)) }); }
 }
 
 // --- Pages -----------------------------------------------------------------------------------------------------------
@@ -57,6 +59,7 @@ function setRail(p, from) {
   const was = pill.offsetTop + (pill._y ?? y);
   pill.style.height = a.offsetHeight + 'px'; pill.style.transform = `translateY(${y}px)`;
   if (from && on('rail') === 'glide' && pill._y !== undefined && pill._y !== y) play(pill, [{ transform: `translateY(${pill._y}px)` }, { transform: `translateY(${y}px)` }], 200, { easing: 'cubic-bezier(0.65, 0, 0.35, 1)' });
+  if (from && on('rail') === 'flow' && pill._y !== undefined && pill._y !== y) gather(pill, { x: 0, y: pill._y }, { x: 0, y }, { w: pill.offsetWidth, h: pill.offsetHeight });
   pill._y = y;
 }
 function go(p, link) {
@@ -64,7 +67,9 @@ function go(p, link) {
   const from = page, change = () => { page = p; draw(p); };
   const mode = on('switch'), morph = p === 'run' && link && on('title') === 'morph' && document.startViewTransition;
   setRail(p, from);
-  if ((mode === 'cross' || mode === 'dir' || morph) && document.startViewTransition) {
+  if (RAIL_SWITCH.includes(mode) && !morph && document.startViewTransition) {
+    liquidSwitch(mode, p, () => { change(); if (p === 'run') graphIn(); });
+  } else if ((mode === 'cross' || mode === 'dir' || morph) && document.startViewTransition) {
     if (mode === 'dir') html.dataset.dir = ORDER.indexOf(railOf(p)) >= ORDER.indexOf(railOf(from)) ? 'down' : 'up';
     if (morph) link.style.viewTransitionName = 'run-title';
     const vt = document.startViewTransition(() => { change(); if (morph) $('h1', main).style.viewTransitionName = 'run-title'; if (p === 'run') graphIn(); });
@@ -84,6 +89,7 @@ function changeValue(el) {
   const old = el.textContent.trim(), dec = old.split('.')[1]?.length ?? 0, now = (Number(old) + (dec ? 0.3 : 1 + (imports % 3))).toFixed(dec), mode = on('values');
   el.textContent = now;
   if (mode === 'off') return;
+  if (mode === 'ripple') return condense(el, old, now);
   const inner = document.createElement('span');
   el.replaceChildren(inner);
   if (mode === 'swap' || mode === 'both') { inner.className = 'm-swap'; inner.innerHTML = `<span class="old" aria-hidden="true">${old}</span><span class="new">${now}</span>`; }
@@ -93,6 +99,7 @@ function changeValue(el) {
 }
 function land() {
   imports++;
+  if (on('values') === 'ripple') ripple(); else wave = null;
   const list = bumpable(), n = Math.min(9, list.length);
   for (let i = 0; i < n; i++) changeValue(list[Math.floor((i * list.length) / n + (imports % 2))] ?? list[i]);
   if (on('eye') === 'blink') cls($('aside svg'), 'm-blink');
@@ -112,7 +119,8 @@ function newRun() {
   $('time', row) && ($('time', row).textContent = $('#imported').textContent);
   delete row.dataset.key; row.dataset.key = '0';
   const add = () => body.prepend(row);
-  if (on('feedIn') === 'drop') { flip(() => $$('tr', body), add); play(row, [{ opacity: 0, transform: 'translateY(-8px)' }, {}], 180, { delay: 90 }); } else add();
+  if (on('feedIn') === 'drip') { flip(() => $$('tr', body), add, 520, { easing: SOFT, stagger: 16, last: true }); play(row, [{ opacity: 0, transform: 'translateY(-26px) scale(0.96, 1.3)' }, { opacity: 1, offset: 0.2 }, {}], 620, { delay: 80, easing: SOFT }); }
+  else if (on('feedIn') === 'drop') { flip(() => $$('tr', body), add); play(row, [{ opacity: 0, transform: 'translateY(-8px)' }, {}], 180, { delay: 90 }); } else add();
 }
 
 // --- The feed --------------------------------------------------------------------------------------------------------
@@ -122,7 +130,8 @@ function feedItem() {
   const ul = feedList(); if (!ul) return;
   const item = document.getElementById('t-home').content.querySelector('[data-scroll-cue=block] li').cloneNode(true);
   $('a', item).textContent = ['Keep drafts across tabs', 'Trim the sync log daily', 'Name exports by notebook'][imports % 3]; $('time', item).textContent = $('#imported').textContent;
-  if (on('feedIn') === 'drop') { flip(() => $$('li', ul), () => ul.prepend(item)); play(item, [{ opacity: 0, transform: 'translateY(-8px)' }, {}], 180, { delay: 90 }); } else ul.prepend(item);
+  if (on('feedIn') === 'drip') { const delay = wave ? wave.delay(ul) : 0; setTimeout(() => { flip(() => $$('li', ul), () => ul.prepend(item), 560, { easing: SOFT, stagger: 16, last: true }); play(item, [{ opacity: 0, transform: 'translateY(-34px) scale(0.5, 1.2)' }, { opacity: 1, offset: 0.18 }, {}], 680, { delay: 150, easing: SOFT }); }, delay * k); }
+  else if (on('feedIn') === 'drop') { flip(() => $$('li', ul), () => ul.prepend(item)); play(item, [{ opacity: 0, transform: 'translateY(-8px)' }, {}], 180, { delay: 90 }); } else ul.prepend(item);
 }
 function emptyFeed() {
   const box = $('[data-scroll-cue=block]', main); if (!box) return;
@@ -135,7 +144,9 @@ async function markSeen() {
     const box = ul.parentElement, view = box.getBoundingClientRect();
     const items = $$('li', ul).filter((li) => li.getBoundingClientRect().top < view.bottom);
     box.style.overflow = 'hidden';
-    await Promise.all(items.map((li, i) => mode === 'sweep'
+    await Promise.all(items.map((li, i) => mode === 'melt'
+      ? play(li, [{ opacity: 1 }, { opacity: 0.9, transform: 'translateY(6px) scale(0.99, 1.08)', offset: 0.4 }, { opacity: 0, transform: 'translateY(46px) scale(0.86, 1.35)' }], 260, { delay: (items.length - 1 - i) * 34, fill: 'both', easing: 'ease-in' }).finished
+      : mode === 'sweep'
       ? play(li, [{}, { opacity: 0, transform: 'translateX(40px)' }], 130, { delay: i * 30, fill: 'both', easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }).finished
       : play(li, [{}, { opacity: 0 }], 100, { fill: 'both' }).finished));
   }
@@ -155,9 +166,11 @@ function toggleRow(button) {
   if (!open) { row.nextElementSibling?.matches('[data-opened]') && row.nextElementSibling.remove(); row.classList.remove('border-b-0'); setChevron(button, false); return; }
   const t = document.createElement('template'); t.innerHTML = OPENED[row.dataset.key ?? 0]; const detail = t.content.firstElementChild; detail.dataset.opened = '';
   const add = () => { row.after(detail); row.classList.add('border-b-0'); };
-  if (mode === 'slide') flip(() => [...$$('tr', row.parentElement).slice([...row.parentElement.children].indexOf(row) + 1)], add, 180); else add();
+  if (mode === 'liquid') flip(() => [...$$('tr', row.parentElement).slice([...row.parentElement.children].indexOf(row) + 1)], add, 460, { easing: FIRM, stagger: 12, last: true });
+  else if (mode === 'slide') flip(() => [...$$('tr', row.parentElement).slice([...row.parentElement.children].indexOf(row) + 1)], add, 180); else add();
   setChevron(button, true);
-  if (mode !== 'off') play($('td > div', detail), [{ opacity: 0, transform: 'translateY(-4px)' }, {}], 160, { delay: mode === 'slide' ? 70 : 0 });
+  if (mode === 'liquid') play($('td > div', detail), [{ opacity: 0, transform: 'scale(0.96, 0.6)' }, { opacity: 1, offset: 0.35 }, {}], 480, { easing: SOFT }), ($('td > div', detail).style.transformOrigin = 'top left');
+  else if (mode !== 'off') play($('td > div', detail), [{ opacity: 0, transform: 'translateY(-4px)' }, {}], 160, { delay: mode === 'slide' ? 70 : 0 });
 }
 function sortBy(head) {
   const th = head.closest('th'), i = [...th.parentElement.children].indexOf(th), body = $('tbody', th.closest('table'));
@@ -167,7 +180,7 @@ function sortBy(head) {
   const rows = $$('tr', body), val = (r) => { const c = r.children[i], t = $('time', c)?.dateTime ?? c.textContent.trim(), n = Number(t); return Number.isNaN(n) ? t : n; };
   const sorted = [...rows].sort((a, b) => { if (!dir) return a.dataset.key - b.dataset.key; const x = val(a), y = val(b), c = x < y ? -1 : x > y ? 1 : 0; return dir === 'ascending' ? c : -c; });
   const change = () => body.append(...sorted);
-  on('sort') === 'move' ? flip(() => rows, change, 220) : change();
+  on('sort') === 'liquid' ? flip(() => rows, change, 520, { easing: FIRM, stagger: 18 }) : on('sort') === 'move' ? flip(() => rows, change, 220) : change();
 }
 
 // --- The run graph ---------------------------------------------------------------------------------------------------
@@ -189,9 +202,11 @@ function select(button) {
   const at = (b) => `translate(${b.offsetLeft}px, ${b.offsetTop}px)`;
   if (!ring) { ring = document.createElement('div'); ring.className = 'm-ring'; box.append(ring); if (mode === 'glide') play(ring, [{ opacity: 0 }, {}], 120); }
   else if (mode === 'glide' && was) play(ring, [{ transform: at(was) }, { transform: at(button) }], 220, { easing: 'cubic-bezier(0.65, 0, 0.35, 1)' });
+  else if (mode === 'flow' && was) gather(ring, { x: was.offsetLeft, y: was.offsetTop }, { x: button.offsetLeft, y: button.offsetTop }, { w: button.offsetWidth, h: button.offsetHeight });
   Object.assign(ring.style, { width: button.offsetWidth + 'px', height: button.offsetHeight + 'px', transform: at(button) });
   detail.innerHTML = DETAILS[button.dataset.i];
-  if (mode !== 'off') cls(detail.firstElementChild, 'm-settle');
+  if (mode === 'flow') { detail.firstElementChild.style.transformOrigin = 'top left'; play(detail.firstElementChild, [{ opacity: 0, transform: 'scale(0.97, 0.8)' }, { opacity: 1, offset: 0.3 }, {}], 460, { easing: FIRM }); }
+  else if (mode !== 'off') cls(detail.firstElementChild, 'm-settle');
 }
 function graphIn() {
   const mode = on('graph'); if (mode === 'off') return;
@@ -261,5 +276,5 @@ ctl.addEventListener('click', (e) => {
 ctl.addEventListener('change', (e) => { S[e.target.dataset.m] = e.target.value; preset = 'custom'; renderCtl(); html.dataset.preset = 'custom'; });
 
 const nav = $('aside nav'); nav.classList.add('piloted'); nav.prepend(Object.assign(document.createElement('span'), { className: 'm-pill', ariaHidden: 'true' }));
-S = { ...PRESETS.moments.set }; renderCtl(); draw('home'); setRail('home');
+S = { ...PRESETS.drops.set }; renderCtl(); draw('home'); setRail('home');
 document.fonts.ready.then(() => setRail(page));
