@@ -1,10 +1,10 @@
 // Runs the configured reporter once and says whether the loader reads its output: the version, the failing field
 // paths, the run key counts, the count of the reporter's unit keys that differ from the app's, the weeks, run time
 // groups, step kinds, rules, unit figures, usage weeks and context weeks whose sums differ from the reporter's totals,
-// the count of skills, of models and of units whose phases differ from their models and advisor, whether the units'
-// usage adds up by change and by goal, the counts of units carrying each Work fact, and the leaks showing mode lets
-// through, each by route and kind. It prints no value from the data but those weeks' dates, and no skill or agent
-// name, since a project can name one. Usage:
+// the count of skills, of models, of the kit reviews' figures and of units whose phases differ from their models and
+// advisor, whether the units' usage adds up by change and by goal, the counts of units carrying each Work fact, and the
+// leaks showing mode lets through, each by route and kind. It prints no value from the data but those weeks' dates, and
+// no skill, agent or kit name, since a project can name one. Usage:
 // `pnpm --filter @cwd/server check:real [dataDir]`; the data dir defaults to the real one.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -14,6 +14,7 @@ import {
   modelsCost,
   PATHS,
   splitSessionId,
+  type KitsResponse,
   type RunEntry,
   type RunsResponse,
   type SessionEntry,
@@ -28,6 +29,7 @@ import { goalKey, projectKey, runKey, sessionKey } from './keys.ts';
 import { runReporter } from './reporter.ts';
 import { contextSums } from './views/context.ts';
 import { weekSums } from './views/home.ts';
+import { dispatchCost, kitsOf, reviewSums } from './views/kits.ts';
 import { modelSums } from './views/models.ts';
 import { storedBranches, storedNames, storedSessionRoots } from './views/runs.ts';
 import { forbiddenStrings, leaks } from './views/scope.ts';
@@ -200,6 +202,32 @@ else {
       : null,
   );
 
+  // The kit reviews and their dispatches' cost, summed over kits plus those in no kit; a count only, since a project can
+  // name a kit.
+  const sum = (values: (number | null | undefined)[]) => values.reduce<number>((n, value) => n + (value ?? 0), 0);
+  const kitNames = [...new Set(entries.flatMap(kitsOf))];
+  const noKit = entries.flatMap((run) => run.steps ?? []).filter((s) => s.step === 'kit_review' && s.kit == null);
+  const kitRan = sum(kitNames.map((kit) => reviewSums(entries, kit, 'kit_review').ran)) + noKit.length;
+  const kitCost = sum(
+    [...kitNames, null].flatMap((kit) =>
+      entries.map((run) => dispatchCost(run, (d, k) => d.kind === 'kit_review' && k === kit)),
+    ),
+  );
+  const kitReview = board?.kit_review;
+  differLine(
+    'kits',
+    '2 compared, ',
+    kitReview
+      ? Object.entries({
+          ran: kitRan === (kitReview.ran ?? 0),
+          cost: cents(kitCost) === cents(kitReview.cost ?? 0),
+        })
+          .filter(([, same]) => !same)
+          .map(([name]) => name)
+      : null,
+    false,
+  );
+
   const rules = ruleSums(entries);
   const sameOffers = keysOf(rules.offers, totals.offers).every((skill) =>
     sameCounts(rules.offers[skill], totals.offers?.[skill]),
@@ -324,7 +352,6 @@ else {
   // Each run's and session's phases against its own models cost and advisor, cost to the cent, a missing figure 0; a
   // count only, since a unit can name a project.
   const phased = [...entries, ...sessionEntries].filter((unit) => unit.phases != null);
-  const sum = (values: (number | null | undefined)[]) => values.reduce<number>((n, value) => n + (value ?? 0), 0);
   differLine(
     'phases',
     `${phased.length} compared, `,
@@ -436,16 +463,22 @@ else {
     const listed = (await get('/api/work?weeks=52')) as WorkResponse;
     const changePages = listed.goals.flatMap((goal) => goal.rows.map((row) => `/api/work/changes/${row.key}`));
     const goalPages = listed.goals.flatMap((goal) => (goal.key ? [`/api/work/goals/${goal.key}`] : []));
+    // The Kits page's default kit, then each kit it lists, printed as one route, since a project can name a kit.
+    const kits = (await get('/api/kits?weeks=52')) as KitsResponse;
+    const kitPages = kits.kits.map((kit) => `/api/kits?weeks=52&kit=${encodeURIComponent(kit)}`);
     const pages = list.runs.map((run) => `/api/runs/${run.key}`);
     const routes = [
       '/api/runs?weeks=52',
       '/api/work?weeks=52',
+      '/api/kits?weeks=52',
       ...paths,
       ...pages.map(() => '/api/runs/:key'),
       ...changePages.map(() => '/api/work/changes/:key'),
       ...goalPages.map(() => '/api/work/goals/:key'),
+      ...kitPages.map(() => '/api/kits?weeks=52'),
     ];
-    const bodies = [list, listed, ...(await Promise.all([...paths, ...pages, ...changePages, ...goalPages].map(get)))];
+    const fetched = [...paths, ...pages, ...changePages, ...goalPages, ...kitPages];
+    const bodies = [list, listed, kits, ...(await Promise.all(fetched.map(get)))];
     // A leak's kinds of hidden string, never the string itself.
     const kindsOf = (s: string) => (s === homedir() ? ['home folder'] : (strings.kinds.get(s) ?? [])).join(', ');
     // A leak found as a whole word in no response (leaks' words) is counted apart, since it may be part of a key or a
