@@ -25,7 +25,7 @@ const PRESETS = {
   playful: { label: 'C Playful', set: { switch: 'dir', rail: 'glide', title: 'morph', values: 'both', eye: 'blink', row: 'slide', sort: 'move', graph: 'draw', ring: 'glide', feedIn: 'drop', feedOut: 'sweep', showing: 'settle' } },
   drain: { label: 'Drain', set: { switch: 'drain', rail: 'flow', title: 'morph', values: 'ripple', wave: 'refract', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
   mercury: { label: 'Mercury', set: { switch: 'mercury', rail: 'flow', title: 'morph', values: 'ripple', wave: 'water', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
-  wash: { label: 'Wash', set: { switch: 'wash', rail: 'flow', title: 'morph', values: 'ripple', wave: 'refract', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
+  wash: { label: 'Wash', set: { switch: 'wash', rail: 'flow', title: 'morph', values: 'ripple', wave: 'refract', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'off' } },
   drip: { label: 'Drip', set: { switch: 'drip', rail: 'flow', title: 'morph', values: 'ripple', wave: 'ring', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
 };
 let S = {}, preset = 'wash', k = 1, reduced = false;
@@ -70,8 +70,8 @@ function go(p, link) {
   const from = page, change = () => { page = p; draw(p); };
   const mode = on('switch'), morph = p === 'run' && link && on('title') === 'morph' && document.startViewTransition;
   setRail(p, from);
-  if (RAIL_SWITCH.includes(mode) && !morph && document.startViewTransition) {
-    liquidSwitch(mode, p, () => { change(); if (p === 'run') graphIn(); }, from);
+  if (RAIL_SWITCH.includes(mode)) {
+    liquidSwitch(mode, p, () => { change(); if (p === 'run') graphIn(); }, from, link);
   } else if ((mode === 'cross' || mode === 'dir' || morph) && document.startViewTransition) {
     if (mode === 'dir') html.dataset.dir = ORDER.indexOf(railOf(p)) >= ORDER.indexOf(railOf(from)) ? 'down' : 'up';
     if (morph) link.style.viewTransitionName = 'run-title';

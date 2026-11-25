@@ -16,12 +16,17 @@ const visible = (el) => { const r = el.getBoundingClientRect(); return r.width >
 const panels = () => [...main.querySelectorAll('.glass')].filter((p) => visible(p) && !p.parentElement.closest('.glass')).slice(0, 16);
 
 /** The page switch. Arriving is one thing, panels inflating out of the rail entry pressed; leaving is the choice. */
-function liquidSwitch(mode, p, change, was) {
+function liquidSwitch(mode, p, change, was, link) {
   const entry = (q) => { const r = document.querySelector(`aside nav a[data-page="${railOf(q)}"]`)?.getBoundingClientRect(); return r?.width ? r : { left: 12, top: 12, width: 60, height: 36 }; };
-  const src = entry(p), from = entry(was), cx = src.left + src.width / 2, cy = src.top + src.height / 2;
+  // The wave starts where the reader pressed: the link inside the page, else the rail's entry.
+  const at = link?.getBoundingClientRect(), src = at ?? entry(p), from = entry(was), cx = src.left + src.width / 2, cy = src.top + src.height / 2;
+  const size = link ? parseFloat(getComputedStyle(link).fontSize) : 0;
   const layer = copyPage(), ghosts = layer.panels;
   change();
   const fresh = panels(), far = Math.hypot(innerWidth, innerHeight);
+  // A run's title travels from its link.
+  const h1 = at && p === 'run' ? main.querySelector('h1') : null;
+  if (h1) travel(h1, at, size);
   if (mode === 'drip') { drip(layer, 320); inflate(fresh, src, 80, 170); settle(fresh, 200); }
   if (mode === 'drain') {
     // The page goes back into the entry it came from, then the pill carries it to the next one.
@@ -41,10 +46,15 @@ function liquidSwitch(mode, p, change, was) {
     if (layer.firstElementChild) bend(layer.firstElementChild, cx, cy, R, ms, pow, 'wash');
     // The new page condenses where the wave has passed.
     for (const el of [...fresh, ...loose(fresh)]) {
+      if (el === h1 || el.contains(h1)) continue;
       const r = el.getBoundingClientRect(), dx = r.left + r.width / 2 - cx, dy = r.top + Math.min(r.height, innerHeight) / 2 - cy, d = Math.hypot(dx, dy) || 1;
-      play(el, [{ opacity: 0, transform: `translate(${(-dx / d) * 34}px, ${(-dy / d) * 34}px) scale(0.9)` }, { opacity: 1, offset: 0.3 }, {}], 640, { delay: when(d), easing: SOFT });
+      play(el, [{ opacity: 0, transform: `translate(${(-dx / d) * 34}px, ${(-dy / d) * 34}px) scale(0.9)` }, { opacity: 1, offset: 0.3 }, {}], 640, { delay: when(d + 0.15 * r.width), easing: FIRM });
     }
   }
+}
+function travel(h1, at, size) {
+  const to = h1.getBoundingClientRect(), s = size / parseFloat(getComputedStyle(h1).fontSize);
+  h1.style.transformOrigin = '0 0'; play(h1, [{ transform: `translate(${at.left - to.left}px, ${at.top - to.top}px) scale(${s})` }, { transform: 'none' }], 620, { easing: FIRM });
 }
 /** Panels grow out of `src` as drops, the nearest first. */
 function inflate(fresh, src, delay, spread) {
@@ -124,8 +134,10 @@ function bend(el, x, y, R, ms, pow, id = 'bend') {
   const r = el.getBoundingClientRect(), f = document.querySelector(`#${id}`), imgs = f.querySelectorAll('feImage'), map = f.querySelector('feDisplacementMap'), t0 = performance.now();
   for (const [a, v] of Object.entries({ x: -r.left, y: -r.top, width: innerWidth, height: innerHeight })) f.setAttribute(a, v);
   el.style.filter = `url(#${id})`;
+  // Scrolling ends it at once: its region is the window's as it was.
+  let on = true; addEventListener('scroll', () => { on = false; }, { once: true });
   const tick = (t) => {
-    const p = Math.min(1, Math.max(0, t - t0) / (ms * k)), front = R * (1 - Math.pow(1 - p, pow)) / 0.8;
+    const p = on ? Math.min(1, Math.max(0, t - t0) / (ms * k)) : 1, front = R * (1 - Math.pow(1 - p, pow)) / 0.8;
 for (const img of imgs) { img.setAttribute('x', x - r.left - front); img.setAttribute('y', y - r.top - front); img.setAttribute('width', 2 * front + 1); img.setAttribute('height', 2 * front + 1); }
     map.setAttribute('scale', (46 * Math.min(1, p * 8) * (1 - p) ** 0.6).toFixed(2));
     if (p < 1) requestAnimationFrame(tick); else el.style.filter = '';
@@ -165,3 +177,6 @@ function gather(el, from, to, size, ms = 420) {
   const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2, T = (x, y, a = 1, b = 1) => `translate(${x}px, ${y}px) scale(${a}, ${b})`;
   play(el, [{ transform: T(from.x, from.y) }, { transform: T(mx, my, sx > 1.02 ? sx : 0.9, sy > 1.02 ? sy : 0.9), offset: 0.3, easing: SOFT }, { transform: T(to.x, to.y) }], ms, { easing: 'ease-in' });
 }
+
+/** Once the page is idle, the effect runs unseen, so its first use doesn't stall. */
+(window.requestIdleCallback ?? ((f) => setTimeout(f, 800)))(() => { if (on('switch') !== 'wash') return; const l = copyPage(); l.style.opacity = '0.01'; bend(l.firstElementChild, 60, 60, 900, 300, 1.8, 'wash'); surface.drip(-400, -400, { R: 10, ms: 300, amp: 0.01, pow: 1, train: 40 }); setTimeout(() => l.remove(), 400); });
