@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { WARNING_INK } from '../lib/format.ts';
-import { finish, motionOn, played } from '../test/motion.ts';
 import { cells } from '../test/table.ts';
 import { finding, runFull, runKits, runPlan } from '../test/runs.ts';
 import { stagesOf, unitsOf, type Unit } from './flow.ts';
@@ -236,37 +234,5 @@ export const Phone: Story = {
     for (const text of ['Found', 'Round 1: still open', 'Round 2: still open', 'Round 3: still open', 'Ruled', 'One index per run is intended']) {
       await expect(f4.getByText(text)).toBeVisible();
     }
-  },
-};
-
-/** Opening, or showing another step, its section condenses; drawn again for the same step, it stays. */
-export const Condenses: Story = {
-  render: function Opening(args) {
-    const [id, show] = useState<string | null>(null);
-    const [draws, again] = useState(0);
-    return (
-      <>
-        {['wA', 't1'].map((next) => (
-          <button key={next} onClick={() => show(next)}>
-            Show {next}
-          </button>
-        ))}
-        <button onClick={() => again(draws + 1)}>Draw again</button>
-        {id && <StepDetail {...args} unit={{ ...unit(id) }} />}
-      </>
-    );
-  },
-  play: async ({ canvas, canvasElement, userEvent }) => {
-    const press = (name: string) => userEvent.click(canvas.getByRole('button', { name }));
-    const on = motionOn();
-    for (const [id, title] of [['wA', 'Wave A check'], ['t1', 'Task 1']]) {
-      await press(`Show ${id}`);
-      const section = canvas.getByRole('region', { name: title });
-      await expect(played(canvasElement)).toEqual([{ verb: 'condense', ms: 420, el: section }]);
-      finish(canvasElement);
-      await press('Draw again');
-      await expect(played(canvasElement)).toEqual([]);
-    }
-    on.mockRestore();
   },
 };

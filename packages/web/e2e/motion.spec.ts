@@ -422,24 +422,39 @@ test.describe('a run', () => {
       expect(response.status()).toBe(204);
     });
 
-    test("a run reached by a press doesn't draw again when showing mode starts", async ({ page }) => {
+    test("a run reached by a press, with a step selected, doesn't move again when showing mode starts or stops", async ({ page }) => {
       await watchPlayed(page);
       await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
       await page.getByRole('link', { name: FULL_TITLE }).click();
       await expect(flow(page)).toBeVisible();
       await rested(page);
       expect(drawn(await read(page)).length).toBeGreaterThan(20);
-      // Marked, so the graph drawn after the reset is told from this one.
-      await flow(page).evaluate((el) => el.setAttribute('data-before', ''));
-      await page.getByRole('switch', { name: 'Showing mode' }).click();
-      const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
-      await dialog.getByRole('checkbox', { name: 'lantern-notes' }).check();
-      await dialog.getByRole('button', { name: 'Start showing' }).click();
-      await expect(dialog).toHaveCount(0);
-      await expect(flow(page)).toBeVisible();
-      await expect(flow(page)).not.toHaveAttribute('data-before');
-      await frames(page);
-      expect(drawn(await read(page))).toEqual([]);
+      const box = flow(page).getByRole('button', { name: /^Task 1(?!\d)/ });
+      const detail = page.getByRole('region', { name: 'Task 1', exact: true });
+      await box.click();
+      await expect(detail).toBeVisible();
+      await rested(page);
+      await read(page);
+      /** The graph and the selected step's detail are drawn again by what `change` does, and nothing moves. */
+      const still = async (change: () => Promise<void>) => {
+        // Marked, so what is drawn after the reset is told from what was.
+        for (const el of [flow(page), detail]) await el.evaluate((e) => e.setAttribute('data-before', ''));
+        await change();
+        for (const el of [flow(page), detail]) {
+          await expect(el).toBeVisible();
+          await expect(el).not.toHaveAttribute('data-before');
+        }
+        await frames(page);
+        expect(await read(page)).toEqual([]);
+      };
+      await still(async () => {
+        await page.getByRole('switch', { name: 'Showing mode' }).click();
+        const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
+        await dialog.getByRole('checkbox', { name: 'lantern-notes' }).check();
+        await dialog.getByRole('button', { name: 'Start showing' }).click();
+        await expect(dialog).toHaveCount(0);
+      });
+      await still(() => page.getByRole('complementary').getByRole('button', { name: 'Stop showing' }).click());
     });
   });
 

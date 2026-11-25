@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, ThumbsUp, TriangleAlert } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
@@ -14,6 +14,7 @@ import { SessionLink } from '../components/SessionLink.tsx';
 import { TableCell } from '../components/ui/table.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
+import { condense } from '../motion/index.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 import { LaterFixesTerm, LeftForLater } from './LeftForLater.tsx';
 import { stagesOf, strengthsOf, unitsOf } from './flow.ts';
@@ -311,6 +312,11 @@ export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunPageResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
   // Unit ids repeat across runs: the route keys this page by its run, so a selection is this run's.
   const [selected, select] = useState<string | null>(null);
+  const detail = useRef<HTMLDivElement>(null);
+  // When the reader selects a step, not when showing mode or another account draws its detail again.
+  useLayoutEffect(() => {
+    if (selected !== null) condense(detail.current!.firstElementChild!);
+  }, [selected]);
   const stages = useMemo(() => stagesOf(run.data?.timeline ?? [], run.data), [run.data]);
   const units = useMemo(() => unitsOf(stages), [stages]);
   if (run.isPending) return <State>Loading the run…</State>;
@@ -359,7 +365,7 @@ export function RunPage({ runKey }: { runKey: string }) {
           ) : (
             <>
               <RunFlow stages={stages} selected={selected} onSelect={select} />
-              <div className="border-t pt-3 text-sm">
+              <div ref={detail} className="border-t pt-3 text-sm">
                 {unit ? (
                   <StepDetail unit={unit} onClose={() => select(null)} />
                 ) : (

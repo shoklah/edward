@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, within } from 'storybook/test';
+import { expect, fn, waitFor, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
+import { Panel } from '../components/Panel.tsx';
 import { WARNING_INK, formatDayTime } from '../lib/format.ts';
-import { motionOn, played } from '../test/motion.ts';
+import { eachFrame, fits, motionOn, played } from '../test/motion.ts';
 import { runFull, runKits, runLong, runPlanPair, runPlanTwice, runSmall } from '../test/runs.ts';
 import { width } from '../test/table.ts';
 import { stagesOf, unitsOf } from './flow.ts';
@@ -152,6 +153,52 @@ export const RingFlows: Story = {
     await expect(rings(canvasElement)).toHaveLength(0);
     await expect(played(canvasElement)).toEqual([]);
     await expect(pressed()).toEqual(['false', 'false']);
+    on.mockRestore();
+  },
+};
+
+/** 28 tasks in two rows, the first row's last box at the row's end. */
+const long = stagesOf([
+  runFull.timeline[0],
+  ...Array.from({ length: 28 }, (_, i) => ({ ...runFull.timeline[0], kind: 'task' as const, label: `Task ${i + 1}`, tasks: [{ task: i + 1, steps: [] }] })),
+  runFull.timeline.at(-1)!,
+]);
+
+/** The ring springs past the row's last box and the page doesn't scroll: its panel is clipped while the ring flows, also
+ * when the ring is gone by then, and no longer. */
+export const RingFits: Story = {
+  args: { stages: long },
+  decorators: [
+    (Story) => (
+      // The page's room around a panel 2314 px wide inside.
+      <div data-testid="page" className="overflow-auto p-4" style={{ width: 2314 + 66 }}>
+        <Panel title="Flow">
+          <Story />
+        </Panel>
+      </div>
+    ),
+  ],
+  render: RingFlows.render,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const panel = canvas.getByRole('region', { name: 'Flow' });
+    const overflow = () => getComputedStyle(panel).overflow;
+    const boxes = canvas.getAllByRole('button');
+    const top = boxes[0].offsetTop;
+    const last = boxes.filter((box) => box.offsetTop === top).at(-1)!;
+    const on = motionOn();
+    await userEvent.click(boxes[0]);
+    await expect(overflow()).toBe('visible');
+    await userEvent.click(last);
+    await expect(overflow()).toBe('clip');
+    await eachFrame(canvasElement, () => fits(canvas.getByTestId('page')));
+    await waitFor(() => expect(overflow()).toBe('visible'));
+
+    // Cleared while the ring flows.
+    await userEvent.click(boxes[0]);
+    await expect(overflow()).toBe('clip');
+    await userEvent.click(boxes[0]);
+    await expect(rings(canvasElement)).toHaveLength(0);
+    await waitFor(() => expect(overflow()).toBe('visible'));
     on.mockRestore();
   },
 };

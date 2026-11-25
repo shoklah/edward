@@ -164,7 +164,9 @@ export function RunFlow({ stages, ...pick }: { stages: Stage[] } & Pick) {
   useLayoutEffect(() => {
     const was = last.current;
     last.current = selected;
-    if (was && selected && was.unit.id !== selected.unit.id) flow(ring.current!, { x: was.x - selected.x, y: was.y - selected.y });
+    if (!was || !selected || was.unit.id === selected.unit.id) return;
+    // The panel, not the frame, whose sides a box's ring can cross.
+    flow(ring.current!, { x: was.x - selected.x, y: was.y - selected.y }, frame.current!.closest<HTMLElement>('.glass'));
   }, [selected]);
   const chipsOf = (unit: Unit) => placed.filter((p): p is Of<'chip'> => p.kind === 'chip' && p.unit === unit);
   const arrow = (tone: string) => `url(#${id}-${tone})`;

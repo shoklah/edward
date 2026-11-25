@@ -3,6 +3,7 @@ import { expect, spyOn, within } from 'storybook/test';
 import { parseTime, type FindingRow, type StatusResponse } from '@cwd/shared';
 import { formatDayTime, LATER_FIXES_TERM, WARNING_INK } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
+import { finish, motionOn, played } from '../test/motion.ts';
 import { cells, expectNoJoined, fact } from '../test/table.ts';
 import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runKits, runPlanPair, runPlanTwice, runSmall, runStopped, smallRun } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
@@ -613,5 +614,25 @@ export const LeftForLaterFollows: Story = {
       ['Deferred', "Test name doesn't say what it checks", 'Task 1'],
     ]);
     await expect(within(step).queryByText('Later fixes')).toBeNull();
+  },
+};
+
+/** A step's detail condenses when the reader selects it or another one; closed, it goes at once. */
+export const DetailCondenses: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull });
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const flow = within(await canvas.findByRole('region', { name: 'Flow' }));
+    const on = motionOn();
+    const condensed = () => played(canvasElement).filter(({ verb }) => verb === 'condense');
+    for (const [box, title] of [[/^Wave A check/, 'Wave A check'], [/^Task 1(?!\d)/, 'Task 1']] as const) {
+      await userEvent.click(flow.getByRole('button', { name: box }));
+      await expect(condensed()).toEqual([{ verb: 'condense', ms: 420, el: flow.getByRole('region', { name: title }) }]);
+      finish(canvasElement);
+    }
+    await userEvent.click(flow.getByRole('button', { name: 'Close Task 1' }));
+    await expect(played(canvasElement)).toEqual([]);
+    on.mockRestore();
   },
 };
