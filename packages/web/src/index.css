@@ -161,6 +161,8 @@
     /* The mark's pupil, two of the backdrop's orbs, the same in both modes (so only here, not in .dark). */
     --mark-pink: #ff3cac;
     --mark-teal: #00d2b8;
+    /* The firm spring, `FIRM` in `motion/play.ts`, the same in both modes. */
+    --spring-firm: linear(0.0000,0.0170,0.0614,0.1251,0.2010,0.2837,0.3687,0.4527,0.5333,0.6087,0.6778,0.7399,0.7947,0.8425,0.8832,0.9176,0.9459,0.9688,0.9870,1.0010,1.0115,1.0190,1.0239,1.0269,1.0282,1.0283,1.0274,1.0259,1.0239,1.0217,1.0193,1.0169,1.0145,1.0123,1.0102,1.0084,1.0067,1.0052,1.0039,1.0029,1);
 }
 
 /* DESIGN.md's look, night glass: tinted glass panels over a night gradient lit by colour orbs, white ink. */
@@ -313,13 +315,29 @@
   border-radius: var(--radius-control);
 }
 
+/* DESIGN.md's Motion for the generated components, unlayered for the same reason: hover, presses and focus are instant,
+   a switch's thumb flows, and a dialog and a tooltip condense, a dialog going back faster than it came. */
+[data-variant][data-size], [data-slot='input'], [data-slot='table-row'], [data-slot='switch'], [data-slot='dialog-close'] {
+  transition: none;
+}
+[data-slot='switch-thumb'] {
+  transition: translate 160ms var(--spring-firm);
+}
+[data-slot='dialog-content'][data-state='closed'], [data-slot='dialog-overlay'][data-state='closed'] {
+  animation-duration: 120ms;
+}
+[data-slot='tooltip-content'] {
+  animation-duration: 200ms;
+}
+
 /* DESIGN.md's Motion: removed under prefers-reduced-motion. Every animation and transition ends at once, a dialog's
-   and a tooltip's included; the table's edge cue, an animation on its scroll timeline, still follows the scroll. */
+   and a tooltip's included; the table's edge cue, an animation on its scroll timeline, still follows the scroll. A
+   transition takes 0s, since any longer one, on an element with no `transition` of its own, holds each change a frame. */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }

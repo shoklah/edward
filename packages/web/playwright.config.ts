@@ -12,7 +12,8 @@ export default defineConfig({
   testDir: 'e2e',
   // One worker: showing mode is server-wide state, so a test that turns it on must not overlap another test.
   workers: 1,
-  use: { baseURL: `http://127.0.0.1:${PORT}` },
+  // Under reduced motion, so a check sees the final state at once; motion.spec alone turns motion on.
+  use: { baseURL: `http://127.0.0.1:${PORT}`, reducedMotion: 'reduce' },
   // Started one after another, each once the one before answers, so the hosted one serves the build the first made.
   // The hosted one (`e2e/hosted.*`) answers only `localhost`, its public host, and its status only to a signed-in caller.
   webServer: [
