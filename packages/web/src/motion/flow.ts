@@ -1,7 +1,10 @@
-import { useLayoutEffect, useRef, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { clip } from './clip.ts';
 import { condense } from './condense.ts';
+import { inWindow } from './place.ts';
 import { CALM, SOFT, motionRuns, play } from './play.ts';
+import { notice } from './ripple.ts';
+import { drop } from './water.ts';
 
 /** What moves: `el` flows from `from`, relative to where it now is: it stretches over the gap, then gathers. It springs
  * past its place, so `within`, the app's root unless told, is clipped while it does. */
@@ -45,33 +48,39 @@ export function usePill(nav: RefObject<HTMLElement | null>, path: string): void 
 }
 
 /** A list's rows: told why by the press that changes them, before the state, they flow to their places and the new ones
- * condense; a change with no reason is drawn at once. `keys` are those of the list's children, in order, and `all` every
- * row's, on the page or not. */
+ * condense; a change with no reason is drawn at once, unless an import lands it: then what is new to the list, not only to
+ * the page, lands as a drop, and the rest flow. `keys` are those of the list's children, in order, and `all` every row's,
+ * on the page or not. */
 export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all: string[] = keys): (why: 'sort' | 'open') => void {
   const places = useRef<ReadonlyMap<string, number>>(new Map());
+  const known = useRef<ReadonlySet<string> | null>(null);
   const reason = useRef<'sort' | 'open' | null>(null);
+  const light = useRef(0);
   // Not `getBoundingClientRect`, which a scroll moves and a flow under way too.
   const measure = () => new Map(keys.map((key, i) => [key, (list.current!.children[i] as HTMLElement).offsetTop]));
 
   useLayoutEffect(() => {
-    const was = places.current;
+    const [was, held] = [places.current, known.current];
     const why = reason.current;
     reason.current = null;
     if (!motionRuns()) {
-      places.current = new Map();
+      clearTimeout(light.current);
+      [places.current, known.current] = [new Map(), null];
       return;
     }
     const now = measure();
-    places.current = now;
+    [places.current, known.current] = [now, new Set(all)];
     const rows = keys.map((key, i) => ({ key, el: list.current!.children[i] as HTMLElement, isNew: !was.has(key) }));
     // What still flows would come from a list that is gone.
-    if ([...was.keys()].join('\n') !== keys.join('\n')) {
+    const changed = [...was.keys()].join('\n') !== keys.join('\n');
+    if (changed) {
+      clearTimeout(light.current);
       for (const { el } of rows) for (const animation of el.getAnimations()) animation.cancel();
     }
-    if (!why || (why === 'open' && !rows.some(({ isNew }) => isNew))) return;
-    const { bottom: end, height } = list.current!.getBoundingClientRect();
+    if (!list.current || (why ? why === 'open' && !rows.some(({ isNew }) => isNew) : !changed || !held)) return;
+    const { bottom: end, height } = list.current.getBoundingClientRect();
     // What a condensing panel scales the list by; `offsetHeight` is a whole number.
-    const scale = height / parseFloat(getComputedStyle(list.current!).height);
+    const scale = height / parseFloat(getComputedStyle(list.current).height);
     // A row starts no lower than where its foot meets the list's end, in real pixels: the places are whole ones, and even
     // part of a pixel past the end scrolls the list.
     const gap = ({ key, el }: (typeof rows)[number]) => {
@@ -79,6 +88,26 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
       return from > 0 ? Math.min(from, (end - el.getBoundingClientRect().bottom) / scale) : from;
     };
     const moving = rows.map((row) => ({ ...row, from: row.isNew ? 0 : gap(row) })).filter(({ isNew, from }) => isNew || from);
+    const below = moving.filter(({ isNew }) => !isNew);
+    const lastFirst = (i: number) => Math.max(0, Math.min(below.length, 8) - 1 - i);
+    if (!why) {
+      const fresh = rows.filter(({ key }) => !held!.has(key));
+      const shown = fresh.find(({ el }) => inWindow(el));
+      // Scrolled past its head, the browser keeps what is read in place: there its rows haven't moved.
+      const at = shown ?? (below.length > 0 && inWindow(rows[0].el) ? below[0] : null);
+      if (!at) return;
+      const land = (delay: number) => {
+        for (const [i, row] of below.entries()) slide(row.el, row.from, 560, delay + 16 * lastFirst(i));
+        for (const { el } of fresh) fall(el, el.getBoundingClientRect().height / scale, delay);
+        if (!shown) return;
+        light.current = window.setTimeout(() => {
+          const { left, top, width } = list.current!.getBoundingClientRect();
+          drop(left + width / 2, top + 30, { R: 190, ms: 1400, amp: 0.9, pow: 1.6, train: 80 });
+        }, delay);
+      };
+      notice({ at: at.el, counts: shown !== undefined, number: false, land });
+      return;
+    }
     if (why === 'sort') {
       for (const [i, row] of moving.entries()) {
         const delay = 18 * Math.min(i, 8);
@@ -87,13 +116,13 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
       }
       return;
     }
-    const below = moving.filter(({ isNew }) => !isNew);
-    for (const [i, row] of below.entries()) slide(row.el, row.from, 460, 12 * Math.max(0, Math.min(below.length, 8) - 1 - i));
+    for (const [i, row] of below.entries()) slide(row.el, row.from, 460, 12 * lastFirst(i));
     for (const { el } of rows.filter(({ isNew }) => isNew)) {
       const content = el.querySelector(':scope > td > div');
       if (content) condense(content, { ms: 480, from: 'scale(0.96, 0.6)', easing: CALM });
     }
   });
+  useEffect(() => () => clearTimeout(light.current), []);
 
   return (why) => {
     if (!motionRuns()) return;
@@ -105,6 +134,14 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
 /** A list's row flows down or up from `y`, with no stretch, so it stays inside its list. */
 function slide(el: Element, y: number, ms: number, delay: number): void {
   play('flow', el, [{ transform: `translateY(${y}px)` }, { transform: 'none' }], ms, { easing: CALM, delay });
+}
+
+/** A list's new row, `height` px tall, falls to its place from over it, and its stretch never passes its foot. */
+function fall(el: Element, height: number, delay: number): void {
+  const [up, across, stretch] = el.matches('tr') ? [26, 0.96, 0.3] : [34, 0.5, 0.2];
+  const from = `translateY(${-Math.max(up, stretch * height)}px) scale(${across}, ${1 + stretch})`;
+  const origin = { transformOrigin: '0 0' };
+  play('ripple', el, [{ opacity: 0, transform: from, ...origin }, { opacity: 1, offset: 0.18 }, { opacity: 1, transform: 'none', ...origin }], 680, { easing: CALM, delay });
 }
 
 /** A chevron turns from its closed place when its row opens. */

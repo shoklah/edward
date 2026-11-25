@@ -529,6 +529,19 @@ test.describe('an import', () => {
     await expect(drops(page)).toHaveCount(0, { timeout: 8000 });
   });
 
+  test('a new feed item lands as a drop', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await landImport(page, {
+      '/api/home': (home) => home.feed.unshift({ ...home.feed.find((item: any) => item.type === 'warning'), text: 'WARN: simplify never ran' }),
+    });
+    await expect(page.locator('li', { hasText: 'Simplify never ran' })).toBeAttached();
+    const landed = () =>
+      page.evaluate(() =>
+        document.getAnimations().filter((a) => a.id === 'ripple' && (a.effect as KeyframeEffect).target!.matches('li')).map((a) => a.effect!.getTiming().duration));
+    expect(await landed()).toEqual([680]);
+    await expect.poll(landed).toEqual([]);
+  });
+
   test('an import that changes nothing plays the small ripple', async ({ page }) => {
     await watchAdded(page);
     await page.goto('/', { waitUntil: 'networkidle' });

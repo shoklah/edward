@@ -1,10 +1,12 @@
 import { createElement, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, test, vi } from 'vitest';
-import { eachFrame, motionOn, played } from '../test/motion.ts';
+import { page } from 'vitest/browser';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { eachFrame, finish, fits, motionOn, played } from '../test/motion.ts';
 import { flow, useFlow } from './flow.ts';
 import { CALM, SOFT } from './play.ts';
+import { useLanding, useRipple } from './ripple.ts';
 
 afterEach(() => document.body.replaceChildren());
 
@@ -212,5 +214,214 @@ describe('a list', () => {
     draw(['a', 'b']);
     expect(played(document.body)).toEqual([]);
     on.mockRestore();
+  });
+});
+
+describe('a list an import changes', () => {
+  type Drawn = { keys: string[]; all?: string[]; value?: number; height?: number; top?: number; row?: 'li' | 'tr'; scale?: number; region?: number };
+  let on: { mockRestore(): void };
+  let unmount = () => {};
+  /** The time of the last import drawn: each is a later one than any test's before. */
+  let imports = 0;
+  beforeEach(async () => {
+    await page.viewport(600, 400);
+    on = motionOn();
+  });
+  afterEach(() => {
+    unmount();
+    on.mockRestore();
+  });
+
+  function Page({ at, keys, all, value = 0, height = 40, top = 0, row = 'li', scale = 1, region }: Drawn & { at: string }) {
+    const list = useRef<HTMLElement>(null);
+    useFlow(list, keys, all);
+    const { ref, children } = useRipple<HTMLElement>(String(value));
+    useLanding('/api/list', { lastImportAt: at, lastGoodImportAt: at, error: null, importing: false }, true);
+    const cell = createElement('td', { style: { padding: 0 } });
+    const rows = keys.map((key) => createElement(row, { key, id: key, style: { height, display: row === 'li' ? 'block' : undefined } }, row === 'tr' && cell));
+    const body = createElement(row === 'li' ? 'ul' : 'tbody', { ref: list, style: { margin: 0, padding: 0 } }, rows);
+    return createElement(
+      'div',
+      { style: { paddingTop: top, transform: scale === 1 ? undefined : `scale(${scale})` } },
+      createElement('p', { 'data-imported': '' }, 'Imported'),
+      createElement('p', { ref }, children),
+      createElement('div', { id: 'scroller', 'data-scroll-cue': '', style: { overflow: 'auto', height: region } }, row === 'li' ? body : createElement('table', { style: { width: '100%', borderSpacing: 0 } }, body)),
+    );
+  }
+
+  /** A list drawn: what draws it again, with the next import's data or not, up to what is painted. */
+  async function list(first: Drawn): Promise<(next: Partial<Drawn>, landing?: boolean) => Promise<void>> {
+    const root = createRoot(document.body.appendChild(document.createElement('div')));
+    unmount = () => root.unmount();
+    let drawn = first;
+    const draw = async (next: Partial<Drawn>, landing = true) => {
+      if (landing) imports += 1;
+      drawn = { ...drawn, ...next };
+      flushSync(() => root.render(createElement(Page, { ...drawn, at: new Date(imports * 1000).toISOString() })));
+      await Promise.resolve();
+    };
+    await draw({}, false);
+    return draw;
+  }
+
+  const row = (key: string) => document.getElementById(key)!;
+  const body = () => document.querySelector('ul, tbody')!;
+  const top = (key: string) => row(key).getBoundingClientRect().top;
+  const effect = (key: string) => row(key).getAnimations()[0].effect as KeyframeEffect;
+  const start = (key: string) => effect(key).getKeyframes()[0].transform;
+  const delay = (key: string) => effect(key).getTiming().delay!;
+  const waves = () => played(document.querySelector('[data-imported]')!).length;
+
+  test('what is new lands when the front is there, the rest flow down, the last first', async () => {
+    const draw = await list({ keys: ['a', 'b', 'c'] });
+    const was = ['a', 'b', 'c'].map(top);
+    await draw({ keys: ['new', 'a', 'b', 'c'] });
+    expect(waves()).toBe(1);
+    expect(played(body())).toEqual(expect.arrayContaining([
+      { verb: 'ripple', ms: 680, el: row('new') },
+      ...['a', 'b', 'c'].map((key) => ({ verb: 'flow', ms: 560, el: row(key) })),
+    ]));
+    expect(played(body())).toHaveLength(4);
+    const front = delay('new');
+    expect(front).toBeGreaterThan(0);
+    for (const [i, key] of ['c', 'b', 'a'].entries()) expect(delay(key)).toBeCloseTo(front + 16 * i);
+    // Until the front is there, in the document, unseen, and the rest at their old places.
+    for (const ms of [0, front - 1]) {
+      for (const el of body().children) for (const animation of el.getAnimations()) animation.currentTime = ms;
+      expect(getComputedStyle(row('new')).opacity).toBe('0');
+      expect(['a', 'b', 'c'].map(top)).toEqual(was);
+    }
+    expect(effect('new').getKeyframes().map(({ computedOffset, opacity, transform, transformOrigin }) => [computedOffset, opacity, transform, transformOrigin])).toEqual([
+      [0, '0', 'translateY(-34px) scale(0.5, 1.2)', '0px 0px'],
+      [0.18, '1', undefined, undefined],
+      [1, '1', 'none', '0px 0px'],
+    ]);
+    const calm = new KeyframeEffect(null, [], { easing: CALM }).getTiming().easing;
+    expect(['new', 'a'].map((key) => effect(key).getTiming().easing)).toEqual([calm, calm]);
+    finish(body());
+    expect(['new', 'a', 'b', 'c'].map(top)).toEqual([0, 40, 80, 120].map((y) => was[0] + y));
+  });
+
+  test('the first row of an empty list lands', async () => {
+    const draw = await list({ keys: [] });
+    await draw({ keys: ['new'] });
+    expect(played(body())).toEqual([{ verb: 'ripple', ms: 680, el: row('new') }]);
+    expect(waves()).toBe(1);
+  });
+
+  test('with no landing, or drawn for the first time, it is drawn at once', async () => {
+    const draw = await list({ keys: ['a'] });
+    expect(played(document.body)).toEqual([]);
+    await draw({ keys: ['new', 'a'] }, false);
+    expect(played(document.body)).toEqual([]);
+    await draw({});
+    expect(played(document.body)).toEqual([]);
+  });
+
+  test('gained below the window, it starts nothing', async () => {
+    const draw = await list({ keys: ['a'], height: 900 });
+    await draw({ keys: ['a', 'new'] });
+    expect(played(document.body)).toEqual([]);
+  });
+
+  test('a row it held, brought onto the page, is drawn at once', async () => {
+    const draw = await list({ keys: ['a', 'b'], all: ['a', 'b', 'c'] });
+    await draw({ keys: ['b', 'c'], all: ['b', 'c'] });
+    expect(played(document.body)).toEqual([]);
+    // Nor in a wave: only what moved, from where it stood.
+    await draw({ keys: ['c', 'b'], all: ['d', 'c', 'b'] }, false);
+    await draw({ keys: ['d', 'c'], all: ['d', 'c', 'b'], value: 1 });
+    expect(played(body())).toEqual([{ verb: 'flow', ms: 560, el: row('c') }]);
+  });
+
+  test('scrolled past its head, where the browser keeps what is read in place, it stays still in a wave', async () => {
+    const draw = await list({ keys: ['a', 'b', 'c', 'd', 'e'], region: 100 });
+    const scroller = document.getElementById('scroller')!;
+    scroller.scrollTop = 30;
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    const was = top('a');
+    await draw({ keys: ['new', 'a', 'b', 'c', 'd', 'e'], value: 1 });
+    expect(waves()).toBe(1);
+    expect(played(body())).toEqual([]);
+    expect(top('a')).toBe(was);
+  });
+
+  test('reordered, it starts no wave, and in one a number starts its rows flow', async () => {
+    const draw = await list({ keys: ['a', 'b', 'c'] });
+    await draw({ keys: ['c', 'b', 'a'] });
+    expect(played(document.body)).toEqual([]);
+    await draw({ keys: ['a', 'b', 'c'], value: 1 });
+    expect(waves()).toBe(1);
+    expect(played(body()).map(({ verb, ms, el }) => [verb, ms, el.id])).toEqual([['flow', 560, 'a'], ['flow', 560, 'c']]);
+    expect([start('a'), start('c')]).toEqual(['translateY(80px)', 'translateY(-80px)']);
+    expect(delay('a')).toBeCloseTo(delay('c') + 16);
+  });
+
+  test.each([
+    ['tr', 40, 'translateY(-26px) scale(0.96, 1.3)'],
+    ['tr', 200, 'translateY(-60px) scale(0.96, 1.3)'],
+    ['li', 300, 'translateY(-60px) scale(0.5, 1.2)'],
+  ] as const)('a %s of %i px lands from %s', async (tag, height, from) => {
+    const draw = await list({ keys: ['a'], row: tag, height });
+    await draw({ keys: ['new', 'a'] });
+    expect(start('new')).toBe(from);
+  });
+
+  test.each([
+    ['li', 39.5, 1],
+    ['li', 240.25, 1],
+    ['li', 240.3, 1.1],
+    ['tr', 39.5, 1.1],
+    ['tr', 120.25, 1],
+  ] as const)('landing, no %s of %f px passes its list\'s end in any frame nor makes it scroll, its panel drawn at scale %f', async (tag, height, scale) => {
+    const draw = await list({ keys: ['a', 'b', 'c'], row: tag, height, scale });
+    // One added at its end, and fewer rows than before.
+    await draw({ keys: ['c', 'new'], all: ['c', 'new'], value: 1 });
+    expect(played(body()).length).toBeGreaterThan(0);
+    const bottom = (el: Element) => el.getBoundingClientRect().bottom;
+    await eachFrame(body(), () => {
+      for (const el of body().children) expect(bottom(el) - bottom(body())).toBeLessThanOrEqual(0.01);
+      fits(document.getElementById('scroller')!);
+    });
+  });
+
+  test('one drop of light falls at its head with what lands, and none once its rows changed again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const light = vi.spyOn(WebGL2RenderingContext.prototype, 'uniform4fv');
+    const head = () => {
+      const { left, top, width } = body().getBoundingClientRect();
+      return { x: left + width / 2, y: top + 30 };
+    };
+    /** How many drops are drawn at a place once the front is there. */
+    const fallen = async ({ x, y }: { x: number; y: number }) => {
+      vi.advanceTimersByTime(2000);
+      light.mockClear();
+      for (let frame = 0; frame < 3; frame++) await new Promise(requestAnimationFrame);
+      expect(light).toHaveBeenCalled();
+      const sources = light.mock.lastCall![1] as Float32Array;
+      return sources.filter((at, i) => i % 4 === 0 && at === x && sources[i + 1] === y).length;
+    };
+    const draw = await list({ keys: ['a'], top: 101 });
+    await draw({ keys: ['new', 'a'] });
+    expect(await fallen(head())).toBe(1);
+    await draw({ keys: ['b', 'new', 'a'], top: 153 });
+    await draw({ keys: ['a'] }, false);
+    expect(played(body())).toEqual([]);
+    expect(await fallen(head())).toBe(0);
+    // Nor once they changed while motion was off.
+    await draw({ keys: ['c', 'a'], top: 205 });
+    on.mockRestore();
+    await draw({ keys: ['a'] }, false);
+    on = motionOn();
+    expect(await fallen(head())).toBe(0);
+    // Nor once the list is gone.
+    await draw({}, false);
+    await draw({ keys: ['d', 'a'], top: 257 });
+    const at = head();
+    unmount();
+    expect(await fallen(at)).toBe(0);
+    light.mockRestore();
+    vi.useRealTimers();
   });
 });

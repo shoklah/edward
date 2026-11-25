@@ -139,7 +139,8 @@ export function DataList<T extends RowData>({
   const opened = (key: string) => toggled.has(key) !== open;
   const body = useRef<HTMLTableSectionElement>(null);
   const shown = table.getRowModel().rows.map((row) => all[row.index]);
-  const flow = useFlow(body, shown.flatMap((key) => (opened(key) ? [key, `${key}\nopen`] : [key])), all);
+  const withOpened = (keys: string[]) => keys.flatMap((key) => (opened(key) ? [key, `${key}\nopen`] : [key]));
+  const flow = useFlow(body, withOpened(shown), withOpened(all));
   const toggle = (key: string) => {
     if (!opened(key)) flow('open');
     setToggled((was) => {

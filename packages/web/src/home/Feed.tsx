@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { BrushCleaning } from 'lucide-react';
@@ -11,6 +12,7 @@ import { RunLink } from '../components/RunLink.tsx';
 import { WarningText } from '../components/WarningText.tsx';
 import { Time } from '../layout/StatusBanner.tsx';
 import { formatMinutes, formatUsagePercent, pathLabel } from '../lib/format.ts';
+import { useFlow } from '../motion/index.ts';
 
 /** An item (docs/design/2026-11-18-feed-items): a small muted caption, its status a swatch beside the word (the
  * warning orange or the finished green) and its time; then its message in medium weight, a warning's text or a finished
@@ -67,12 +69,16 @@ function Item({ item }: { item: FeedItem }) {
   );
 }
 
+const itemKey = (item: FeedItem) => `${item.type} ${item.at} ${item.runKey} ${item.sessionId} ${item.text}`;
+
 /** What's new since the last look (finished runs, first-seen warnings), and "Mark all seen", an icon, to start again
  * from now, except while viewing another account, read-only; it shrinks to the column Home gives it, its list scrolling
  * in its own region. */
 export function Feed({ items }: { items: FeedItem[] }) {
   const queryClient = useQueryClient();
   const viewing = useStatus().data?.account?.viewing;
+  const list = useRef<HTMLUListElement>(null);
+  useFlow(list, items.map(itemKey));
   async function onMarkAllSeen() {
     await markSeen();
     await queryClient.invalidateQueries({ queryKey: ['/api/home'] });
@@ -105,9 +111,9 @@ export function Feed({ items }: { items: FeedItem[] }) {
           aria-label="Since you last looked list"
           className="max-h-96 overflow-y-auto lg:max-h-none"
         >
-          <ul className="flex flex-col gap-3">
+          <ul ref={list} className="flex flex-col gap-3">
             {items.map((item) => (
-              <Item key={`${item.type} ${item.at} ${item.runKey} ${item.sessionId} ${item.text}`} item={item} />
+              <Item key={itemKey(item)} item={item} />
             ))}
           </ul>
         </div>

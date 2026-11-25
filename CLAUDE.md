@@ -215,8 +215,8 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - A block holding React Flow condenses without scaling, since React Flow measures its boxes in window pixels when they mount.
 - A menu entry's current pill is its own `::before` (`CURRENT`), so it can flow without the entry's background moving; the navs holding menu entries carry `isolate` and the entries none, so a flowing pill stays under every label.
 - The run graph's selection ring is one `[data-ring]` element in `RunFlow`, never an outline on a box.
-- A list's rows move only through `useFlow` (`motion/flow.ts`), told why by the press that moves them; a change with no reason given is drawn at once.
-- Which numbers an import changed is noticed only by `Num` and `HeatmapTable`'s cells, and that an import's data landed only by `useLiveQuery`.
+- A list's rows move only through `useFlow` (`motion/flow.ts`), told why by the press that moves them; a change with no reason given is drawn at once, unless an import lands it.
+- Which numbers an import changed is noticed only by `Num` and `HeatmapTable`'s cells, which rows it added or moved only by `useFlow`, and that an import's data landed only by `useLiveQuery`.
 - A story lands an import with `Import` (`src/test/motion.ts`) and an e2e test with `landImport` (`e2e/motion.ts`), which never changes the server's own import.
 - The e2e checks and screens run with reduced motion; `e2e/motion.spec.ts` alone turns it on.
 - A story or unit test about motion turns it on with `motionOn` and reads it with `played` (`src/test/motion.ts`), never by timing.

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { Num } from './Num.tsx';
-import { eachFrame, finish, fits, motionOn, played } from '../test/motion.ts';
+import { eachFrame, finish, fits, Import, motionOn, played } from '../test/motion.ts';
 import { visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 import { DataList, type ListColumn, type ListFact } from './DataList.tsx';
 
@@ -491,5 +491,43 @@ export const PageStill: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Filter' }));
     await expect(played(canvasElement)).toEqual([]);
     await expect(column(canvasElement, 0)[0]).toBe('Item 2');
+  },
+};
+
+/** An import lands only a row that is new to the list, as a drop: one it brings onto the page, its opened row too, is
+ * drawn at once. */
+export const ImportOldRows: Story = {
+  beforeEach: motion,
+  render: (args) => (
+    <div className="flex flex-col gap-6">
+      <div data-testid="gone">
+        <Import draw={(landed) => <DataList {...args} rows={landed ? ROWS.slice(1) : ROWS} />} />
+      </div>
+      <div data-testid="added">
+        <Import draw={(landed) => <DataList {...args} rows={landed ? [{ ...ROWS[0], key: 'k0', name: 'Item 0' }, ...ROWS] : ROWS} />} />
+      </div>
+    </div>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const light = () => document.querySelector('[data-water]');
+    await waitFor(() => expect(light()).toBeNull(), { timeout: 6000 });
+    const gone = canvas.getByTestId('gone');
+    await userEvent.click(within(gone).getByRole('button', { name: 'Import' }));
+    await expect(column(gone, 0)).toEqual(ROWS.slice(1, 11).map((r) => r.name));
+    await expect(played(gone)).toEqual([]);
+    await expect(light()).toBeNull();
+
+    const added = canvas.getByTestId('added');
+    const list = within(added);
+    added.scrollIntoView();
+    await userEvent.click(list.getByRole('button', { name: 'Item 1' }));
+    finish(added);
+    await userEvent.click(list.getByRole('button', { name: 'Next' }));
+    await userEvent.click(list.getByRole('button', { name: 'Import' }));
+    await expect(list.getByText('1–10 of 25')).toBeVisible();
+    const [first] = bodyRows(added);
+    await expect(first).toHaveTextContent('Item 0');
+    await expect(played(added)).toEqual([{ verb: 'ripple', ms: 680, el: first }]);
+    await expect(light()).not.toBeNull();
   },
 };

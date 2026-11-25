@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import type { HomeResponse, StatusResponse } from '@cwd/shared';
@@ -5,6 +6,7 @@ import { useLiveQuery } from '../api.ts';
 import { emptyHome, fullHome } from '../test/home.ts';
 import { viewingStatus } from '../test/account.ts';
 import { mockApi } from '../test/mock-api.ts';
+import { eachFrame, finish, fits, motionOn, played } from '../test/motion.ts';
 import { Feed } from './Feed.tsx';
 
 const meta = { component: Feed } satisfies Meta<typeof Feed>;
@@ -215,6 +217,71 @@ export const MarkAllSeen: Story = {
     );
     await expect(posts).toEqual([['/api/seen', { method: 'POST', headers: { 'X-Dashboard-Refresh': '1' } }]]);
     await waitFor(() => expect(canvas.queryAllByRole('listitem')).toHaveLength(0));
+  },
+};
+
+/** An import's item lands as a drop, also the first of an empty feed, and a tall one never scrolls a feed that fits. */
+export const Lands: Story = {
+  args: { items: fullHome.feed },
+  decorators: [
+    (Story) => (
+      <div className="w-72">
+        <Story />
+      </div>
+    ),
+  ],
+  beforeEach: () => {
+    Object.assign(routes, { '/api/status': ok, '/api/home': fullHome });
+    mockApi(routes);
+    const on = motionOn();
+    return () => on.mockRestore();
+  },
+  render: function Render() {
+    const queryClient = useQueryClient();
+    const home = useLiveQuery<HomeResponse>('/api/home');
+    return (
+      <>
+        <button type="button" onClick={() => queryClient.invalidateQueries({ queryKey: ['status'] })}>
+          Import
+        </button>
+        <Feed items={home.data?.feed ?? []} />
+      </>
+    );
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await expect(await canvas.findAllByRole('listitem')).toHaveLength(4);
+    await expect(played(canvasElement)).toEqual([]);
+    let hour = 10;
+    const land = async (feed: HomeResponse['feed']) => {
+      hour += 1;
+      routes['/api/status'] = { ...ok, lastGoodImportAt: `2026-11-12T${hour}:00:00.000Z` };
+      routes['/api/home'] = { ...fullHome, feed };
+      await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
+    };
+    const landing = { ...fullHome.feed[2], text: 'Simplify never ran' };
+    const ripples = () => played(canvas.getByRole('list')).filter(({ verb }) => verb === 'ripple');
+    /** The item that shows `text`, landing: in the document, unseen until the front is there. */
+    const landed = async (text: string) => {
+      const item = (await canvas.findByText(text)).closest('li')!;
+      await waitFor(() => expect(ripples()).toEqual([{ verb: 'ripple', ms: 680, el: item }]));
+      return item;
+    };
+
+    const rest = canvas.getAllByRole('listitem');
+    await land([landing, ...fullHome.feed]);
+    const item = await landed(landing.text);
+    await expect(getComputedStyle(item).opacity).toBe('0');
+    await expect(played(canvas.getByRole('list')).filter(({ verb }) => verb === 'flow')).toEqual(rest.map((el) => ({ verb: 'flow', ms: 560, el })));
+    finish(canvasElement);
+
+    await land([]);
+    await expect(await canvas.findByText(EMPTY)).toBeVisible();
+    const tall = { ...landing, text: Array(24).fill(landing.text).join(', ') };
+    await land([tall]);
+    const first = await landed(tall.text);
+    const region = canvas.getByRole('region', { name: 'Since you last looked list' });
+    await eachFrame(canvasElement, () => fits(region));
+    await expect(first.getBoundingClientRect().height).toBeGreaterThan(170);
   },
 };
 
