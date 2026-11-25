@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
 import { WARNING_INK, formatDayTime } from '../lib/format.ts';
-import { runFull, runLong, runPlanPair, runPlanTwice, runSmall } from '../test/runs.ts';
+import { runFull, runKits, runLong, runPlanPair, runPlanTwice, runSmall } from '../test/runs.ts';
 import { width } from '../test/table.ts';
 import { stagesOf, unitsOf } from './flow.ts';
 import { RunFlow } from './RunFlow.tsx';
@@ -152,6 +152,26 @@ export const Long: Story = {
     await expect(open).toHaveClass(WARNING_INK);
     await expect(deferred).toHaveClass('text-muted-foreground');
     await whole(canvas.getByRole('group', { name: "The run's flow" }));
+  },
+};
+
+/** A kit's checks that failed or couldn't run: one chip on their task's own box, in the warning ink. */
+export const KitChecks: Story = {
+  args: { stages: stagesOf(runKits.timeline, runKits) },
+  decorators: [width(1100)],
+  play: async ({ canvas }) => {
+    const group = canvas.getByRole('group', { name: "The run's flow" });
+    const flow = within(group);
+    for (const [text, box, next] of [
+      ['Checks failed', /^Task 2\s*task-reviewer/, /^Task 2 kit review/],
+      ['Not verified', /^Task 3\s*task-reviewer/, /^Task 3 kit review/],
+    ] as const) {
+      const chip = flow.getByText(text);
+      await expect(chip).toHaveClass(WARNING_INK);
+      await expect(before(flow.getByRole('button', { name: box }), chip)).toBe(true);
+      await expect(before(chip, flow.getByRole('button', { name: next }))).toBe(true);
+    }
+    await whole(group);
   },
 };
 

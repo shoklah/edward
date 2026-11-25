@@ -139,6 +139,9 @@ export function outcomeLabel(outcome: Outcome | 'none' | null): string {
   return outcome == null || outcome === 'none' ? 'No outcome' : countName(outcome);
 }
 
+/** A kit check that did not pass, as its task's chip on the run's graph, by its last result. */
+export const KIT_CHECK_CHIPS: Record<string, string> = { couldnt_run: 'Not verified', failed: 'Checks failed' };
+
 /** Who ran a step, by name only: its agent, or "in the session" without one (a flow box's reviewer). */
 export function reviewerLabel(step: { agent: string | null } | null): string {
   return step?.agent || 'in the session';

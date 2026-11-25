@@ -2,6 +2,7 @@ import { modelsCost, parseTime, runFacts, type RunEntry, type RunPageResponse, t
 import type { ActiveList } from '../categories.ts';
 import type { StoredLabel } from '../db/labels.ts';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
+import { maskKits } from './kits.ts';
 import { agentRows, maskModels, modelSums } from './models.ts';
 import { rootOf, runView } from './runs.ts';
 import { maskOffers, maskText, type Scope } from './scope.ts';
@@ -18,8 +19,8 @@ function finished(at: string | null): number {
  * The run page: runView of the run (null when its project is hidden), with its change (runChange) and goal (listedGoal),
  * its session (the stored one whose file is its transcript, with its key) and the one it handed off to (its context's
  * `handoff_to`), each as shownSession names it; the other stored runs of
- * its project root and branch, in the order they finished (none without a branch); its offers, later fixes (no sha), agents (agentRows over modelSums), main session and phases'
- * costs (modelsCost). With a scope, offers' skills (maskOffers) and fixes' subjects (maskText) are masked, agents and the main session
+ * its project root and branch, in the order they finished (none without a branch); its offers, later fixes (no sha), agents (agentRows over modelSums), main session, phases'
+ * costs (modelsCost) and kits with their last check results (maskKits), never a kit's files. With a scope, offers' skills (maskOffers) and fixes' subjects (maskText) are masked, agents and the main session
  * (`sessionModel`) as Models masks them (maskModels), and phase names as Spend does (maskPhase).
  */
 export function runPageView(input: {
@@ -47,6 +48,7 @@ export function runPageView(input: {
   const root = rootOf(run);
   const branch = entry.record?.branch ?? null;
   const masked = maskModels(scope, entry);
+  const { kits, kit_checks: kitChecks } = maskKits(scope, entry);
   return {
     ...view,
     change: runChange(work, scope, run.key),
@@ -66,5 +68,7 @@ export function runPageView(input: {
     agents: agentRows(modelSums([masked])).map(({ name, actual }) => ({ name, actual })),
     sessionModel: masked.main ? { model: masked.main.model ?? null, effort: masked.main.effort ?? null } : null,
     phases: (entry.phases ?? []).map((p) => ({ name: maskPhase(scope, p.name), cost: modelsCost(p.models) })),
+    kits: (kits ?? []).map((k) => ({ name: k.name ?? '', version: k.version ?? null, tasks: k.tasks ?? [] })),
+    kitChecks: (kitChecks ?? []).map((c) => ({ kit: c.kit ?? '', task: c.task ?? null, result: c.result ?? '' })),
   };
 }

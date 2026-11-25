@@ -1,5 +1,6 @@
 import {
   contextFacts,
+  modelsCost,
   parseTime,
   projectNames,
   projectRoot,
@@ -30,9 +31,12 @@ import { goalOptions, inGoal, levels, listedGoal, runChange } from './work.ts';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
-// A logged step, by its place in the exported steps, whose kind the reporter gave; it always gives one.
-type KnownStep = Step & { index: number; step: StepKind };
+// A logged step, by its place in the exported steps, whose kind the reporter gave; it always gives one. `cost` is its
+// tied dispatch's, on a kit's own step only.
+type KnownStep = Step & { index: number; cost: number | null; step: StepKind };
 
+// A kit's own step: its review, or a re-check that carries the kit.
+const isKit = (s: Pick<Step, 'step' | 'kit'>) => s.step === 'kit_review' || s.kit != null;
 
 // A finding's label fields: the workflow's it carries, and the app's.
 type LabelOf = (
@@ -287,6 +291,7 @@ function timelineSteps(steps: KnownStep[], labelOf: LabelOf): TimelineStep[] {
     effort: step.effort ?? null,
     kit: step.kit ?? null,
     planEffort: step.plan_effort ?? null,
+    cost: step.cost,
     counts: step.counts ?? {},
     findings: findingRows(step, labelOf),
   }));
@@ -354,7 +359,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
         (s) =>
           s.step === 'final_review' ||
           s.step === 'final_fix_check' ||
-          ((s.step === 'kit_review' || s.kit != null) && s.task == null && s.wave == null),
+          (isKit(s) && s.task == null && s.wave == null),
       ),
     ),
     end,
@@ -367,7 +372,7 @@ function timeline(run: RunEntry, steps: KnownStep[], facts: RunFacts, labelOf: L
  * (storedNames), so it agrees with the Runs list. With a scope, null for a hidden project's run, else its project
  * named by the scope and its findings' texts, checklist lines, label reasons, strengths' summaries, steps' agents, models, efforts,
  * plans' efforts and kits, loaded skills' names and models' ids masked (maskText). A step's model and effort are its tied dispatch's (the one whose `step` is its index), else
- * its own, field by field. */
+ * its own, field by field; a kit's own step's cost is its tied dispatch's (modelsCost), any other's null. */
 export function runView(
   run: StoredUnit<RunEntry>,
   warnings: StoredWarning[],
@@ -382,11 +387,12 @@ export function runView(
   const dispatches = entry.dispatches ?? [];
   // A step's dispatch is read before the filter, since its `step` is an index into the exported steps.
   const steps = (entry.steps ?? [])
-    .map((s, i): Step & { index: number } => {
+    .map((s, i): Step & { index: number; cost: number | null } => {
       const dispatch = dispatches.find((d) => d.step === i);
       return {
         ...s,
         index: i,
+        cost: isKit(s) ? modelsCost(dispatch?.models) : null,
         agent: maskText(scope, s.agent),
         model: maskText(scope, dispatch?.model ?? s.model),
         effort: maskText(scope, dispatch?.effort ?? s.effort),

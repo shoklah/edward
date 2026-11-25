@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TimelineGroup } from '@cwd/shared';
-import { runBeforeSteps, runFull, runLong, runPlan, runPlanPair, runPlanTwice, runSmall, runStopped, step } from '../test/runs.ts';
-import { WRAP_MIN, boxNeed, layout, leftOf, stagesOf, strengthsOf, stuck, unitsOf, type Layout, type Placed, type Unit } from './flow.ts';
+import { runBeforeSteps, runFull, runKits, runLong, runPlan, runPlanPair, runPlanTwice, runSmall, runStopped, step } from '../test/runs.ts';
+import { WRAP_MIN, boxNeed, chipsOf, layout, leftOf, stagesOf, strengthsOf, stuck, unitsOf, type Layout, type Placed, type Unit } from './flow.ts';
 
 type Rect = { x: number; y: number; w: number; h: number; row: number };
 
@@ -165,6 +165,50 @@ const rowsOf = ({ placed }: Layout) => {
 };
 const span = (row: Placed[]) => Math.max(...row.map((p) => p.x + p.w)) - Math.min(...row.map((p) => p.x));
 
+describe("a box's kits and chips", () => {
+  const units = unitsOf(stagesOf(runKits.timeline, runKits));
+  const of = (id: string) => units.find((u) => u.id === id)!;
+  const ui = (result: string | null, cost: number | null) => ({ name: 'ui', version: '0.2.0', result, cost });
+  const prose = (result: string | null, cost: number | null) => ({ name: 'prose', version: '0.1.0', result, cost });
+
+  it("gives a kit task's box and its kit's box each kit with its version and last result, and the kit's box its cost", () => {
+    expect(of('t1').kits).toEqual([ui('passed', null)]);
+    expect(of('k1').kits).toEqual([ui('passed', 1.62)]);
+    expect(of('k2').kits).toEqual([ui('failed', null)]);
+    expect(of('t3').kits).toEqual([ui('couldnt_run', null), prose('couldnt_run', null)]);
+    expect(of('k3').kits).toEqual([ui('couldnt_run', 0.4), prose('couldnt_run', 0.25)]);
+  });
+
+  it('marks a check that did not pass on the task’s own box, each wording once, before what it left', () => {
+    expect(chipsOf(of('t1'))).toEqual([]);
+    expect(chipsOf(of('t2'))).toEqual([{ text: 'Checks failed', warns: true }]);
+    expect(chipsOf(of('t3'))).toEqual([{ text: 'Not verified', warns: true }]);
+    expect(chipsOf(of('k3'))).toEqual([]);
+    expect(chipsOf(of('k1'))).toEqual([{ text: 'Deferred 1', warns: false }]);
+  });
+
+  it("gives a Small run's Kit review box the check with no task", () => {
+    const steps = [step({ step: 'final_review' }), step({ step: 'kit_review', kit: 'ui', cost: 0.45, findings: [{ ...runKits.findings[1], outcome: 'open' }] })];
+    const [stage] = stagesOf([group({ kind: 'final', steps })], {
+      kits: [{ name: 'ui', version: '0.1.0', tasks: [] }],
+      kitChecks: [{ kit: 'ui', task: null, result: 'failed' }],
+    });
+    const [final, kit] = stage.parallel;
+    expect(final.kits).toEqual([]);
+    expect(kit.kits).toEqual([{ name: 'ui', version: '0.1.0', result: 'failed', cost: 0.45 }]);
+    expect(chipsOf(kit)).toEqual([{ text: 'Checks failed', warns: true }, { text: 'Open 1', warns: true }]);
+  });
+
+  it('keeps a kit review with no kit to its cost', () => {
+    const [stage] = stagesOf([group({ kind: 'task', tasks: [{ task: 3, steps: [step({ step: 'task_review' }), step({ step: 'kit_review', cost: 0.1 })] }] })]);
+    expect(stage.parallel.map((u) => u.kits)).toEqual([[], [{ name: null, version: null, result: null, cost: 0.1 }]]);
+  });
+
+  it.each(AT)('keeps the kit run clear at %i', (at) => {
+    expect(clear(layout(stagesOf(runKits.timeline, runKits), at))).toBe(true);
+  });
+});
+
 describe('layout', () => {
   it.each(AT.flatMap((at) => [['runFull', at], ['runLong', at]] as const))('keeps %s clear at %i', (name, at) => {
     const result = layout(stagesOf(STORIES[name].timeline), at);
@@ -177,7 +221,7 @@ describe('layout', () => {
       const { placed } = layout(stagesOf(runLong.timeline), at);
       const boxes = new Map(placed.flatMap((p) => (p.kind === 'unit' ? [[p.unit.id, p] as const] : [])));
       const chips = placed.filter((p) => p.kind === 'chip');
-      expect(chips.map((c) => (c.kind === 'chip' ? `${c.unit.id} ${c.outcome} ${c.count}` : ''))).toContain('t10 open 1');
+      expect(chips.map((c) => (c.kind === 'chip' ? `${c.unit.id} ${c.text}` : ''))).toContain('t10 Open 1');
       for (const chip of chips) {
         const box = boxes.get(chip.unit.id)!;
         expect(chip.y).toBeGreaterThanOrEqual(box.y + box.h);

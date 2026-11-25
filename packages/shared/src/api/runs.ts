@@ -56,8 +56,8 @@ export type FindingRow = {
 };
 
 /** A step of the timeline: its place in the run's exported steps, its model and effort its tied dispatch's, else its own
- * (the alias it was asked for), field by field, its kit's name on a kit's own review and fix-checks, and its plan's effort
- * on a plan pair's steps. */
+ * (the alias it was asked for), field by field, its kit's name on a kit's own review and fix-checks, its plan's effort
+ * on a plan pair's steps, and its tied dispatch's cost on a kit's own steps only, else null. */
 export type TimelineStep = {
   index: number;
   step: StepKind;
@@ -67,6 +67,7 @@ export type TimelineStep = {
   effort: string | null;
   kit: string | null;
   planEffort: string | null;
+  cost: number | null;
   counts: Record<string, number>;
   findings: FindingRow[];
 };
@@ -118,7 +119,8 @@ export type RunResponse = {
 /** `GET /api/runs/:key`: the run as `runView` builds it, with what surrounds it: its change and goal as the Runs view
  * gives them, the session whose file is its transcript (with its key) and the one it handed off to (null when not
  * stored or not shown), the other runs of its project and branch, its offers, its later fixes (no sha), its agents as
- * modelSums names them, its main session's model and effort, and its phases' costs. */
+ * modelSums names them, its main session's model and effort, its phases' costs, and its kits with each kit task's last
+ * check result (the task null on a Small run). */
 export type RunPageResponse = RunResponse & {
   change: RunRow['change'];
   goal: RunRow['goal'];
@@ -130,4 +132,6 @@ export type RunPageResponse = RunResponse & {
   agents: Pick<AgentModels, 'name' | 'actual'>[];
   sessionModel: { model: string | null; effort: string | null } | null;
   phases: { name: string; cost: number | null }[];
+  kits: { name: string; version: string | null; tasks: number[] }[];
+  kitChecks: { kit: string; task: number | null; result: string }[];
 };

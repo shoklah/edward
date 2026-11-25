@@ -968,3 +968,50 @@ describe('titles, changes and goals', () => {
     expect(leaks(page, hidden, shown)).toEqual([]);
   });
 });
+
+describe("a kit run's page", () => {
+  const [TAG_WRAP, , , SYNC_LOG] = fixture('report-kits').runs.map(runKey) as string[];
+  const LANTERN = '/Users/example/Work/lantern-notes';
+  beforeEach(() => {
+    db.$client.close();
+    db = dbWith('report-kits');
+  });
+
+  test("carries the run's kits and last check results, never a kit's files", async () => {
+    const body = await run(SYNC_LOG);
+    expect(body.kits).toEqual([{ name: 'ui', version: '0.2.0', tasks: [1, 2, 3] }]);
+    expect(body.kitChecks).toEqual([
+      { kit: 'ui', task: 1, result: 'passed' },
+      { kit: 'ui', task: 2, result: 'failed' },
+      { kit: 'ui', task: 3, result: 'couldnt_run' },
+    ]);
+    expect((await run(TAG_WRAP)).kitChecks).toEqual([{ kit: 'ui', task: null, result: 'passed' }]);
+    expect(JSON.stringify(body)).not.toContain('/Users/');
+  });
+
+  test("a kit's own step carries its tied dispatch's cost, any other step none", async () => {
+    const costs = async (key: string) =>
+      (await run(key)).timeline
+        .flatMap((g) => [...g.steps, ...g.tasks.flatMap((t) => t.steps)])
+        .sort((a, b) => a.index - b.index)
+        .map((s) => s.cost);
+    expect(await costs(SYNC_LOG)).toEqual([null, 0.8, null, 0.2, null, 0.6, null, 0.5, null, null, null]);
+    // Its kit review is tied to no dispatch.
+    expect(await costs(TAG_WRAP)).toEqual([null, null, null, null, 0.1]);
+  });
+
+  test('masks the kits and checks with showing on, and nothing leaks', async () => {
+    db.$client.close();
+    db = dbWith('report-kits', (raw) => {
+      raw.runs[3].kits = [{ ...raw.runs[3].kits[0], name: 'tidepool-api', version: 'tidepool-api' }];
+      raw.runs[3].kit_checks = [{ kit: 'tidepool-api', task: 1, result: 'passed' }];
+    });
+    setShowing(db, [projectKey(LANTERN)]);
+    const body = await run(SYNC_LOG);
+    expect(body.kits).toEqual([{ name: 'another project', version: 'another project', tasks: [1, 2, 3] }]);
+    expect(body.kitChecks).toEqual([{ kit: 'another project', task: 1, result: 'passed' }]);
+    const branches = storedBranches(listUnits(db, 'run'));
+    const strings = forbiddenStrings([...branches.keys()], branches, [LANTERN], [], []);
+    expect(leaks(body, [...strings.forbidden, '/Users/example'], strings.shown)).toEqual([]);
+  });
+});
