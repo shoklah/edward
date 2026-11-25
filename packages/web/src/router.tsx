@@ -77,7 +77,9 @@ const runRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/runs/$key',
   component: function Run() {
-    return <RunPage runKey={runRoute.useParams().key} />;
+    const { key } = runRoute.useParams();
+    // Keyed by its key, as a goal's and a change's pages are, so the page never draws another run's data.
+    return <RunPage key={key} runKey={key} />;
   },
 });
 
@@ -165,7 +167,8 @@ const goalRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/work/goals/$key',
   component: function Goal() {
-    return <GoalPage goalKey={goalRoute.useParams().key} />;
+    const { key } = goalRoute.useParams();
+    return <GoalPage key={key} goalKey={key} />;
   },
 });
 
@@ -173,7 +176,8 @@ const changeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/work/changes/$key',
   component: function Change() {
-    return <ChangePage changeKey={changeRoute.useParams().key} />;
+    const { key } = changeRoute.useParams();
+    return <ChangePage key={key} changeKey={key} />;
   },
 });
 

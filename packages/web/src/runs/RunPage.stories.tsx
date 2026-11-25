@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, spyOn, within } from 'storybook/test';
 import { parseTime, type FindingRow, type StatusResponse } from '@cwd/shared';
@@ -281,21 +280,6 @@ export const Kits: Story = {
   },
 };
 
-const otherKey = 'f60718293a4b5c6d';
-
-/** The page for one key, then another, as the route keeps it mounted when only its key changes. */
-function Switching() {
-  const [runKey, setRunKey] = useState(fullRun.key);
-  return (
-    <>
-      <button type="button" onClick={() => setRunKey(otherKey)}>
-        Other run
-      </button>
-      <RunPage runKey={runKey} />
-    </>
-  );
-}
-
 /** An offer with no outcome shows the muted dash, read out as "not known", never a blank cell. */
 export const OfferWithoutOutcome: Story = {
   beforeEach: () => {
@@ -309,41 +293,6 @@ export const OfferWithoutOutcome: Story = {
     await openFold(canvasElement, (element) => userEvent.click(element));
     const skills = canvas.getByRole('region', { name: 'Skills' });
     await expect(tableRows(skills, 'Skills').at(-1)).toEqual(['graphify', 'Offered', '–not known']);
-  },
-};
-
-/** A selection belongs to its run: unit ids repeat across runs, so the other run shows no box pressed and the hint. */
-export const OtherRun: Story = {
-  render: () => <Switching />,
-  beforeEach: () => {
-    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull, [`/api/runs/${otherKey}`]: runFull });
-  },
-  play: async ({ canvas, userEvent }) => {
-    const flow = await canvas.findByRole('region', { name: 'Flow' });
-    await userEvent.click(within(flow).getByRole('button', { name: /^Task 1(?!\d)/ }));
-    await expect(within(flow).getByRole('region', { name: 'Task 1' })).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: 'Other run' }));
-    await expect(fetch).toHaveBeenCalledWith(`/api/runs/${otherKey}`);
-    const other = within(await canvas.findByRole('region', { name: 'Flow' }));
-    await expect(await other.findByText(HINT)).toBeVisible();
-    for (const box of other.getAllByRole('button')) await expect(box).toHaveAttribute('aria-pressed', 'false');
-  },
-};
-
-/** A filter belongs to its run too: the other run shows its every problem, and its select reads All. */
-export const OtherRunFilters: Story = {
-  render: () => <Switching />,
-  beforeEach: () => {
-    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runFull, [`/api/runs/${otherKey}`]: runFull });
-  },
-  play: async ({ canvas, canvasElement, userEvent }) => {
-    await canvas.findByRole('region', { name: 'Flow' });
-    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Severity' }), 'minor');
-    await expect(ids(canvasElement, 'Problems table')).not.toHaveLength(runFull.findings.length);
-    await userEvent.click(canvas.getByRole('button', { name: 'Other run' }));
-    await expect(fetch).toHaveBeenCalledWith(`/api/runs/${otherKey}`);
-    await expect(ids(canvasElement, 'Problems table')).toEqual(runFull.findings.map((f) => f.id));
-    await expect(canvas.getByRole('combobox', { name: 'Severity' })).toHaveValue('');
   },
 };
 

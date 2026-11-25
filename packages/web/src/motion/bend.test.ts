@@ -99,6 +99,20 @@ test('one element at most is drawn through a filter, and an ended bend leaves th
   expect(other.style.filter).toBe('url("#motion-wash")');
 });
 
+test('a wash calls what ends it as its filter or cut comes off, in the same task', async () => {
+  const ends: string[] = [];
+  bend(el, SHORT, 'wash', () => ends.push(el.style.filter));
+  expect(ends).toEqual([]);
+  await vi.waitFor(() => expect(ends).toEqual(['']));
+  bend(el, LONG, 'wash', () => ends.push('bent'));
+  endBends();
+  expect(ends).toEqual(['', 'bent']);
+  outsideChromium();
+  bend(el, LONG, 'wash', () => ends.push('cut'));
+  endBends();
+  expect(ends).toEqual(['', 'bent', 'cut']);
+});
+
 test('at 767 px the bend does nothing', async () => {
   await page.viewport(767, 800);
   bend(el, LONG, 'bend');

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { useStatus } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
+import { useWash } from '../motion/index.ts';
 import { AccountLinks } from './AccountLinks.tsx';
 import { AccountSwitcher } from './AccountSwitcher.tsx';
 import { Brand } from './Brand.tsx';
@@ -36,6 +37,8 @@ export function Shell({ children }: { children: ReactNode }) {
   useEffect(() => router.subscribe('onRendered', (event) => {
     if (event.fromLocation && event.pathChanged) (main.current?.querySelector('h1') ?? main.current)?.focus({ preventScroll: true });
   }), [router]);
+  // After the focus, which a wave leaves where it is.
+  const filters = useWash(main);
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <Button asChild size="sm" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:h-8 focus:px-3">
@@ -77,6 +80,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {status.data && <StatusBanner status={status.data} />}
         <main ref={main} id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none">{children}</main>
       </div>
+      {filters}
     </div>
   );
 }

@@ -64,7 +64,6 @@ let running = false;
 
 function make(): Water | null {
   const canvas = document.createElement('canvas');
-  canvas.dataset.water = 'wave';
   canvas.ariaHidden = 'true';
   canvas.style.cssText = 'position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: 90; pointer-events: none';
   canvas.addEventListener('webglcontextlost', () => {
@@ -113,10 +112,21 @@ function frame(now: number): void {
 
 /** A drop falls at a place in the window: its light runs out over the page, on a canvas that is there only meanwhile. */
 export function drop(x: number, y: number, drop: Drop): void {
+  fall('wave', x, y, drop);
+}
+
+/** A drop falls unseen, out of the window, so the shader is compiled and has run before the first real one. */
+export function warm(): void {
+  fall('prepare', -400, -400, { R: 10, ms: 300, amp: 0.01, pow: 1, train: 40 });
+}
+
+function fall(kind: 'wave' | 'prepare', x: number, y: number, drop: Drop): void {
   if (!motionRuns()) return;
   if (water === undefined) water = make();
   if (!water) return;
   drops.push({ ...drop, x, y, start: performance.now(), seed: Math.random() * 50 });
+  // A wave's canvas stays one.
+  if (kind === 'wave' || !running) water.canvas.dataset.water = kind;
   if (running) return;
   running = true;
   const { canvas, gl } = water;

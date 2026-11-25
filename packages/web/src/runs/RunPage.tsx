@@ -309,10 +309,8 @@ function Header({ run }: { run: RunPageResponse }) {
  */
 export function RunPage({ runKey }: { runKey: string }) {
   const run = useLiveQuery<RunPageResponse>(`/api/runs/${encodeURIComponent(runKey)}`);
-  // The selection holds its run's key: unit ids repeat across runs, and the route keeps this page when only the key changes.
-  const [selection, setSelection] = useState<{ runKey: string; unit: string } | null>(null);
-  const selected = selection?.runKey === runKey ? selection.unit : null;
-  const select = (unit: string | null) => setSelection(unit === null ? null : { runKey, unit });
+  // Unit ids repeat across runs: the route keys this page by its run, so a selection is this run's.
+  const [selected, select] = useState<string | null>(null);
   const stages = useMemo(() => stagesOf(run.data?.timeline ?? [], run.data), [run.data]);
   const units = useMemo(() => unitsOf(stages), [stages]);
   if (run.isPending) return <State>Loading the run…</State>;
@@ -373,8 +371,8 @@ export function RunPage({ runKey }: { runKey: string }) {
         </Panel>
         {problems.length > 0 ? (
           <FindingsTable
-            // Keyed by the run and the selection, so a filter set on one step or run resets with it.
-            key={`${runKey}:${unit?.id ?? 'run'}`}
+            // Keyed by the selection, so a filter set on one step resets with it.
+            key={unit?.id ?? 'run'}
             findings={problems}
             categoryLabels={categoryLabels}
             heading={problemsTitle}

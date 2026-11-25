@@ -1,3 +1,4 @@
+import { wide } from './place.ts';
 import { motionRuns } from './play.ts';
 
 /** A wave's front: where it starts in the window, how far it goes, in what time and how it slows (`pow`). */
@@ -5,7 +6,7 @@ export type Front = { x: number; y: number; R: number; ms: number; pow: number }
 
 /** Whether an element can be drawn through the filters: only Chromium refracts, and only from 768 px. */
 export function refracts(): boolean {
-  return (navigator as { userAgentData?: unknown }).userAgentData !== undefined && window.matchMedia('(min-width: 768px)').matches;
+  return (navigator as { userAgentData?: unknown }).userAgentData !== undefined && wide();
 }
 
 /** Takes the running filter or cut off. */
@@ -39,11 +40,12 @@ function run(ms: number, draw: (done: number) => void, off: () => void): void {
 const frontAt = ({ R, pow }: Front, done: number) => R * (1 - (1 - done) ** pow);
 
 /** Draws `el` through a filter along a front: `bend` bends it, until the window scrolls, and `wash` also removes what
- * the front has passed. Where nothing refracts, the first does nothing and the second only cuts. */
-export function bend(el: HTMLElement, front: Front, kind: 'bend' | 'wash'): void {
+ * the front has passed, calling `ended` as it comes off. Where nothing refracts, the first does nothing and the second
+ * only cuts. */
+export function bend(el: HTMLElement, front: Front, kind: 'bend' | 'wash', ended?: () => void): void {
   if (!motionRuns()) return;
   if (!refracts()) {
-    if (kind === 'wash') cut(el, front);
+    if (kind === 'wash') cut(el, front, ended);
     return;
   }
   const { left, top } = el.getBoundingClientRect();
@@ -65,6 +67,7 @@ export function bend(el: HTMLElement, front: Front, kind: 'bend' | 'wash'): void
     },
     () => {
       el.style.filter = '';
+      ended?.();
     },
   );
   el.style.filter = `url(#motion-${kind})`;
@@ -72,7 +75,7 @@ export function bend(el: HTMLElement, front: Front, kind: 'bend' | 'wash'): void
 }
 
 /** Cuts away what the front has passed. */
-function cut(el: HTMLElement, front: Front): void {
+function cut(el: HTMLElement, front: Front, ended?: () => void): void {
   const { left, top, width, height } = el.getBoundingClientRect();
   run(
     front.ms,
@@ -83,6 +86,7 @@ function cut(el: HTMLElement, front: Front): void {
     },
     () => {
       el.style.clipPath = '';
+      ended?.();
     },
   );
 }

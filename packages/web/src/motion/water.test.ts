@@ -3,6 +3,7 @@ import { motionOn } from '../test/motion.ts';
 import type { Drop } from './water.ts';
 
 let drop: (typeof import('./water.ts'))['drop'];
+let warm: (typeof import('./water.ts'))['warm'];
 let fresh = 0;
 let on: { mockRestore(): void };
 const errors = vi.spyOn(console, 'error');
@@ -13,7 +14,7 @@ const frame = () => new Promise(requestAnimationFrame);
 beforeEach(async () => {
   on = motionOn();
   // Its state starts anew in each test: a module of its own by its URL, since `vi.resetModules` does nothing in a browser.
-  ({ drop } = await import(/* @vite-ignore */ `./water.ts?fresh=${fresh++}`));
+  ({ drop, warm } = await import(/* @vite-ignore */ `./water.ts?fresh=${fresh++}`));
 });
 afterEach(() => {
   on.mockRestore();
@@ -55,6 +56,19 @@ test.each([['dark', true], ['light', false]])('it draws its light in %s', async 
   const over = Math.max(...Array.from({ length: 300 * 300 }, (_, i) => Math.max(...pixels.subarray(4 * i, 4 * i + 3)) - pixels[4 * i + 3]));
   expect(pixels.some((value) => value > 8)).toBe(true);
   expect(over > 8).toBe(adds);
+});
+
+test('warming runs a drop unseen, its canvas not a wave until a real drop falls, and never again after', async () => {
+  warm();
+  expect(canvases()).toHaveLength(1);
+  expect(canvases()[0].dataset.water).toBe('prepare');
+  drop(20, 20, SMALL);
+  warm();
+  expect(canvases()).toHaveLength(1);
+  expect(canvases()[0].dataset.water).toBe('wave');
+  await vi.waitFor(() => expect(canvases()).toHaveLength(0));
+  drop(20, 20, SMALL);
+  expect(canvases()[0].dataset.water).toBe('wave');
 });
 
 test('a lost context ends the light for good', async () => {
