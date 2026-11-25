@@ -1,9 +1,13 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { SOFT, motionRuns, play } from './play.ts';
 
-/** What moves: `el` flows from `from`, relative to where it now is: it stretches over the gap, then gathers. */
-export function flow(el: Element, from: { x: number; y: number }, pseudoElement?: '::before'): Animation | null {
-  if (!from.x && !from.y) return null;
+/** What last flows in each container clipped for it. */
+const flowing = new WeakMap<HTMLElement, Animation>();
+
+/** What moves: `el` flows from `from`, relative to where it now is: it stretches over the gap, then gathers. It springs
+ * past its place, so `within` is clipped while it does, for it not to make what holds it scroll. */
+export function flow(el: Element, from: { x: number; y: number }, within?: HTMLElement | null, pseudoElement?: '::before'): void {
+  if (!from.x && !from.y) return;
   // A side that doesn't stretch thins.
   const stretch = (gap: number, size: number) => {
     const by = 1 + gap / size;
@@ -12,7 +16,7 @@ export function flow(el: Element, from: { x: number; y: number }, pseudoElement?
   // Not `getBoundingClientRect`, which a flow under way scales.
   const sx = stretch(Math.min(Math.abs(from.x), 200) * 0.5, el.clientWidth);
   const sy = stretch(Math.min(Math.abs(from.y), 160) * 0.55, el.clientHeight);
-  return play(
+  const animation = play(
     'flow',
     el,
     [
@@ -23,12 +27,17 @@ export function flow(el: Element, from: { x: number; y: number }, pseudoElement?
     420,
     { easing: 'ease-in', pseudoElement },
   );
+  if (!animation || !within) return;
+  flowing.set(within, animation);
+  within.style.overflow = 'clip';
+  animation.onfinish = () => {
+    if (flowing.get(within) === animation) within.style.overflow = '';
+  };
 }
 
 /** The pill of a `nav`'s current link, its `::before`, flows from the last current one's place once `path` changes. */
 export function usePill(nav: RefObject<HTMLElement | null>, path: string): void {
   const last = useRef<Element | null>(null);
-  const flowing = useRef<Animation | null>(null);
   useLayoutEffect(() => {
     const el = nav.current;
     const was = last.current;
@@ -37,13 +46,6 @@ export function usePill(nav: RefObject<HTMLElement | null>, path: string): void 
     if (!el || !now || now === was || !el.contains(was) || !motionRuns()) return;
     const from = was!.getBoundingClientRect();
     const to = now.getBoundingClientRect();
-    const animation = flow(now, { x: from.left - to.left, y: from.top - to.top }, '::before');
-    if (!animation) return;
-    flowing.current = animation;
-    // The pill springs past its place, which must not make what holds the nav scroll.
-    el.style.overflow = 'clip';
-    animation.onfinish = () => {
-      if (flowing.current === animation) el.style.overflow = '';
-    };
+    flow(now, { x: from.left - to.left, y: from.top - to.top }, el, '::before');
   }, [nav, path]);
 }

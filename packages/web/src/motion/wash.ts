@@ -5,7 +5,7 @@ import { bend, endBends, type Front } from './bend.ts';
 import { condense } from './condense.ts';
 import { Filters } from './Filters.tsx';
 import { centre, inWindow, reach, sourceOf, wide } from './place.ts';
-import { motionRuns } from './play.ts';
+import { FIRM, motionRuns, play } from './play.ts';
 import { drop, warm } from './water.ts';
 
 /** How many ms until a front is `distance` px from its source; what is past its end, just before it is done. */
@@ -82,6 +82,22 @@ function blocks(main: HTMLElement): Element[] {
   return [...panels, ...loose.slice(0, 16)];
 }
 
+/** A title flows from the place and the text size of the link that opened its page. */
+function travel(title: Element, from: DOMRect, size: number): void {
+  const to = title.getBoundingClientRect();
+  const scale = size / parseFloat(getComputedStyle(title).fontSize);
+  play(
+    'flow',
+    title,
+    [
+      { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${scale})`, transformOrigin: '0 0' },
+      { transform: 'none', transformOrigin: '0 0' },
+    ],
+    620,
+    { easing: FIRM },
+  );
+}
+
 /** A page switch under way: when its load started, and from 768 px the old page's copy and place. */
 let pending: { at: number; copy: { el: HTMLElement; at: DOMRect } | null } | null = null;
 /** Stops the running wave, its light aside. */
@@ -89,6 +105,8 @@ let stopWave: (() => void) | null = null;
 let unclip = 0;
 /** Whether the filters and the shader have run. */
 let prepared = false;
+/** Whether a page switch brought the reader here and nothing has read so yet. */
+let arrived = false;
 
 export const wash = {
   /** Drops every copy, made or pending, and ends the bends. */
@@ -100,17 +118,39 @@ export const wash = {
   },
 };
 
+/** Whether a page switch brought the reader here, once: not on a first load. */
+export function takeArrival(): boolean {
+  const was = arrived;
+  arrived = false;
+  return was;
+}
+
+/** How many ms until the block of a wave that holds `el` is opaque; 0 with no wave. */
+export function opaqueIn(el: Element): number {
+  for (let block: Element | null = el; block; block = block.parentElement) {
+    const condensing = block.getAnimations().find(({ id }) => id === 'condense');
+    // By its own clock, which is the frame's, as what starts with it.
+    if (condensing) return Math.max(0, condensing.effect!.getTiming().delay! + 190 - (condensing.currentTime as number));
+  }
+  return 0;
+}
+
 /** The wave of a page switch: the old page's copy washes away behind the front, and the new page's blocks condense once
- * it has passed, those added meanwhile included. */
-function wave(main: HTMLElement, source: DOMRect, copy: { el: HTMLElement; at: DOMRect } | null): void {
+ * it has passed, those added meanwhile included; with the link a run was opened by, the run's title travels from it. */
+function wave(main: HTMLElement, source: DOMRect, copy: { el: HTMLElement; at: DOMRect } | null, link: { size: number } | null): void {
   prepared = true;
   const { x, y } = centre(source);
   const front: Front = { x, y, R: reach(x, y) * 1.05, ms: 900, pow: 1.8 };
   const start = performance.now();
   const layer = copy && attach('page', copy.at, [copy.el]);
   const seen = new Set<Element>();
+  let title: Element | null = null;
   const gather = (els: Element[]) => {
-    const fresh = els.filter((el) => !seen.has(el)).map((el) => [el, el.getBoundingClientRect()] as const);
+    if (link && !title) {
+      title = main.querySelector('h1');
+      if (title) travel(title, source, link.size);
+    }
+    const fresh = els.filter((el) => !seen.has(el) && !(title && el.contains(title))).map((el) => [el, el.getBoundingClientRect()] as const);
     for (const [el, r] of fresh) {
       seen.add(el);
       const dx = x - (r.left + r.width / 2);
@@ -190,11 +230,14 @@ export function useWash(main: RefObject<HTMLElement | null>): ReactNode {
           if (pending === resolved) pending = null;
         });
       }),
-      router.subscribe('onRendered', () => {
+      router.subscribe('onRendered', ({ fromLocation, toLocation, pathChanged }) => {
+        if (fromLocation && pathChanged) arrived = true;
         const switched = pending;
         if (!switched) return;
         wash.clear();
-        if (motionRuns()) wave(main.current!, sourceOf(switched.at).rect, switched.copy);
+        if (!motionRuns()) return;
+        const { rect, link } = sourceOf(switched.at);
+        wave(main.current!, rect, switched.copy, toLocation.pathname.startsWith('/runs/') ? link : null);
       }),
     ];
     return () => {
