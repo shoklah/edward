@@ -177,7 +177,7 @@ Design conventions' first line becomes: "The look is the root `DESIGN.md` (night
 
 Code conventions, replacing the reduced-motion line:
 
-- Motion lives in `packages/web/src/motion/`, the one place that calls `Element.animate`, whose exports are `DESIGN.md`'s four verbs, and `motion.test.ts` fails when another source file animates or carries a transition or animation class (generated `ui/` files and the Refresh icon's spin aside). It plays only *from* somewhere to the DOM's own state, so a test or a reduced-motion reader sees the final state at once.
+- Motion lives in `packages/web/src/motion/`, the one place that calls `Element.animate`, which exports `DESIGN.md`'s four verbs and the hooks that notice a change, and `motion.test.ts` fails when another source file animates or carries a transition or animation class (generated `ui/` files and the Refresh icon's spin aside). It plays only *from* somewhere to the DOM's own state, so a test or a reduced-motion reader sees the final state at once.
 - Motion is removed under `prefers-reduced-motion` in two places only: `motion/`'s one test of whether it runs, and the one rule in `index.css` for CSS animations.
 - An inert copy (the old page, the items marked seen) is made and removed only in `motion/`, is `aria-hidden` and `inert`, and never exists over a showing mode, account or sign-out change.
 - Which numbers an import changed is noticed only by `Num` and `HeatmapTable`'s cells, and that an import's data landed only by `useLiveQuery`.
