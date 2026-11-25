@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, within } from 'storybook/test';
+import { expect, fn, waitFor, within } from 'storybook/test';
+import { eachFrame, finish, fits, motionOn, played } from '../test/motion.ts';
 import { Menu, MenuButton } from './Menu.tsx';
 
 const meta = { component: Menu, args: { onNavigate: fn() } } satisfies Meta<typeof Menu>;
@@ -37,10 +38,14 @@ export const Default: Story = {
 /** On a run's page, Work is the current entry, with its look, and Home isn't. */
 export const OnARun: Story = {
   parameters: { path: '/runs/a1b2c3d4e5f60718' },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const work = await canvas.findByRole('link', { name: 'Work' });
     await expect(work).toHaveAttribute('aria-current', 'page');
-    await expect(work).toHaveClass('bg-accent', 'font-semibold');
+    await expect(work).toHaveClass('font-semibold');
+    const probe = canvasElement.appendChild(document.createElement('div'));
+    probe.className = 'bg-accent';
+    await expect(getComputedStyle(work, '::before').backgroundColor).toBe(getComputedStyle(probe).backgroundColor);
+    probe.remove();
     await expect(canvas.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current');
   },
 };
@@ -69,6 +74,48 @@ export const Navigates: Story = {
   play: async ({ canvas, args, userEvent }) => {
     await userEvent.click(await canvas.findByRole('link', { name: 'Work' }));
     await expect(args.onNavigate).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** A press on another entry: the current entry's pill flows to it. */
+export const Flows: Story = {
+  decorators: [(Story) => <div className="overflow-y-auto"><Story /></div>],
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const last = await canvas.findByRole('link', { name: 'Models and advisor' });
+    const on = motionOn();
+    await expect(played(canvasElement)).toEqual([]);
+    await userEvent.click(last);
+    await waitFor(() => expect(last).toHaveAttribute('aria-current', 'page'));
+    const pill = last.getAnimations({ subtree: true }).find((a) => (a.effect as KeyframeEffect).pseudoElement === '::before')!;
+    await expect([pill.id, pill.effect!.getTiming().duration]).toEqual(['flow', 420]);
+    // The pill springs past the last entry without making the menu scroll (the story's `overflow-y-auto` decorator).
+    await eachFrame(canvasElement, () => fits(canvasElement.querySelector('.overflow-y-auto')!));
+    finish(canvasElement);
+    on.mockRestore();
+  },
+};
+
+/** Two presses in a row: the menu stays clipped until the second flow ends, then no longer. */
+export const FlowsTwice: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const [home, last] = [await canvas.findByRole('link', { name: 'Home' }), canvas.getByRole('link', { name: 'Models and advisor' })];
+    const nav = canvas.getByRole('navigation');
+    const on = motionOn();
+    const press = async (link: HTMLElement) => {
+      await userEvent.click(link);
+      await waitFor(() => expect(link).toHaveAttribute('aria-current', 'page'));
+      const [pill] = link.getAnimations({ subtree: true });
+      pill.pause();
+      return pill;
+    };
+    const first = await press(last);
+    const second = await press(home);
+    first.finish();
+    await new Promise(requestAnimationFrame);
+    await expect(getComputedStyle(nav).overflow).toBe('clip');
+    second.finish();
+    await waitFor(() => expect(getComputedStyle(nav).overflow).toBe('visible'));
+    on.mockRestore();
   },
 };
 

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import type { LinkProps } from '@tanstack/react-router';
 import {
@@ -10,6 +10,7 @@ import { cn } from 'cn';
 import { Button } from '../components/ui/button.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.tsx';
 import { CURRENT, ENTRY } from '../lib/format.ts';
+import { usePill } from '../motion/index.ts';
 import { AccountLinks } from './AccountLinks.tsx';
 import { Brand } from './Brand.tsx';
 
@@ -47,8 +48,10 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
   // The rail and the dialog both render the menu, so a section's name gets its id per instance.
   const id = useId();
   const pathname = useLocation({ select: (location) => location.pathname });
+  const nav = useRef<HTMLElement>(null);
+  usePill(nav, pathname);
   return (
-    <nav aria-label="Main" className="flex flex-col gap-6 text-sm">
+    <nav ref={nav} aria-label="Main" className="flex flex-col gap-6 text-sm">
       {SECTIONS.map((section, i) => {
         const nameId = `${id}-${i}`;
         const named = section.name ? { role: 'group', 'aria-labelledby': nameId } : {};

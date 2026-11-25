@@ -212,6 +212,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - An inert copy (the old page, the items marked seen) is made and removed only in `motion/`, is `aria-hidden` and `inert`, and never exists over a showing mode, account or sign-out change.
 - A page whose route has a key in its path is keyed by it in `router.tsx`, so it never draws another key's data.
 - A block holding React Flow condenses without scaling, since React Flow measures its boxes in window pixels when they mount.
+- A menu entry's current pill is its own `::before` (`CURRENT`), so it can flow without the entry's background moving.
 - The e2e checks and screens run with reduced motion; `e2e/motion.spec.ts` alone turns it on.
 - A story or unit test about motion turns it on with `motionOn` and reads it with `played` (`src/test/motion.ts`), never by timing.
 - A web unit test that needs a module's own state anew imports it by a URL of its own (`./water.ts?fresh=N`), since `vi.resetModules` does nothing in the browser.

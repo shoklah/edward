@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn } from 'storybook/test';
+import { expect, fn, waitFor } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
+import { finish, motionOn, played } from '../test/motion.ts';
 import { AccountLinks } from './AccountLinks.tsx';
 
 const meta = { component: AccountLinks, args: { onNavigate: fn() } } satisfies Meta<typeof AccountLinks>;
@@ -48,6 +49,23 @@ export const OnAccount: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('link', { name: 'rowan-k' })).toHaveAttribute('aria-current', 'page');
+  },
+};
+
+/** On the Account page as it loads, then a press on Admin: the current link's pill flows to it, as the menu's does. */
+export const Flows: Story = {
+  parameters: { path: '/account' },
+  beforeEach: () => {
+    mockApi({ '/api/status': { ...status, account: { login: 'rowan-k', admin: true } } });
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const admin = await canvas.findByRole('link', { name: 'Admin' });
+    const on = motionOn();
+    await userEvent.click(admin);
+    await waitFor(() => expect(admin).toHaveAttribute('aria-current', 'page'));
+    await expect(played(canvasElement)).toEqual([{ verb: 'flow', ms: 420, el: admin }]);
+    finish(canvasElement);
+    on.mockRestore();
   },
 };
 
