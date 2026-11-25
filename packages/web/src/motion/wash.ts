@@ -16,15 +16,31 @@ export function frontAt(distance: number, { R, ms, pow }: Pick<Front, 'R' | 'ms'
 /** Where a copy's regions were scrolled, which only an attached one can be. */
 const scrolled = new WeakMap<Element, { left: number; top: number }>();
 
-/** A detached copy of `el` as the reader saw it, with no `id`, filter or drop of water. */
+/** A detached copy of `el` as the reader saw it, with no filter, drop of water or typed password, and no `id` but the ones
+ * its own `url(#…)`s point to (a graph's arrowheads and gradients), renamed so none is on the page twice. */
 export function copyOf(el: HTMLElement): HTMLElement {
   const copy = el.cloneNode(true) as HTMLElement;
   const twins = [copy, ...copy.querySelectorAll('*')];
+  const ids = new Set(twins.map(({ id }) => id));
+  const kept = new Set<string>();
+  for (const attribute of twins.flatMap((twin) => [...twin.attributes])) {
+    if (!attribute.value.includes('url(')) continue;
+    attribute.value = attribute.value.replace(/url\((["']?)#(.+?)\1\)/g, (ref, quote, id) => {
+      if (!ids.has(id)) return ref;
+      kept.add(id);
+      return `url(${quote}#copy-${id}${quote})`;
+    });
+  }
   for (const [i, was] of [el, ...el.querySelectorAll('*')].entries()) {
-    twins[i].removeAttribute('id');
+    if (kept.has(was.id)) twins[i].id = `copy-${was.id}`;
+    else twins[i].removeAttribute('id');
     if (was.scrollLeft || was.scrollTop) scrolled.set(twins[i], { left: was.scrollLeft, top: was.scrollTop });
     // A clone keeps a ticked box but not a picked option.
     if (was instanceof HTMLSelectElement) (twins[i] as HTMLSelectElement).selectedIndex = was.selectedIndex;
+    if (was instanceof HTMLInputElement && was.type === 'password') {
+      (twins[i] as HTMLInputElement).value = '';
+      twins[i].removeAttribute('value');
+    }
   }
   copy.style.filter = '';
   for (const extra of copy.querySelectorAll('[data-drop] > [aria-hidden]')) extra.remove();

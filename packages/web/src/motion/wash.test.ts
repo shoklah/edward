@@ -69,23 +69,27 @@ test('the front reaches the source at once and the far corner before it is done'
   expect(frontAt(2000, front)).toBeCloseTo((1 - 0.03 ** (1 / 1.8)) * 900);
 });
 
-test('a copy keeps what the reader saw: a picked option, a ticked box, scrolled regions, and no id, filter or drop', () => {
+test('a copy keeps what the reader saw: a picked option, a ticked box, scrolled regions, and no id, filter, drop or password', () => {
   document.body.innerHTML = `
     <main id="main" style="width: 300px; filter: blur(1px)">
       <select id="s"><option>a</option><option>b</option><option>c</option></select>
       <input id="t" type="checkbox">
+      <input type="password" value="typed">
       <div data-scroll-cue style="width: 100px; height: 30px; overflow: auto"><div style="width: 400px">wide</div></div>
       <span data-drop><i aria-hidden></i><span aria-hidden>1</span><span>2</span></span>
     </main>`;
   const main = document.querySelector('main')!;
   main.querySelector('select')!.selectedIndex = 2;
   main.querySelector<HTMLInputElement>('[type=checkbox]')!.checked = true;
+  main.querySelector<HTMLInputElement>('[type=password]')!.value = 'typed on';
   main.querySelector('[data-scroll-cue]')!.scrollLeft = 40;
   const at = main.getBoundingClientRect();
   const layer = attach('page', at, [copyOf(main)]);
   const copy = layer.firstElementChild as HTMLElement;
   expect(copy.querySelector('select')!.selectedIndex).toBe(2);
   expect(copy.querySelector<HTMLInputElement>('[type=checkbox]')!.checked).toBe(true);
+  expect(copy.querySelector<HTMLInputElement>('[type=password]')!.value).toBe('');
+  expect(copy.outerHTML).not.toContain('typed');
   expect(copy.querySelector('[data-scroll-cue]')!.scrollLeft).toBe(40);
   expect([copy, ...copy.querySelectorAll('*')].filter((el) => el.id)).toEqual([]);
   expect(copy.style.filter).toBe('');
@@ -97,6 +101,24 @@ test('a copy keeps what the reader saw: a picked option, a ticked box, scrolled 
   expect(getComputedStyle(layer)).toMatchObject({ position: 'fixed', zIndex: '-1', overflow: 'hidden', pointerEvents: 'none' });
   // The page itself is left as it was.
   expect([main.id, main.style.filter, main.querySelector('[data-drop]')!.textContent]).toEqual(['main', 'blur(1px)', '12']);
+});
+
+test('a copy keeps the ids its own url() references point to, renamed, so its gradients and arrowheads are drawn', () => {
+  document.body.innerHTML = `
+    <svg><marker id="outside"></marker></svg>
+    <main id="main">
+      <svg>
+        <defs><linearGradient id="fade"></linearGradient><marker id=":r1:-arrow"></marker><marker id="unused"></marker></defs>
+        <path stroke="url(#fade)" marker-end="url(#:r1:-arrow)" style="marker-start: url('#:r1:-arrow')"></path>
+        <path id="named" marker-end="url(#outside)"></path>
+      </svg>
+    </main>`;
+  const copy = copyOf(document.querySelector('main')!);
+  expect([copy, ...copy.querySelectorAll('[id]')].map((el) => el.id).filter(Boolean)).toEqual(['copy-fade', 'copy-:r1:-arrow']);
+  const [path, other] = copy.querySelectorAll('path');
+  expect([path.getAttribute('stroke'), path.getAttribute('marker-end')]).toEqual(['url(#copy-fade)', 'url(#copy-:r1:-arrow)']);
+  expect(path.style.markerStart).toBe('url("#copy-:r1:-arrow")');
+  expect(other.getAttribute('marker-end')).toBe('url(#outside)');
 });
 
 test('clear drops every copy', () => {
