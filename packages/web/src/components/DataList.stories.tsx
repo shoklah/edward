@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { Num } from './Num.tsx';
+import { eachFrame, finish, fits, motionOn, played } from '../test/motion.ts';
 import { visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 import { DataList, type ListColumn, type ListFact } from './DataList.tsx';
 
@@ -387,5 +388,108 @@ export const NoStalePage: Story = {
     await expect(nav.getByText('1–10 of 15')).toBeVisible();
     observer.disconnect();
     await expect(seen.filter((s) => !s.endsWith('1–10 of 15') && !s.endsWith('21–24 of 24'))).toEqual([]);
+  },
+};
+
+const motion = () => {
+  const on = motionOn();
+  return () => on.mockRestore();
+};
+/** What plays in the list's rows, the chevrons aside. */
+const moved = (el: HTMLElement) => played(el.querySelector('tbody')!).filter((p) => !(p.el instanceof SVGElement));
+
+/** A sort: the rows on the page flow to their places, and those new to it condense. */
+export const SortFlows: Story = {
+  beforeEach: motion,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const was = new Set(bodyRows(canvasElement));
+    const sort = canvas.getByRole('button', { name: 'Count' });
+    await userEvent.click(sort);
+    const body = canvasElement.querySelector('tbody')!;
+    const all = played(body);
+    for (const { verb, ms, el } of all) {
+      await expect([verb, ms]).toEqual([was.has(el as HTMLElement) ? 'flow' : 'condense', 520]);
+    }
+    await expect(new Set(all.map(({ verb }) => verb))).toEqual(new Set(['flow', 'condense']));
+    await expect(all.filter(({ verb }) => verb === 'condense').map(({ el }) => el)).toEqual(
+      bodyRows(canvasElement).filter((row) => !was.has(row)),
+    );
+    finish(body);
+    const counts = column(canvasElement, 1).map(Number);
+    await expect(counts).toEqual([...counts].sort((a, b) => a - b));
+    await expect(played(body)).toEqual([]);
+  },
+};
+
+/** A row opened: its content condenses, the rows below flow, the last first; closing plays nothing. */
+export const OpenFlows: Story = {
+  beforeEach: motion,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const toggle = canvas.getByRole('button', { name: 'Item 1' });
+    const below = bodyRows(canvasElement).slice(1);
+    await userEvent.click(toggle);
+    const all = played(canvasElement);
+    await expect(all).toHaveLength(11);
+    const chevron = toggle.querySelector('svg')!;
+    await expect(all).toContainEqual({ verb: 'flow', ms: 160, el: chevron });
+    await expect(all).toContainEqual({ verb: 'condense', ms: 480, el: openedRow(toggle).querySelector('td > div') });
+    for (const el of below) await expect(all).toContainEqual({ verb: 'flow', ms: 460, el });
+    await expect(below.map((el) => el.getAnimations()[0].effect!.getTiming().delay)).toEqual([84, 72, 60, 48, 36, 24, 12, 0, 0]);
+    // Closed while they flow, all at once; then opened again, to the end.
+    await userEvent.click(toggle);
+    await expect(played(canvasElement)).toEqual([]);
+    await userEvent.click(toggle);
+    finish(canvasElement);
+    await expect(column(canvasElement, 0).filter((_, i) => i !== 1)).toEqual(ROWS.slice(0, 10).map((r) => r.name));
+    await userEvent.click(toggle);
+    await expect(played(canvasElement)).toEqual([]);
+    await expect(column(canvasElement, 0)).toEqual(ROWS.slice(0, 10).map((r) => r.name));
+  },
+};
+
+/** No flow makes the list scroll or fades its edge: ten rows that fit, the last opened, then a sort to a shorter page. */
+export const FlowsInside: Story = {
+  args: { extra: () => <p style={{ height: 120 }}>More</p> },
+  decorators: [width(700)],
+  beforeEach: motion,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const container = canvas.getByRole('region', { name: 'Items' });
+    const inside = () => eachFrame(canvasElement, () => fits(container));
+    fits(container);
+    await userEvent.click(canvas.getByRole('button', { name: 'Item 10' }));
+    await inside();
+    // A row above those that stay, which leaves with the sort as the last does.
+    await userEvent.click(canvas.getByRole('button', { name: 'Item 3' }));
+    await inside();
+    const tall = container.scrollHeight;
+    await userEvent.click(canvas.getByRole('button', { name: 'Count' }));
+    await expect(container.scrollHeight).toBeLessThan(tall);
+    await expect(moved(canvasElement).length).toBeGreaterThan(0);
+    await inside();
+    await expect(bodyRows(canvasElement)).toHaveLength(10);
+  },
+};
+
+/** A page and a filter change at once. */
+export const PageStill: Story = {
+  beforeEach: motion,
+  render: function Render(args) {
+    const [rows, setRows] = useState(ROWS);
+    return (
+      <>
+        <button type="button" onClick={() => setRows(ROWS.filter((r) => r.name !== 'Item 1'))}>
+          Filter
+        </button>
+        <DataList {...args} rows={rows} />
+      </>
+    );
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Next' }));
+    await expect(played(canvasElement)).toEqual([]);
+    await expect(column(canvasElement, 0)[0]).toBe('Item 11');
+    await userEvent.click(canvas.getByRole('button', { name: 'Filter' }));
+    await expect(played(canvasElement)).toEqual([]);
+    await expect(column(canvasElement, 0)[0]).toBe('Item 2');
   },
 };
