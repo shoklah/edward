@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, waitFor, within } from 'storybook/test';
-import { eachFrame, finish, fits, motionOn, played } from '../test/motion.ts';
+import { crossed, eachFrame, finish, fits, motionOn, played } from '../test/motion.ts';
 import { Menu, MenuButton } from './Menu.tsx';
 
 const meta = { component: Menu, args: { onNavigate: fn() } } satisfies Meta<typeof Menu>;
@@ -89,7 +89,13 @@ export const Flows: Story = {
     const pill = last.getAnimations({ subtree: true }).find((a) => (a.effect as KeyframeEffect).pseudoElement === '::before')!;
     await expect([pill.id, pill.effect!.getTiming().duration]).toEqual(['flow', 420]);
     // The pill springs past the last entry without making the menu scroll (the story's `overflow-y-auto` decorator).
-    await eachFrame(canvasElement, () => fits(canvasElement.querySelector('.overflow-y-auto')!));
+    // It runs under the entries it crosses.
+    const under = new Set<Element>();
+    await eachFrame(canvasElement, () => {
+      fits(canvasElement.querySelector('.overflow-y-auto')!);
+      for (const link of crossed(canvas.getByRole('navigation'), last)) under.add(link);
+    });
+    await expect(under.size).toBeGreaterThan(1);
     finish(canvasElement);
     on.mockRestore();
   },

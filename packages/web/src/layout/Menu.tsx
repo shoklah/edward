@@ -51,7 +51,7 @@ export function Menu({ onNavigate }: { onNavigate?: () => void }) {
   const nav = useRef<HTMLElement>(null);
   usePill(nav, pathname);
   return (
-    <nav ref={nav} aria-label="Main" className="flex flex-col gap-6 text-sm">
+    <nav ref={nav} aria-label="Main" className="isolate flex flex-col gap-6 text-sm">
       {SECTIONS.map((section, i) => {
         const nameId = `${id}-${i}`;
         const named = section.name ? { role: 'group', 'aria-labelledby': nameId } : {};

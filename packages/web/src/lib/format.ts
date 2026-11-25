@@ -428,7 +428,7 @@ export const UNNAMED = 'font-normal text-muted-foreground';
 // The import notice's and showing mode's amber glass bar (DESIGN.md's Notice bars).
 export const NOTICE = 'rounded-panel border border-notice-edge bg-notice text-sm text-notice-ink';
 // A menu entry's look, and the current entry's: the Menu's pages and `AccountLinks` alike.
-export const ENTRY = 'relative isolate flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent';
+export const ENTRY = 'relative flex items-center gap-2.5 rounded-control px-3 py-1.5 hover:bg-accent';
 export const CURRENT = 'font-semibold hover:bg-transparent before:absolute before:inset-0 before:-z-10 before:rounded-control before:bg-accent';
 // The run page's two findings tables: each one's 4 px left side (its container's own border, so it follows the rounded
 // corners), amber for problems and green for strengths, and its title icon's ink.

@@ -17,7 +17,7 @@ export function AccountLinks({ onNavigate, className }: { onNavigate?: () => voi
   usePill(nav, account ? pathname : '');
   if (!account) return null;
   return (
-    <nav ref={nav} aria-label="Account" className={cn('flex flex-col gap-1', className)}>
+    <nav ref={nav} aria-label="Account" className={cn('isolate flex flex-col gap-1', className)}>
       <Link to="/account" onClick={onNavigate} className={ENTRY} activeProps={{ className: CURRENT }}>
         <UserRound className="size-4 flex-none" aria-hidden />
         {account.login}

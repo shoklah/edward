@@ -46,3 +46,14 @@ export function fits(scroller: Element): void {
   expect(scroller.scrollHeight).toBe(scroller.clientHeight);
   expect(getComputedStyle(scroller).maskImage).toBe('none');
 }
+
+/** The other links of `nav` whose centre `current`'s pill now covers: it lies under each, on `nav`. */
+export function crossed(nav: Element, current: Element): Element[] {
+  return [...nav.querySelectorAll('a')].filter((link) => {
+    const { x, y, width, height } = link.getBoundingClientRect();
+    const layers = document.elementsFromPoint(x + width / 2, y + height / 2);
+    if (link === current || !layers.includes(current)) return false;
+    expect(layers.filter((el) => [link, current, nav].includes(el))).toEqual([link, current, nav]);
+    return true;
+  });
+}

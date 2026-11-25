@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, waitFor } from 'storybook/test';
 import type { StatusResponse } from '@cwd/shared';
 import { mockApi } from '../test/mock-api.ts';
-import { finish, motionOn, played } from '../test/motion.ts';
+import { crossed, finish, motionOn, played } from '../test/motion.ts';
 import { AccountLinks } from './AccountLinks.tsx';
 
 const meta = { component: AccountLinks, args: { onNavigate: fn() } } satisfies Meta<typeof AccountLinks>;
@@ -64,6 +64,11 @@ export const Flows: Story = {
     await userEvent.click(admin);
     await waitFor(() => expect(admin).toHaveAttribute('aria-current', 'page'));
     await expect(played(canvasElement)).toEqual([{ verb: 'flow', ms: 420, el: admin }]);
+    // Where it starts, it lies under the login.
+    const [pill] = admin.getAnimations({ subtree: true });
+    pill.pause();
+    pill.currentTime = 0;
+    await expect(crossed(canvas.getByRole('navigation'), admin)).toEqual([canvas.getByRole('link', { name: 'rowan-k' })]);
     finish(canvasElement);
     on.mockRestore();
   },
