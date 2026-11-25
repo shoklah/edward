@@ -13,7 +13,7 @@ Edward is a playground and a portfolio piece. Its look is glass, but nothing on 
 - Changing page, opening a run and landing an import each read as one event on one liquid surface.
 - Every moving thing uses one of four verbs (wash, condense, ripple, flow) and the same springs.
 - Motion explains: it starts where the reader acted, or where the news came in, and shows what changed.
-- The new page answers clicks and keys from its first frame. No motion delays a request, the DOM or the focus; the one thing drawn late is a number an import changed, which keeps its old look until the wave reaches it (2 s at most).
+- The new page answers clicks and keys from its first frame. No motion delays a request, the DOM or the focus; the one thing drawn late is what an import changed in the window (a number, a feed item, a list row), which keeps its old look until the wave reaches it (2 s at most).
 - Under `prefers-reduced-motion` everything changes at once and nothing moves.
 
 ## Non-goals
@@ -92,9 +92,9 @@ From `grill-me`, 2026-11-25:
 | **A new page** (the path changes inside the shell) | The wave starts where the reader pressed. The old page, as an inert copy, bends under the front and is cut away behind it. Each new panel, and each block outside a panel, condenses once the front has passed it: from 34 px nearer the source, scale 0.9, opacity 0 | Front 900 ms; a block's condensing 640 ms, opaque after 190, so the far corner reads at about 1 s and rests at 1.4 s |
 | **Opening a run** by a link in the page | As above from the link, and the run's `h1` travels from the link's place and size, if it is drawn before the front is done. Then, once its panel is opaque, the graph draws itself | Title 620 ms; graph about 1.2 s |
 | **The rail** | The current entry's pill stretches over the gap and gathers on the new entry | 420 ms |
-| **An import lands** and a number, feed item or list row in the window changed | A drop hits "Imported". The wave runs through the page, the page bends under it, and each panel bobs 8 px as it passes | Front 2 s, over by 2.3 s |
+| **An import lands** and a number, feed item or list row in the window changed | A drop hits "Imported", which squashes (scale 0.86 by 1.3, jelly, 900 ms), and a second, smaller drop of light follows it (420 ms later, half the reach, 1.6 s). The wave runs through the page, the page bends under it, and each panel bobs 8 px as it passes | Front 2 s, over by 2.3 s |
 | ↳ a changed number | When the front reaches it: the old number melts off, the new one forms inside a drop of glass that then evaporates, and sends its own ripple. At most 9 in the window, spread over it; the others there swap as the front passes | 2.6 s each, the last over 4.6 s after the drop |
-| ↳ a new feed item or list row | Lands as a drop with its own ripple; the rest flow down, the last first | 680 ms |
+| ↳ a new feed item or list row | When the front reaches it: lands as a drop with its own ripple; the rest flow down, the last first | 680 ms |
 | **An import lands** and none did, or a dialog is open, or a select or a text field has the focus | A small ripple (110 px) on the "Imported" line; what changed changes at once | 1.3 s |
 | edward's eye, on any import | Blinks | 260 ms |
 | **A row opens** | Its content condenses, top left; the rows below flow down, the last first; the chevron turns | 480 ms |
@@ -202,6 +202,15 @@ Stack gains one line under Final's neighbours: "**Motion:** no library: CSS, the
 - **Widths:** at 375 px the source is the Menu button or the link pressed, the canvas covers the window, there is no copy and nothing scrolls sideways; at 768 and 1440 px as drawn.
 - **Screens:** `/`, `/weeks`, `/work`, `/work?view=runs`, `/work?view=sessions`, `/work/goals/<key>`, `/work/changes/<key>`, `/runs/<key>`, `/findings`, `/context`, `/spend`, `/compliance`, `/steps`, `/skills`, `/kits`, `/models`. Their layout doesn't change; with no layout change the kit asks for no capture, and the live mockup is the reference.
 - **Components:** adapted: `Shell`, `Menu`, `Brand`, `Num`, `DataList`, `RowToggle`, `Feed`, `HeatmapTable`, `RunFlow`, `StepDetail`, `RunPage`'s title, `useLiveQuery`, the keyed routes. New: the water canvas and the filters, since nothing draws either today.
+
+## Planning clarifications
+
+Asked by a plan writer, answered 2026-11-25 (the planning session's calls):
+
+- **New items wait for the front:** a new feed item or list row stays at opacity 0, and the rows around it at their old places, until the front reaches them; the DOM is final from the commit. A list with no new key and no noticed number starts no wave.
+- **"A row opens"** is a `DataList` row. The chevron turns in `RowToggle` everywhere; the Spend table's groups, Work's goal sections and `Details` open at once.
+- **The "Imported" line's squash and the second drop of light** are in, as in the mockup the owner liked, for the full wave only.
+- **`StepDetail`'s smooth scroll** stays as it is; its reduced-motion test becomes `motion/`'s one test of whether motion runs.
 
 ## Left to the builder
 
