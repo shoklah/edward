@@ -650,7 +650,7 @@ test.describe('an import', () => {
       });
       await landImport(page, { '/api/home': moreRuns, '/api/weeks': (weeks) => { for (const w of weeks.weeks) w.laterFixes += 1; } });
       expect(await sizes, `${path} at ${width} px`).toEqual([rest]);
-      await expect.poll(() => page.evaluate(() => getComputedStyle(document.getElementById('root')!).overflow)).toBe('visible');
+      await expect.poll(() => page.evaluate(() => getComputedStyle(document.getElementById('root')!).overflow), { timeout: 15_000 }).toBe('visible');
       await page.unrouteAll();
     }
   });

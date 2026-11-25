@@ -77,10 +77,10 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
       clearTimeout(light.current);
       for (const { el } of rows) for (const animation of el.getAnimations()) animation.cancel();
     }
-    if (!list.current || (why ? why === 'open' && !rows.some(({ isNew }) => isNew) : !changed || !held)) return;
-    const { bottom: end, height } = list.current.getBoundingClientRect();
+    if (keys.length === 0 || (why ? why === 'open' && !rows.some(({ isNew }) => isNew) : !changed || !held)) return;
+    const { bottom: end, height } = list.current!.getBoundingClientRect();
     // What a condensing panel scales the list by; `offsetHeight` is a whole number.
-    const scale = height / parseFloat(getComputedStyle(list.current).height);
+    const scale = height / parseFloat(getComputedStyle(list.current!).height);
     // A row starts no lower than where its foot meets the list's end, in real pixels: the places are whole ones, and even
     // part of a pixel past the end scrolls the list.
     const gap = ({ key, el }: (typeof rows)[number]) => {
@@ -93,10 +93,12 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
     if (!why) {
       const fresh = rows.filter(({ key }) => !held!.has(key));
       const shown = fresh.find(({ el }) => inWindow(el));
-      // A row brought onto the page is drawn at once, so the rest is: waiting at its old place, one would stand on it.
-      const moved = rows.some(({ key, isNew }) => isNew && held!.has(key)) ? [] : below;
+      // Waiting at its old place, a row would stand on one brought onto the page, which is drawn at once, or on another
+      // where its old place lies past the list's end (by more than a whole number's rounding).
+      const crowded = rows.some((row) => (row.isNew ? held!.has(row.key) : was.get(row.key)! - now.get(row.key)! - gap(row) > 1));
       // Scrolled past its head, the browser keeps what is read in place: there its rows haven't moved.
-      const at = shown ?? (moved.length > 0 && inWindow(rows[0].el) ? moved[0] : null);
+      const moved = crowded || !inWindow(rows[0].el) ? [] : below;
+      const at = shown ?? moved[0];
       if (!at) return;
       const land = (delay: number) => {
         for (const [i, row] of moved.entries()) slide(row.el, row.from, 560, delay + 16 * lastFirst(i));
@@ -138,12 +140,13 @@ function slide(el: Element, y: number, ms: number, delay: number): void {
   play('flow', el, [{ transform: `translateY(${y}px)` }, { transform: 'none' }], ms, { easing: CALM, delay });
 }
 
-/** A list's new row, `height` px tall, falls to its place from over it, and its stretch never passes its foot. */
+/** A list's new row, `height` px tall, falls to its place from over it, once the rest have started down, and its
+ * stretch never passes its foot. */
 function fall(el: Element, height: number, delay: number): void {
-  const [up, across, stretch] = el.matches('tr') ? [26, 0.96, 0.3] : [34, 0.5, 0.2];
+  const [up, across, stretch, after] = el.matches('tr') ? [26, 0.96, 0.3, 80] : [34, 0.5, 0.2, 150];
   const from = `translateY(${-Math.max(up, stretch * height)}px) scale(${across}, ${1 + stretch})`;
   const origin = { transformOrigin: '0 0' };
-  play('ripple', el, [{ opacity: 0, transform: from, ...origin }, { opacity: 1, offset: 0.18 }, { opacity: 1, transform: 'none', ...origin }], 680, { easing: CALM, delay });
+  play('ripple', el, [{ opacity: 0, transform: from, ...origin }, { opacity: 1, offset: 0.18 }, { opacity: 1, transform: 'none', ...origin }], 680, { easing: CALM, delay: delay + after });
 }
 
 /** A chevron turns from its closed place when its row opens. */

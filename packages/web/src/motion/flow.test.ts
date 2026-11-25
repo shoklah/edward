@@ -271,6 +271,11 @@ describe('a list an import changes', () => {
   const start = (key: string) => effect(key).getKeyframes()[0].transform;
   const delay = (key: string) => effect(key).getTiming().delay!;
   const waves = () => played(document.querySelector('[data-imported]')!).length;
+  /** No row stands on another. */
+  const apart = () => {
+    const rects = [...body().children].map((el) => el.getBoundingClientRect());
+    for (const [i, { top }] of rects.entries()) if (i > 0) expect(top).toBeGreaterThanOrEqual(rects[i - 1].bottom);
+  };
 
   test('what is new lands when the front is there, the rest flow down, the last first', async () => {
     const draw = await list({ keys: ['a', 'b', 'c'] });
@@ -282,8 +287,10 @@ describe('a list an import changes', () => {
       ...['a', 'b', 'c'].map((key) => ({ verb: 'flow', ms: 560, el: row(key) })),
     ]));
     expect(played(body())).toHaveLength(4);
-    const front = delay('new');
+    const front = delay('c');
     expect(front).toBeGreaterThan(0);
+    // After the first that moves, so it doesn't draw over the old first row.
+    expect(delay('new')).toBeCloseTo(front + 150);
     for (const [i, key] of ['c', 'b', 'a'].entries()) expect(delay(key)).toBeCloseTo(front + 16 * i);
     // Until the front is there, in the document, unseen, and the rest at their old places.
     for (const ms of [0, front - 1]) {
@@ -330,10 +337,6 @@ describe('a list an import changes', () => {
     expect(played(document.body)).toEqual([]);
     await draw({ keys: ['c', 'd', 'e'], all: ['c', 'd', 'e'], value: 1 });
     expect(waves()).toBe(1);
-    const apart = () => {
-      const rects = [...body().children].map((el) => el.getBoundingClientRect());
-      for (const [i, { top }] of rects.entries()) if (i > 0) expect(top).toBeGreaterThanOrEqual(rects[i - 1].bottom);
-    };
     expect(played(body())).toEqual([]);
     apart();
     await eachFrame(document.body, apart);
@@ -343,6 +346,18 @@ describe('a list an import changes', () => {
     const draw = await list({ keys: ['a', 'b', 'c'], all: ['a', 'b', 'c', 'd'] });
     await draw({ keys: ['new', 'c', 'd'], all: ['new', 'c', 'd'] });
     expect(played(body())).toEqual([{ verb: 'ripple', ms: 680, el: row('new') }]);
+  });
+
+  test.each([
+    [['b', 'c', 'd'], []],
+    [['new', 'c', 'd'], ['new']],
+  ])('shorter, in a wave, to %j its rows stay apart: only what is new plays', async (keys, landing) => {
+    const draw = await list({ keys: ['a', 'b', 'c', 'd'] });
+    await draw({ keys, value: 1 });
+    expect(waves()).toBe(1);
+    expect(played(body()).map(({ verb, el }) => [verb, el.id])).toEqual(landing.map((key) => ['ripple', key]));
+    apart();
+    await eachFrame(document.body, apart);
   });
 
   test('scrolled past its head, where the browser keeps what is read in place, it stays still in a wave', async () => {
@@ -356,6 +371,17 @@ describe('a list an import changes', () => {
     expect(waves()).toBe(1);
     expect(played(body())).toEqual([]);
     expect(top('a')).toBe(was);
+  });
+
+  test('scrolled past its head, a new row in view lands and what is read stays in place', async () => {
+    const draw = await list({ keys: ['a', 'b', 'c', 'd', 'e', 'f'], region: 100 });
+    document.getElementById('scroller')!.scrollTop = 60;
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    const was = top('b');
+    await draw({ keys: ['n1', 'a', 'b', 'n2', 'c', 'd', 'e', 'f'] });
+    expect(played(body()).map(({ verb, el }) => [verb, el.id])).toEqual([['ripple', 'n1'], ['ripple', 'n2']]);
+    expect(top('b')).toBe(was);
   });
 
   test('reordered, it starts no wave, and in one a number starts its rows flow', async () => {
@@ -377,6 +403,7 @@ describe('a list an import changes', () => {
     const draw = await list({ keys: ['a'], row: tag, height });
     await draw({ keys: ['new', 'a'] });
     expect(start('new')).toBe(from);
+    expect(delay('new')).toBeCloseTo(delay('a') + (tag === 'tr' ? 80 : 150));
   });
 
   test.each([
@@ -386,10 +413,10 @@ describe('a list an import changes', () => {
     ['tr', 39.5, 1.1],
     ['tr', 120.25, 1],
   ] as const)('landing, no %s of %f px passes its list\'s end in any frame nor makes it scroll, its panel drawn at scale %f', async (tag, height, scale) => {
-    const draw = await list({ keys: ['a', 'b', 'c'], row: tag, height, scale });
-    // One added at its end, and fewer rows than before.
-    await draw({ keys: ['c', 'new'], all: ['c', 'new'], value: 1 });
-    expect(played(body()).length).toBeGreaterThan(0);
+    const draw = await list({ keys: ['a', 'b'], row: tag, height, scale });
+    // One from its end, and one added there.
+    await draw({ keys: ['b', 'new'] });
+    expect(played(body()).map(({ verb, el }) => [verb, el.id])).toEqual([['flow', 'b'], ['ripple', 'new']]);
     const bottom = (el: Element) => el.getBoundingClientRect().bottom;
     await eachFrame(body(), () => {
       for (const el of body().children) expect(bottom(el) - bottom(body())).toBeLessThanOrEqual(0.01);
