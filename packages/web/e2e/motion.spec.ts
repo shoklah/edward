@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
-import { added, playing, watchAdded } from './motion.ts';
+import { added, landImport, playing, watchAdded } from './motion.ts';
 import { settled } from './settled.ts';
 
 // The one e2e file with motion on: the others run under reduced motion (`playwright.config.ts`).
@@ -508,5 +508,137 @@ test.describe('a run', () => {
     expect(boxes.some((a) => a.tag === 'BUTTON' && a.verb === 'condense')).toBe(true);
     expect(Math.min(...boxes.map((a) => a.delay))).toBe(0);
     expect(all.filter((a) => a.tag === 'H1')).toEqual([]);
+  });
+});
+
+test.describe('an import', () => {
+  test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
+
+  const drops = (page: Page) => page.locator('[data-drop]');
+  const filter = (page: Page) => page.locator('#main').evaluate((el) => el.style.filter);
+  const moreRuns = (home: any) => { home.thisWeek.runs.full += 3; };
+
+  test('an import with a change in the window starts the wave', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await landImport(page, { '/api/home': moreRuns });
+    await expect(page.locator('[data-drop="drop"]')).toHaveCount(2); // Full and All paths
+    expect(await filter(page)).toContain('motion-bend');
+    expect((await playing(page)).filter((a) => a.verb === 'ripple').map((a) => a.ms)).toContain(1200);
+    await page.mouse.wheel(0, 200);
+    await expect.poll(() => filter(page)).toBe('');
+    await expect(drops(page)).toHaveCount(0, { timeout: 8000 });
+  });
+
+  test('an import that changes nothing plays the small ripple', async ({ page }) => {
+    await watchAdded(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await landImport(page, {});
+    await expect.poll(async () => (await added(page)).canvases).toBe(1);
+    await expect(drops(page)).toHaveCount(0);
+    expect(await filter(page)).toBe('');
+    expect((await playing(page)).map((a) => a.ms)).not.toContain(1200);
+  });
+
+  test('a landing of /api/showing alone starts neither', async ({ page }) => {
+    await watchAdded(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/api/home', async (route) => {
+      await held;
+      await route.continue();
+    });
+    const showing = page.waitForResponse('**/api/showing');
+    await landImport(page, {});
+    await (await showing).finished();
+    await page.waitForTimeout(300);
+    expect(await added(page)).toMatchObject({ canvases: 0 });
+    release();
+    await expect.poll(async () => (await added(page)).canvases).toBe(1);
+    expect(await filter(page)).toBe('');
+    expect((await playing(page)).map((a) => a.ms)).not.toContain(1200);
+  });
+
+  test('with a dialog open the new numbers show at once, with the small ripple', async ({ page }) => {
+    await watchAdded(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    // The week's runs on the Full path, this week's.
+    const full = page.locator('table[aria-label="Runs"] tr', { hasText: 'Full' }).locator('td').first();
+    const was = Number(await full.textContent());
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await landImport(page, { '/api/home': moreRuns }, held);
+    await page.getByRole('complementary').getByRole('switch', { name: 'Showing mode' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    release();
+    await expect(full).toHaveText(String(was + 3));
+    await expect(drops(page)).toHaveCount(0);
+    await expect.poll(async () => (await added(page)).canvases).toBe(1);
+    expect(await filter(page)).toBe('');
+  });
+
+  test('the eye blinks on any import', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const blink = page.evaluate(async () => {
+      for (;;) {
+        const found = document.getAnimations().find((a) => a.id && (a.effect as KeyframeEffect).target!.matches('a[aria-label="edward, Home"] svg'));
+        if (found) return [found.id, found.effect!.getTiming().duration];
+        await new Promise(requestAnimationFrame);
+      }
+    });
+    await landImport(page, {});
+    expect(await blink).toEqual(['ripple', 260]);
+  });
+
+  test('preparing never ends the bend of an import under way', async ({ page }) => {
+    // The browser is idle only once the test says so.
+    await page.addInitScript(() => {
+      const waiting = new Map<number, () => void>();
+      let next = 0;
+      window.requestIdleCallback = (run) => {
+        waiting.set(++next, run as () => void);
+        return next;
+      };
+      window.cancelIdleCallback = (id) => void waiting.delete(id);
+      (window as unknown as { idle: () => void }).idle = () => {
+        for (const run of waiting.values()) run();
+        waiting.clear();
+      };
+    });
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await landImport(page, { '/api/home': moreRuns });
+    await expect(page.locator('[data-drop="drop"]')).toHaveCount(2);
+    const during = await page.evaluate(() => {
+      (window as unknown as { idle: () => void }).idle();
+      return [document.getElementById('main')!.style.filter, document.querySelectorAll('[data-copy]').length];
+    });
+    expect(during).toEqual(['url("#motion-bend")', 0]);
+  });
+
+  test('nothing scrolls or grows through its wave', async ({ page }) => {
+    // On a wide window a panel's bob is larger than the space beside it.
+    for (const [path, width] of [['/', 1440], ['/weeks', 1440], ['/', 3440], ['/weeks', 3440]] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(path, { waitUntil: 'networkidle' });
+      const size = () => page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]);
+      const rest = await size();
+      expect(rest[0]).toBe(width);
+      const sizes = page.evaluate(async () => {
+        const bobs = () => document.getAnimations().filter((a) => a.id === 'ripple' && a.effect!.getTiming().duration === 1200);
+        while (bobs().length === 0) await new Promise(requestAnimationFrame);
+        const seen = new Set<string>();
+        // Stepped, all at once, since a browser's own frames can miss a bob's farthest, early on.
+        for (const bob of bobs()) bob.pause();
+        for (let ms = 0; ms <= 1200; ms += ms < 200 ? 1 : 20) {
+          for (const bob of bobs()) bob.currentTime = bob.effect!.getTiming().delay! + ms;
+          seen.add(JSON.stringify([document.documentElement.scrollWidth, document.documentElement.scrollHeight]));
+        }
+        return [...seen].map((s) => JSON.parse(s));
+      });
+      await landImport(page, { '/api/home': moreRuns, '/api/weeks': (weeks) => { for (const w of weeks.weeks) w.laterFixes += 1; } });
+      expect(await sizes, `${path} at ${width} px`).toEqual([rest]);
+      await expect.poll(() => page.evaluate(() => getComputedStyle(document.getElementById('root')!).overflow)).toBe('visible');
+      await page.unrouteAll();
+    }
   });
 });

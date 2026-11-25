@@ -2,6 +2,7 @@ import { cloneElement, isValidElement, type ComponentProps, type ReactNode } fro
 import { cn } from 'cn';
 import { TableCell, TableHead, TableRow } from './ui/table.tsx';
 import { formatWhole, NONE, type Pair } from '../lib/format.ts';
+import { useRipple } from '../motion/index.ts';
 
 /** A numeric column's alignment, for its header and its cells. */
 export const NUM = 'text-right tabular-nums';
@@ -43,8 +44,12 @@ export function Unknown({ label = 'not known', backdrop = false }: { label?: str
 
 /** A number, whole and grouped unless `format` says otherwise: zero muted, unknown as the muted dash. */
 export function Num({ value, format = formatWhole }: { value: number | null | undefined; format?: (n: number) => string }) {
-  if (value == null) return <Unknown />;
-  return <span className={cn(value === 0 && 'text-muted-foreground')}>{format(value)}</span>;
+  const { ref, children } = useRipple<HTMLSpanElement>(value == null ? NONE : format(value), value == null ? <Unknown /> : undefined);
+  return (
+    <span ref={ref} className={cn(value === 0 && 'text-muted-foreground')}>
+      {children}
+    </span>
+  );
 }
 
 /** A number's whole cell. */

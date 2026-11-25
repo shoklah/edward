@@ -35,3 +35,22 @@ export async function playing(page: Page): Promise<{ verb: string; ms: number }[
   return page.evaluate(() =>
     document.getAnimations().filter((a) => a.id !== '').map((a) => ({ verb: a.id, ms: a.effect!.getTiming().duration as number })));
 }
+
+/** Lands an import, with no import on the server: each path of `edits` (a page's API path) answers its own data changed
+ * by its function, under a later import's status, once Refresh is pressed and answered (at `answer`, when given). */
+export async function landImport(page: Page, edits: Record<string, (body: any) => void>, answer?: Promise<void>): Promise<void> {
+  const edit = (path: string, change: (body: any) => void) =>
+    page.route(({ pathname }) => pathname === path, async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      change(body);
+      await route.fulfill({ response, json: body });
+    });
+  for (const [path, change] of Object.entries(edits)) await edit(path, change);
+  await edit('/api/status', (status) => (status.lastGoodImportAt = '2026-11-12T12:30:00.000Z'));
+  await page.route('**/api/refresh', async (route) => {
+    await answer;
+    await route.fulfill({ status: 204 });
+  });
+  await page.getByRole('button', { name: 'Refresh' }).click();
+}

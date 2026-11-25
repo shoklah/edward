@@ -1,4 +1,6 @@
+import { createElement, Fragment, useState, type ReactNode } from 'react';
 import { expect, spyOn } from 'storybook/test';
+import { useLanding } from '../motion/index.ts';
 
 const matchMedia = window.matchMedia.bind(window);
 
@@ -56,4 +58,24 @@ export function crossed(nav: Element, current: Element): Element[] {
     expect(layers.filter((el) => [link, current, nav].includes(el))).toEqual([link, current, nav]);
     return true;
   });
+}
+
+/** What assistive tech reads of `el`: its text without what is hidden from it. */
+export function accessibleText(el: Element): string {
+  const copy = el.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent;
+}
+
+/** What `draw` draws before an import and, once the Import button is pressed, `landed` with it. */
+export function Import({ draw }: { draw: (landed: boolean) => ReactNode }): ReactNode {
+  const [at, setAt] = useState('2000-01-01T00:00:00.000Z');
+  const [first] = useState(at);
+  useLanding('/api/story', { lastImportAt: at, lastGoodImportAt: at, error: null, importing: false }, true);
+  return createElement(
+    Fragment,
+    null,
+    createElement('button', { type: 'button', onClick: () => setAt(new Date().toISOString()) }, 'Import'),
+    draw(at !== first),
+  );
 }

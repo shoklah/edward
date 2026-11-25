@@ -66,10 +66,15 @@ export function attach(kind: 'page' | 'items' | 'prepare', at: DOMRect, copies: 
   return layer;
 }
 
+/** A page's outermost panels in the window. */
+export function panelsOf(main: HTMLElement): Element[] {
+  const PANEL = '.glass, [data-slot="table-container"]';
+  return [...main.querySelectorAll(PANEL)].filter((el) => !el.parentElement!.closest(PANEL) && inWindow(el)).slice(0, 16);
+}
+
 /** A page's blocks in the window: its outermost panels, then the smallest set of elements covering what they don't. */
 function blocks(main: HTMLElement): Element[] {
-  const PANEL = '.glass, [data-slot="table-container"]';
-  const panels = [...main.querySelectorAll(PANEL)].filter((el) => !el.parentElement!.closest(PANEL) && inWindow(el)).slice(0, 16);
+  const panels = panelsOf(main);
   const loose: Element[] = [];
   const walk = (el: Element) => {
     for (const child of el.children) {
@@ -102,7 +107,6 @@ function travel(title: Element, from: DOMRect, size: number): void {
 let pending: { at: number; copy: { el: HTMLElement; at: DOMRect } | null } | null = null;
 /** Stops the running wave, its light aside. */
 let stopWave: (() => void) | null = null;
-let unclip = 0;
 /** Whether the filters and the shader have run. */
 let prepared = false;
 /** Whether a page switch brought the reader here and nothing has read so yet. */
@@ -133,6 +137,21 @@ export function opaqueIn(el: Element): number {
     if (condensing) return Math.max(0, condensing.effect!.getTiming().delay! + 190 - (condensing.currentTime as number));
   }
   return 0;
+}
+
+/** When the last clip of the app's root ends, and what ends it. */
+let clippedUntil = 0;
+let unclip = 0;
+
+/** Clips the app's root for `ms`, so nothing in flight in it makes the page scroll; `clip` makes no scroller, so the
+ * sticky rail and feed still stick. */
+export function clipRoot(ms: number): void {
+  const root = document.getElementById('root');
+  if (!root) return;
+  root.style.overflow = 'clip';
+  clippedUntil = Math.max(clippedUntil, performance.now() + ms);
+  clearTimeout(unclip);
+  unclip = window.setTimeout(() => (root.style.overflow = ''), clippedUntil - performance.now());
 }
 
 /** The wave of a page switch: the old page's copy washes away behind the front, and the new page's blocks condense once
@@ -166,11 +185,7 @@ function wave(main: HTMLElement, source: DOMRect, copy: { el: HTMLElement; at: D
       });
     }
   };
-  // No block in flight makes the page scroll; `clip` makes no scroller, so the sticky rail and feed still stick.
-  const root = document.getElementById('root')!;
-  root.style.overflow = 'clip';
-  clearTimeout(unclip);
-  unclip = window.setTimeout(() => (root.style.overflow = ''), 1600);
+  clipRoot(1600);
 
   const watch = new MutationObserver((records) => {
     const added = records.flatMap((record) => [...record.addedNodes]);
@@ -192,7 +207,8 @@ function wave(main: HTMLElement, source: DOMRect, copy: { el: HTMLElement; at: D
 
 /** Runs the filters and the shader unseen, so the first switch doesn't stall. */
 function prepare(main: HTMLElement): void {
-  if (prepared || !motionRuns()) return;
+  // Not while an import's wave bends the page, which this would end: at the next idle moment, then.
+  if (prepared || main.style.filter || !motionRuns()) return;
   prepared = true;
   warm();
   if (!wide()) return;

@@ -1,6 +1,6 @@
 import { page } from 'vitest/browser';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { centre, inWindow, reach } from './place.ts';
+import { centre, importSource, inWindow, reach } from './place.ts';
 
 beforeEach(() => page.viewport(1000, 800));
 afterEach(() => document.body.replaceChildren());
@@ -33,4 +33,15 @@ test.each(['data-scroll-cue=""', 'data-slot="table-container"'])('what its regio
   expect(inWindow(box(0, 0, 10, 10, region))).toBe(true);
   expect(inWindow(box(100, 0, 10, 10, region))).toBe(false);
   expect(inWindow(box(0, 150, 10, 10, region))).toBe(false);
+});
+
+test("an import's source is the Imported line, the Refresh button where that is hidden, and the top left with neither", () => {
+  const [line, hidden, refresh] = [box(10, 700, 100, 20), box(0, 0, 10, 10), box(300, 10, 80, 30)];
+  line.dataset.imported = hidden.dataset.refresh = refresh.dataset.refresh = '';
+  hidden.style.display = 'none';
+  expect(importSource()).toEqual({ x: 60, y: 710 });
+  line.style.display = 'none';
+  expect(importSource()).toEqual({ x: 340, y: 25 });
+  refresh.style.display = 'none';
+  expect(importSource()).toEqual({ x: 42, y: 30 });
 });

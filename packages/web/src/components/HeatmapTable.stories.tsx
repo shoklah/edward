@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, within } from 'storybook/test';
+import { expect, fn, waitFor, within } from 'storybook/test';
+import { eachFrame, Import, motionOn } from '../test/motion.ts';
 import { HeatmapTable } from './HeatmapTable.tsx';
 
 const WEEKS = ['2026-10-25', '2026-11-01', '2026-11-08'];
@@ -111,5 +112,33 @@ export const WithExtras: Story = {
     const beta = within(canvas.getByRole('rowheader', { name: 'beta' }).closest('tr')!).getAllByRole('cell');
     await expect(beta.at(-1)).toHaveTextContent('0');
     await expect(within(beta.at(-2)!).getByText('0')).toHaveClass('text-muted-foreground');
+  },
+};
+
+/** An import that changed a cell: its number drops, in its place, and the cell's name is the new one throughout. */
+export const OnImport: Story = {
+  render: (args) => (
+    <Import
+      draw={(landed) => (
+        <HeatmapTable {...args} max={4} groups={[{ heading: null, rows: [{ id: 'alpha', name: 'alpha', values: [0, landed ? 3 : 1, 4] }] }]} />
+      )}
+    />
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const cell = canvas.getByRole('button', { name: 'alpha, week of Nov 1: 1' });
+    const at = cell.getBoundingClientRect().toJSON();
+    const on = motionOn();
+    await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
+    const drop = cell.querySelector('[data-drop="drop"]')!;
+    await expect(canvasElement.querySelectorAll('[data-drop]')).toHaveLength(1);
+    // The old number stands where it stood, in the cell's middle.
+    const middle = (el: Element) => el.getBoundingClientRect().left + el.getBoundingClientRect().width / 2;
+    await expect(middle(drop.children[1])).toBeCloseTo(middle(cell), 1);
+    await eachFrame(canvasElement, () => {
+      expect(cell.getAttribute('aria-label')).toBe('alpha, week of Nov 1: 3');
+      expect(cell.getBoundingClientRect().toJSON()).toEqual(at);
+    });
+    await waitFor(() => expect(cell.innerHTML).toBe('3'));
+    on.mockRestore();
   },
 };
