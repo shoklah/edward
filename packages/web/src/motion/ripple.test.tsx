@@ -215,7 +215,8 @@ test('of twelve numbers nine drop, spread, and three swap', async () => {
   expect(was.textContent).toBe('3');
   expect([getComputedStyle(was).opacity, getComputedStyle(is).opacity]).toEqual(['1', '0']);
   finish(held()[3]);
-  await vi.waitFor(() => expect(cell(3).innerHTML).toBe('4'));
+  // The swap's end lands in a later commit, which a loaded run delays.
+  await vi.waitFor(() => expect(cell(3).innerHTML).toBe('4'), { timeout: 5000 });
 });
 
 test('later landings of an import share its nine drops', async () => {
