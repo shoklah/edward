@@ -13,7 +13,7 @@ Edward is a playground and a portfolio piece. Its look is glass, but nothing on 
 - Changing page, opening a run and landing an import each read as one event on one liquid surface.
 - Every moving thing uses one of four verbs (wash, condense, ripple, flow) and the same springs.
 - Motion explains: it starts where the reader acted, or where the news came in, and shows what changed.
-- The new page answers clicks and keys from its first frame. No motion delays data, a request or the focus.
+- The new page answers clicks and keys from its first frame. No motion delays a request, the DOM or the focus; the one thing drawn late is a number an import changed, which keeps its old look until the wave reaches it (2 s at most).
 - Under `prefers-reduced-motion` everything changes at once and nothing moves.
 
 ## Non-goals
@@ -35,7 +35,7 @@ Edward is a playground and a portfolio piece. Its look is glass, but nothing on 
 
 - No dependency is added. CSS, the Web Animations API, SVG filters and one WebGL2 canvas cover it; a motion library (Motion, GSAP) and React's or the browser's view transitions were considered and dropped (Approaches).
 - Motion animates `transform` and `opacity`, plus `stroke-dashoffset` for the run graph's lines, and two SVG filters on one element while a wave runs. Charts, hover, the backdrop, filters, paging, the focus and closing a row never move.
-- Nothing carries a `backdrop-filter`. The page is drawn through a filter only while a wave runs (at most 2.3 s) and never while it scrolls.
+- Nothing carries a `backdrop-filter`. The page is drawn through a filter only while a wave runs (at most 2.3 s), and the live page never while it scrolls.
 - Text under a wave still reads: the light adds to the page, it never covers it.
 
 ## What was measured
@@ -80,20 +80,20 @@ For the old page leaving, the owner was shown Drip (the page melts), Drain (pane
 
 | Moment | What moves | How long |
 |---|---|---|
-| **A new page** (the path changes inside the shell) | The wave starts where the reader pressed. The old page, as an inert copy, bends under the front and is cut away behind it. Each new panel, and each block outside a panel, condenses once the front has passed it: from 34 px nearer the source, scale 0.9, opacity 0 | Front 900 ms; a block's condensing 640 ms |
-| **Opening a run** by a link in the page | As above from the link, and the run's `h1` travels from the link's place and size. Then the graph draws itself | Title 620 ms; graph about 1.2 s |
+| **A new page** (the path changes inside the shell) | The wave starts where the reader pressed. The old page, as an inert copy, bends under the front and is cut away behind it. Each new panel, and each block outside a panel, condenses once the front has passed it: from 34 px nearer the source, scale 0.9, opacity 0 | Front 900 ms; a block's condensing 640 ms, opaque after 190, so the far corner reads at about 1 s and rests at 1.4 s |
+| **Opening a run** by a link in the page | As above from the link, and the run's `h1` travels from the link's place and size, if it is drawn before the front is done. Then, once its panel is opaque, the graph draws itself | Title 620 ms; graph about 1.2 s |
 | **The rail** | The current entry's pill stretches over the gap and gathers on the new entry | 420 ms |
-| **An import lands** and something shown changed | A drop hits "Imported". The wave runs through the page, the page bends under it, and each panel bobs 8 px as it passes | Front 2 s, over by 2.3 s |
-| ↳ a changed number | When the front reaches it: the old number melts off, the new one forms inside a drop of glass that then evaporates, and sends its own ripple | about 2.6 s |
+| **An import lands** and a number, feed item or list row in the window changed | A drop hits "Imported". The wave runs through the page, the page bends under it, and each panel bobs 8 px as it passes | Front 2 s, over by 2.3 s |
+| ↳ a changed number | When the front reaches it: the old number melts off, the new one forms inside a drop of glass that then evaporates, and sends its own ripple. At most 9 in the window, spread over it; the others change at once | 2.6 s each, the last over 4.6 s after the drop |
 | ↳ a new feed item or list row | Lands as a drop with its own ripple; the rest flow down, the last first | 680 ms |
-| **An import lands** and nothing shown changed | A small ripple (110 px) on the "Imported" line; nothing else | 1.3 s |
+| **An import lands** and none did | A small ripple (110 px) on the "Imported" line; nothing else | 1.3 s |
 | edward's eye, on any import | Blinks | 260 ms |
 | **A row opens** | Its content condenses, top left; the rows below flow down, the last first; the chevron turns | 480 ms |
 | **A column is sorted** | Rows on the page flow to their places; rows new to it condense | 520 ms, 18 ms apart |
 | **A graph box is selected** | The ring stretches from the last box and gathers; the detail condenses | 420 ms |
-| **Mark all seen** | Items run down and off, the last first | 260 ms each, 34 ms apart |
-| **A switch's thumb** | Slides | 160 ms |
-| **A dialog or a tooltip** | As today: it opens from scale 0.95; a dialog closes in 120 ms | 200 ms |
+| **Mark all seen** | Once the server has answered and the list is redrawn, inert copies of the items that left run down and off, the last first | 260 ms each, 34 ms apart |
+| **A switch's thumb** | Flows, on the firm spring | 160 ms |
+| **A dialog or a tooltip** | Condenses, as today, from scale 0.95 and opacity 0; a dialog goes back the same way in 120 ms | 200 ms |
 
 Closing a row, paging, filtering, switching a view or a measure, hover, focus, selecting nothing, a chart's data and a loading or error state all change at once, and so does everything under reduced motion.
 
@@ -115,31 +115,37 @@ All in `packages/web/src/motion/`, with no other file calling `Element.animate`.
 
 **The water.** One canvas, WebGL2, at one device pixel per CSS pixel, fixed over the window, `pointer-events: none`, `aria-hidden`. It exists in the page only while a drop runs. A drop has a place, a reach, a time, a strength and a train length; the shader sums up to 14 and draws light only: speculars, caustics tinted by the backdrop's pink and cyan in dark, and blue and violet shade in light. With no WebGL2, or when its context is lost, there is no light and the rest is unchanged. The mockup's `surface.js` is the reference for the shader.
 
-**The bend and the cut.** Two SVG filters rendered once in `Shell`: `bend` (a ring of displacement that grows with the front) and `wash` (the same, then everything inside the front removed). Their two maps are drawn once on a canvas. They are Chromium only: elsewhere (no `navigator.userAgentData`) there is no copy and no bend, and the light, condensing and everything else stay. The bend ends at the first scroll of the window.
+**The bend and the cut.** Two SVG filters rendered once in `Shell`: `bend` (a ring of displacement that grows with the front) and `wash` (the same, then everything inside the front removed). Their two maps are drawn once on a canvas. They are Chromium only: elsewhere (no `navigator.userAgentData`) there is no copy and no bend, and the light, condensing and everything else stay. The import's bend, which is on the live page, ends at the first scroll of the window, and the wave's light goes on; the wash's copy doesn't move, so its filter doesn't end.
 
 **The page switch.**
 - The source is the last `a[href]` activated (pointer or keyboard) less than a second before the router starts loading, as its rectangle at that moment. Otherwise (Back, Forward, a script), or when that link is in the Menu dialog, it is the rail's current entry, or the Menu button under 768 px, or the top left when neither shows.
 - When the router starts a load whose path changes, the old `main` is cloned, detached: `aria-hidden`, `inert`, no `id`, its scrolled regions' positions kept. If the load ends without a new page, the clone is dropped.
 - The clone is attached behind `main`, in a window-sized layer, in the same frame the new page commits, so the two are never drawn over each other before the wave starts. It is removed when the front is done, when another switch starts, and on showing mode, account switching and sign out.
+- The wave starts in `onRendered`, after the router's own scroll to the top, so places are measured where the new page stands. The copy's layer is fixed and the copy is a picture in window coordinates, so no scroll, the app's or the reader's, ends or moves the wash; a scroll moves only the new page in front of it. A block that Back's restored scroll brings into the window later is already there.
+- A page whose path changes while its component stays (run to run, change to change, goal to goal) is keyed by its key in `router.tsx`, as Compliance is by its step, so `keepPreviousData` never draws the old run under the new one's key and the wave never reveals it.
 - The panels a new page adds during the wave (its data arriving after its loading state) condense at their place in the wave; those the front has already passed condense at once. The wave waits for nothing.
 - The focus, the scroll restoration and the tab title stay exactly as today.
 
 **Preparing.** Once, when the browser is idle after the first page is drawn, the filters and the shader run unseen for 300 ms, so the first switch doesn't stall.
 
 **What changed in an import.**
-- `Num` is the one place that notices: its text differs from the one it drew before. It tells `motion/` so, in the same commit.
-- `useLiveQuery` knows an import's data has landed: the same path, a new `lastGoodImportAt`, and no longer placeholder data. The first such landing of an import starts the wave with the numbers noticed in that commit; later ones of the same import join it.
+- An import is a later `lastGoodImportAt` with the same account viewed; the first status, and a switch of account, aren't one.
+- `Num` and a `HeatmapTable` cell are the places that notice a changed number: its text differs from the one it drew before. They tell `motion/` so, in the same commit.
+- `useLiveQuery` knows an import's data has landed: the same path, a new `lastGoodImportAt`, and no longer placeholder data. The first landing of an import with something noticed in the window starts the wave; later ones of the same import join it. Once no query is fetching and nothing in the window was noticed, the small ripple plays instead. So a landing that shows no number (`/api/showing`, a filter's options) decides nothing.
 - Numbers noticed in a commit with no such landing (a filter, a sort, a page) are forgotten in the same frame.
 - `Feed` and `DataList` land their new keys in the same way. A list's rows flow only for a sort or an import, never for a page or a filter.
-- Numbers outside `Num`, charts and texts change at once.
+- What is outside the window, and charts and texts, change at once and start no wave.
+- The DOM holds the new number from the commit; the old one is an `aria-hidden` picture over it until the front arrives.
 - The source is the "Imported" line, or the Refresh button where the rail is hidden, or the top left.
 - Imports come when the run log changes or, at most every 15 minutes, when a transcript did, so a wave per import is not a nuisance.
 
 **Moved rows.** One hook (FLIP): it remembers each row's place by key relative to its table, so scrolling doesn't count, and plays from the old place to the new.
 
-**The run graph.** It draws itself once, when the run page first shows it: boxes condense and lines are drawn in reading order, 900 ms from first to last. Not on a resize, an import or a return to a box. The selection ring is one element that moves; `aria-pressed` and the focus ring stay on the boxes.
+**The run graph.** It draws itself each time a press, Back or Forward brings the reader to a run, never on a first load: it starts once its panel is opaque, or at once if its data comes after the wave. Boxes condense and lines are drawn in reading order, 900 ms from first to last. Nor does it on a resize, an import or a return to a box. The selection ring is one element that moves; `aria-pressed` and the focus ring stay on the boxes.
 
-**Existing transitions.** Through unlayered rules in `index.css`, as the pill rule does, so no generated file is edited: none on a button, a table row or a switch's track (hover and presses are instant), only `transform` on a switch's thumb, and 120 ms for a closing dialog.
+**Mark all seen.** The items are cloned, detached, with their places, when pressed. When the POST and the refetch are done, the clones of the items no longer in the list are attached over it, `aria-hidden` and inert, played and removed; the "Nothing new" line condenses. If the POST fails, or an item stays, its clone is dropped.
+
+**Existing transitions.** Through unlayered rules in `index.css`, as the pill rule does, so no generated file is edited: none on a button, a table row or a switch's track (hover and presses are instant), only `transform` on a switch's thumb, the firm spring for that thumb, and 120 ms for a closing dialog.
 
 ## `DESIGN.md`
 
@@ -147,9 +153,9 @@ Overview gains one sentence: "It is liquid glass: the panels are drops on one su
 
 **Motion** becomes:
 
-> Edward is liquid glass. What leaves is **washed** away, what arrives **condenses** from where it was called, what changes forms inside a drop and sends a **ripple**, and what moves **flows**. Every motion is one of the four; a plain fade or slide is a defect.
+> Edward is liquid glass. What leaves is **washed** away, what arrives **condenses** from where it was called, what changes forms inside a drop and sends a **ripple**, and what moves **flows**. Every motion is one of the four; a plain fade or slide is a defect. A dialog and a tooltip condense; a switch's thumb flows.
 >
-> Motion explains a change and nothing else. The reader's own actions finish within 650 ms, a page's far corner within 1.1 s of the press, with the new page usable from its first frame. Two things take longer: an import (a 2 s wave, and drops that evaporate over another second) and the run graph drawing itself once (1.2 s).
+> Motion explains a change and nothing else. The reader's own actions finish within 700 ms. A page is usable from its first frame, reads to its far corner within 1 s of the press and rests within 1.5 s. Two things take longer: an import (a 2 s wave; the last drop has evaporated 4.6 s after it lands) and the run graph drawing itself (1.2 s).
 >
 > Only `transform` and `opacity` animate, plus the graph's lines and, while a wave runs, the two water filters. Springs, never a bounce that hides a value. Numbers never count up. Charts, hover, focus, the backdrop, filters, paging, closing a row and showing mode change at once. Under `prefers-reduced-motion` everything does.
 
@@ -163,8 +169,9 @@ Code conventions, replacing the reduced-motion line:
 
 - Motion lives in `packages/web/src/motion/`, the one place that calls `Element.animate`, and each motion is one of `DESIGN.md`'s four verbs. It plays only *from* somewhere to the DOM's own state, so a test or a reduced-motion reader sees the final state at once.
 - Motion is removed under `prefers-reduced-motion` in two places only: `motion/`'s one test of whether it runs, and the one rule in `index.css` for CSS animations.
-- The old page's copy is made and removed only by the page switch in `motion/`, is inert and `aria-hidden`, and never exists over a showing mode, account or sign-out change.
-- Which numbers an import changed is noticed only by `Num`, and that an import's data landed only by `useLiveQuery`.
+- An inert copy (the old page, the items marked seen) is made and removed only in `motion/`, is `aria-hidden` and `inert`, and never exists over a showing mode, account or sign-out change.
+- Which numbers an import changed is noticed only by `Num` and `HeatmapTable`'s cells, and that an import's data landed only by `useLiveQuery`.
+- A page whose route has a key in its path is keyed by it in `router.tsx`, so it never draws another key's data.
 - The e2e checks and screens run with reduced motion; `e2e/motion.spec.ts` alone turns it on.
 
 Stack gains one line under Final's neighbours: "**Motion:** no library: CSS, the Web Animations API, SVG filters and one WebGL2 surface, since view transitions take no refraction and a library adds none."
@@ -173,7 +180,7 @@ Stack gains one line under Final's neighbours: "**Motion:** no library: CSS, the
 
 - **Unit** (chromium): whether motion runs (reduced, hidden); springs start at 0 and end at 1; the source's choice; a number noticed with and without a landing; a second landing of one import joins the wave; FLIP deltas with the page scrolled.
 - **Stories with an interaction test:** a sort, an opened row and a selected box play the named animations with their durations and end in the final state; `Num` on an import leaves no extra node once done, and its accessible text is the new value throughout.
-- **`e2e/motion.spec.ts`**, motion on: a rail press makes one copy, inert and hidden from assistive tech, gone after the wave; a click on the new page during the wave works; two presses in a row leave one copy; Back washes and restores the scroll; showing mode makes no copy (no hidden name left in the DOM); an import with a change starts the wave and one without doesn't; scrolling ends the bend; no console error with WebGL2 off; computed durations against the table above; axe after `settled` and after the copy is gone.
+- **`e2e/motion.spec.ts`**, motion on: a rail press makes one copy, inert and hidden from assistive tech, gone after the wave; a click on the new page during the wave works; two presses in a row leave one copy; Back washes and restores the scroll; a press from a scrolled page keeps its copy until the front is done; run to run never shows the old run's title; showing mode makes no copy (no hidden name left in the DOM); an import with a change in the window starts the wave, one without plays the small ripple, and a landing of `/api/showing` alone starts neither; Mark all seen with a failing POST leaves the list and no copy; scrolling ends the bend; no console error with WebGL2 off; computed durations against the table above; axe after `settled` and after the copy is gone.
 - **Reduced motion:** every moment above, no animation but the scroll cue's, no copy, no canvas.
 - **Screens:** unchanged baselines, since they run reduced; any that differ are a defect, except the selected box's ring if its element changes its pixels.
 - **Performance**, by hand on the real app, not in CI: one committed script that serves the fixtures build and counts frames over 20 ms, both themes, at full speed and slowed 4×, for the page switch, opening a run, an import and opening six rows. It passes at full speed with no frame over 20 ms after the first switch, and at 4× with a median of at most 6 missed frames and no gap over 60 ms. What doesn't pass goes to the owner with its numbers.
@@ -184,7 +191,7 @@ Stack gains one line under Final's neighbours: "**Motion:** no library: CSS, the
 - **Empty, loading, error:** unchanged. A loading state condenses as any panel; its data condenses in turn if the wave still runs, else at once.
 - **Widths:** at 375 px the source is the Menu button or the link pressed, the canvas covers the window and nothing scrolls sideways; at 768 and 1440 px as drawn.
 - **Screens:** `/`, `/weeks`, `/work`, `/work?view=runs`, `/work?view=sessions`, `/work/goals/<key>`, `/work/changes/<key>`, `/runs/<key>`, `/findings`, `/context`, `/spend`, `/compliance`, `/steps`, `/skills`, `/kits`, `/models`. Their layout doesn't change; with no layout change the kit asks for no capture, and the live mockup is the reference.
-- **Components:** adapted: `Shell`, `Menu`, `Brand`, `Num`, `DataList`, `RowToggle`, `Feed`, `RunFlow`, `StepDetail`, `RunPage`'s title, `useLiveQuery`. New: the water canvas and the filters, since nothing draws either today.
+- **Components:** adapted: `Shell`, `Menu`, `Brand`, `Num`, `DataList`, `RowToggle`, `Feed`, `HeatmapTable`, `RunFlow`, `StepDetail`, `RunPage`'s title, `useLiveQuery`, the keyed routes. New: the water canvas and the filters, since nothing draws either today.
 
 ## Left to the builder
 
@@ -201,6 +208,16 @@ Each is mine, to be corrected:
 5. The refraction is Chromium only; others keep the light and the condensing.
 6. The wave keeps the 900 ms the owner was shown, so the page's far corner is readable about 1 s after the press (today: at once).
 7. The performance script is run by hand, since CI has no display to measure.
+
+From the builder check:
+
+8. The wash ignores every scroll; only the import's bend ends on one.
+9. Run to run, change to change and goal to goal start the page afresh: "Loading the run…" shows for the few milliseconds its data takes, where today the old run's facts stay up.
+10. The title travels only if the run is drawn within the wave (900 ms); the graph draws on Back too, and never on a first load.
+11. Only what is in the window counts as a change; at most 9 numbers drop, as in the mockup; a change seen only in a chart or a text gets the small ripple.
+12. A changed number keeps its old look until the front arrives, as in the mockup the owner saw.
+13. Mark all seen plays on copies, after the server's answer.
+14. Dialogs, tooltips and the switch's thumb are held to the verbs too (condense, flow).
 
 ## Change request for the kit
 
