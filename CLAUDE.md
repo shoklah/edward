@@ -219,6 +219,7 @@ The stack is final; the component kit, the graphical libraries and the mockups k
 - Which numbers an import changed is noticed only by `Num` and `HeatmapTable`'s cells, which rows it added or moved only by `useFlow`, and that an import's data landed only by `useLiveQuery`.
 - A story lands an import with `Import` (`src/test/motion.ts`) and an e2e test with `landImport` (`e2e/motion.ts`), which never changes the server's own import.
 - The e2e checks and screens run with reduced motion; `e2e/motion.spec.ts` alone turns it on.
+- What motion costs is measured by hand with `pnpm --filter @cwd/web perf:motion` (`--no-filters` for the `clip-path` cut): `e2e/motion-perf.ts`, run by plain Node, so it imports only erasable files with no import Node can't load (`e2e/motion.ts`), with the browser's own clock, since `pinClock` replaces its frames.
 - A story or unit test about motion turns it on with `motionOn` and reads it with `played` (`src/test/motion.ts`), never by timing.
 - A web unit test that needs a module's own state anew imports it by a URL of its own (`./water.ts?fresh=N`), since `vi.resetModules` does nothing in the browser.
 - The app's name and mark are drawn only by `Brand` in `packages/web/src/layout/Brand.tsx` (the wordmark lower-case, "ward" in bold; the mark's colours the `--mark-*` tokens), one link to Home named "edward, Home" with `home` (the rail and the Menu dialog), plain on `/signin`; `public/favicon.svg` is the one file with fixed colours beside `water.ts`'s shader.

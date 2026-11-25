@@ -30,6 +30,33 @@ export async function added(page: Page): Promise<Added> {
   return page.evaluate(() => (window as unknown as { added: Added }).added);
 }
 
+/** One call of `Element.animate`: its verb and times, and what it plays on. */
+export type Played = { verb: string; ms: number; delay: number; tag: string; ring: boolean; inFlow: boolean };
+
+/** Keeps, from the next load on, all that is played in the page. */
+export async function watchPlayed(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const played: Played[] = ((window as unknown as { played: Played[] }).played = []);
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, frames, options) {
+      const { id, duration, delay } = options as KeyframeAnimationOptions;
+      const inFlow = this.closest('[aria-label="The run\'s flow"]') !== null;
+      played.push({ verb: id!, ms: duration as number, delay: delay ?? 0, tag: this.tagName, ring: this.hasAttribute('data-ring'), inFlow });
+      return animate.call(this, frames, options);
+    };
+  });
+}
+
+/** All that was played since the last time it was read. */
+export async function takePlayed(page: Page): Promise<Played[]> {
+  return page.evaluate(() => (window as unknown as { played: Played[] }).played.splice(0));
+}
+
+/** Until what the last change started has started. */
+export async function frames(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+}
+
 /** What `motion/` plays in the page: each animation's verb and duration. */
 export async function playing(page: Page): Promise<{ verb: string; ms: number }[]> {
   return page.evaluate(() =>

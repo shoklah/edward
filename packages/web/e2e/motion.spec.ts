@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
-import { added, landImport, playing, watchAdded } from './motion.ts';
+import { added, frames, landImport, playing, takePlayed, watchAdded, watchPlayed, type Played } from './motion.ts';
 import { settled } from './settled.ts';
 
 // The one e2e file with motion on: the others run under reduced motion (`playwright.config.ts`).
@@ -326,23 +326,7 @@ test.describe('a run', () => {
   const title = (page: Page) => page.getByRole('main').getByRole('heading', { level: 1, name: FULL_TITLE });
   const rested = (page: Page) => expect.poll(() => playing(page)).toEqual([]);
 
-  type Played = { verb: string; ms: number; delay: number; tag: string; ring: boolean; inFlow: boolean };
-  /** Keeps, from the next load on, all that is played in the page. */
-  const watchPlayed = (page: Page) =>
-    page.addInitScript(() => {
-      const played: Played[] = ((window as unknown as { played: Played[] }).played = []);
-      const animate = Element.prototype.animate;
-      Element.prototype.animate = function (this: Element, frames, options) {
-        const { id, duration, delay } = options as KeyframeAnimationOptions;
-        const inFlow = this.closest('[aria-label="The run\'s flow"]') !== null;
-        played.push({ verb: id!, ms: duration as number, delay: delay ?? 0, tag: this.tagName, ring: this.hasAttribute('data-ring'), inFlow });
-        return animate.call(this, frames, options);
-      };
-    });
-  /** All that was played since the last time it was read. */
-  const read = (page: Page) => page.evaluate(() => (window as unknown as { played: Played[] }).played.splice(0));
   const drawn = (all: Played[]) => all.filter((a) => a.inFlow && !a.ring);
-  const frames = (page: Page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 
   test('a run opened by its link: the title travels, then the graph draws itself', async ({ page }) => {
     await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
@@ -400,17 +384,17 @@ test.describe('a run', () => {
     await page.goto(FULL_RUN, { waitUntil: 'networkidle' });
     await expect(flow(page)).toBeVisible();
     await frames(page);
-    expect(await read(page)).toEqual([]);
+    expect(await takePlayed(page)).toEqual([]);
     await page.setViewportSize({ width: 1000, height: 900 });
     await frames(page);
-    expect(await read(page)).toEqual([]);
+    expect(await takePlayed(page)).toEqual([]);
     const boxes = [/^Task 1(?!\d)/, /^Task 2(?!\d)/, /^Task 1(?!\d)/].map((name) => flow(page).getByRole('button', { name }));
     for (const box of boxes) {
       await box.click();
       await expect(box).toHaveAttribute('aria-pressed', 'true');
       await frames(page);
     }
-    const all = await read(page);
+    const all = await takePlayed(page);
     expect(drawn(all)).toEqual([]);
     expect(all.filter((a) => a.ring)).toMatchObject([{ verb: 'flow', ms: 420 }, { verb: 'flow', ms: 420 }]);
     expect(all.filter((a) => a.tag === 'SECTION')).toMatchObject([{ verb: 'condense', ms: 420 }, { verb: 'condense', ms: 420 }, { verb: 'condense', ms: 420 }]);
@@ -428,13 +412,13 @@ test.describe('a run', () => {
       await page.getByRole('link', { name: FULL_TITLE }).click();
       await expect(flow(page)).toBeVisible();
       await rested(page);
-      expect(drawn(await read(page)).length).toBeGreaterThan(20);
+      expect(drawn(await takePlayed(page)).length).toBeGreaterThan(20);
       const box = flow(page).getByRole('button', { name: /^Task 1(?!\d)/ });
       const detail = page.getByRole('region', { name: 'Task 1', exact: true });
       await box.click();
       await expect(detail).toBeVisible();
       await rested(page);
-      await read(page);
+      await takePlayed(page);
       /** The graph and the selected step's detail are drawn again by what `change` does, and nothing moves. */
       const still = async (change: () => Promise<void>) => {
         // Marked, so what is drawn after the reset is told from what was.
@@ -445,7 +429,7 @@ test.describe('a run', () => {
           await expect(el).not.toHaveAttribute('data-before');
         }
         await frames(page);
-        expect(await read(page)).toEqual([]);
+        expect(await takePlayed(page)).toEqual([]);
       };
       await still(async () => {
         await page.getByRole('switch', { name: 'Showing mode' }).click();
@@ -464,11 +448,11 @@ test.describe('a run', () => {
     await page.getByRole('complementary').getByRole('link', { name: 'Weeks' }).click();
     await expect(title(page)).toHaveCount(0);
     await rested(page);
-    await read(page);
+    await takePlayed(page);
     await page.goBack();
     await expect(flow(page)).toBeVisible();
     await rested(page);
-    const all = await read(page);
+    const all = await takePlayed(page);
     expect(drawn(all).some((a) => a.tag === 'BUTTON' && a.verb === 'condense')).toBe(true);
     expect(all.filter((a) => a.tag === 'H1')).toMatchObject([{ verb: 'condense', ms: 640 }]);
   });
@@ -490,7 +474,7 @@ test.describe('a run', () => {
     });
     expect(sideways.length).toBeGreaterThan(20);
     expect(Math.max(...sideways)).toBe(0);
-    expect((await read(page)).filter((a) => a.tag === 'H1')).toMatchObject([{ verb: 'flow', ms: 620 }]);
+    expect((await takePlayed(page)).filter((a) => a.tag === 'H1')).toMatchObject([{ verb: 'flow', ms: 620 }]);
   });
 
   test("a run's data that comes after the wave draws the graph and leaves the title still", async ({ page }) => {
@@ -503,7 +487,7 @@ test.describe('a run', () => {
     await page.getByRole('link', { name: FULL_TITLE }).click();
     await expect(flow(page)).toBeVisible();
     await rested(page);
-    const all = await read(page);
+    const all = await takePlayed(page);
     const boxes = drawn(all);
     expect(boxes.some((a) => a.tag === 'BUTTON' && a.verb === 'condense')).toBe(true);
     expect(Math.min(...boxes.map((a) => a.delay))).toBe(0);
@@ -722,5 +706,88 @@ test.describe('Mark all seen', () => {
     await landImport(page, { '/api/home': (home) => (home.feed = []) });
     await expect(page.getByText(NOTHING)).toBeAttached();
     expect(await added(page)).toMatchObject({ copies: 0 });
+  });
+});
+
+test.describe('reduced motion', () => {
+  test.use({ reducedMotion: 'reduce', viewport: { width: 1440, height: 900 } });
+
+  test('under reduced motion every moment changes at once', async ({ page }) => {
+    await watchAdded(page);
+    await watchPlayed(page);
+    const main = page.getByRole('main');
+    const rail = page.getByRole('complementary').getByRole('navigation', { name: 'Main' });
+    /** The moment just seen to change the page played nothing and left nothing. */
+    const still = async (moment: string) => {
+      await frames(page);
+      expect(await takePlayed(page), moment).toEqual([]);
+      expect(await added(page), moment).toMatchObject({ copies: 0, canvases: 0 });
+      // Only the scroll cue is an animation, on its scroll.
+      expect(await page.evaluate(() => document.getAnimations().filter((a) => a.timeline instanceof DocumentTimeline && a.playState === 'running').length), moment).toBe(0);
+    };
+
+    await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
+    await rail.getByRole('link', { name: 'Weeks' }).click();
+    await expect(main.getByRole('heading', { level: 1, name: 'Weeks' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'By week table', exact: true })).toBeVisible();
+    await still('a rail press');
+
+    await page.goBack();
+    await expect(main.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
+    await still('Back');
+
+    const title = 'Queue edits offline and replay them on reconnect';
+    await main.getByRole('link', { name: title }).click();
+    await expect(main.getByRole('heading', { level: 1, name: title })).toBeVisible();
+    const flow = page.getByRole('group', { name: "The run's flow" });
+    await expect(flow.getByRole('button').first()).toBeVisible();
+    await still('a run opened by its link');
+
+    for (const task of ['Task 1', 'Task 2']) {
+      await flow.getByRole('button', { name: new RegExp(`^${task}(?!\\d)`) }).click();
+      await expect(page.getByRole('region', { name: task, exact: true })).toBeVisible();
+      await expect(flow.locator('[data-ring]')).toHaveCount(1);
+      await still(`${task}'s box selected`);
+    }
+    await expect(page.getByRole('region', { name: 'Task 1', exact: true })).toHaveCount(0);
+
+    await page.goBack();
+    await main.getByRole('button', { name: 'Details of Send webhooks for note changes' }).click();
+    await expect(main.getByRole('definition').filter({ hasText: /^feature\/webhooks$/ })).toBeVisible();
+    await still('a row opened');
+
+    const names = () => main.locator('a[href^="/runs/"]').allTextContents();
+    const listed = await names();
+    await main.getByRole('button', { name: 'Run', exact: true }).click();
+    await expect(main.getByRole('columnheader', { name: 'Run', exact: true })).toHaveAttribute('aria-sort', 'ascending');
+    expect(await names()).not.toEqual(listed);
+    await still('a column sorted');
+
+    await rail.getByRole('link', { name: 'Home' }).click();
+    const full = page.locator('table[aria-label="Runs"] tr', { hasText: 'Full' }).locator('td').first();
+    await expect(full).toBeVisible();
+    const was = Number(await full.textContent());
+    await landImport(page, { '/api/home': (home) => (home.thisWeek.runs.full += 3) });
+    await expect(full).toHaveText(String(was + 3));
+    await still('an import with a change');
+
+    // Loaded again, since an import lands once.
+    await page.unrouteAll();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await landImport(page, {
+      '/api/home': (home) => home.feed.unshift({ ...home.feed.find((item: any) => item.type === 'warning'), text: 'WARN: simplify never ran' }),
+    });
+    await expect(page.locator('li', { hasText: 'Simplify never ran' })).toBeVisible();
+    await still('an import adding a feed item');
+
+    // Answered here, so the server's own seen time stays.
+    await page.route('**/api/seen', (route) => route.fulfill({ status: 204 }));
+    await page.route('**/api/home', async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, json: { ...(await response.json()), feed: [] } });
+    });
+    await page.getByRole('button', { name: 'Mark all seen' }).click();
+    await expect(page.getByText('Nothing new. Finished runs and new warnings show here until you mark them seen.')).toBeVisible();
+    await still('Mark all seen');
   });
 });
