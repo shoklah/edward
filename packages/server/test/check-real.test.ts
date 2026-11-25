@@ -16,7 +16,7 @@ const dirs: string[] = [];
 const LANTERN = '/Users/example/Work/lantern-notes';
 
 // An export from the old reporter, as report-full, has no totals but its weeks.
-const OLD_TOTALS = ['run time', 'steps', 'rules', 'skills', 'models', 'units', 'context', 'phases']
+const OLD_TOTALS = ['run time', 'steps', 'kits', 'rules', 'skills', 'models', 'units', 'context', 'phases']
   .map((name) => `${name}: not in the export\n`)
   .join('');
 
@@ -73,7 +73,7 @@ describe('check:real', () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v5')]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n' +
-        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nkits: 2 compared, 0 differ\nrules: 0 differ\nskills: 6 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
     );
     for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
@@ -102,7 +102,7 @@ describe('check:real', () => {
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: not in the export\nweeks: 4 compared, 1 differ\n2026-10-18\nusage: 4 compared, 1 differ\n2026-11-08\n' +
         'run time: compared, 1 differ\nwith_waves\nsteps: 8 compared, 3 differ\ntask_review\nfinal_review\nfinal_fix_check\n' +
-        'rules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
+        'kits: 2 compared, 0 differ\nrules: 2 differ\nstop_rule\noffers\nskills: 7 compared, 2 differ\nmodels: 2 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
     );
     // A skill or agent name can come from a project, so neither is printed.
     for (const name of ['test-driven-development', 'plan-reviewer', 'graphify', 'grill-me']) {
@@ -114,7 +114,7 @@ describe('check:real', () => {
     const { stdout, stderr, status } = checkReal(['cat', fixturePath('report-v6')]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n' +
-        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nkits: 2 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
     );
     for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
@@ -134,7 +134,7 @@ describe('check:real', () => {
     const { stdout, stderr } = checkReal(['cat', file]);
     expect(stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n' +
-        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 1 differ\n' +
+        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nkits: 2 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 1 differ\n' +
         'models: 0 differ\nunits: 3 differ\ndispatch_guard\nstartup\nadvisor\ncontext: not in the export\nphases: not in the export\n' + WORK + 'showing: pass\n',
     );
     for (const name of ['grill-me', 'task-reviewer', 'no_model']) expect(`${stdout}${stderr}`).not.toContain(name);
@@ -159,7 +159,7 @@ describe('check:real', () => {
   test('prints the whole check of report-v7, its context line after the units', () => {
     expect(checkReal(['cat', fixturePath('report-v7')]).stdout).toBe(
       'version: 1\nfields: none\nrun keys: 0 duplicates, 0 missing\nreporter keys: 12 compared, 0 differ\nweeks: 4 compared, 0 differ\nusage: 4 compared, 0 differ\n' +
-        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
+        'run time: compared, 0 differ\nsteps: 8 compared, 0 differ\nkits: 2 compared, 0 differ\nrules: 0 differ\nskills: 8 compared, 0 differ\n' +
         'models: 0 differ\nunits: 0 differ\ncontext: 2 compared, 0 differ\nphases: 9 compared, 0 differ\n' + WORK + 'showing: pass\n',
     );
   });
@@ -229,6 +229,52 @@ describe('check:real', () => {
     );
     for (const line of `${stdout}${stderr}`.split('\n')) expect(line).not.toContain('/Users/');
     expect(status).toBe(0);
+  });
+
+  test("report-kits' totals agree with its runs", () => {
+    const { stdout, status } = checkReal(['cat', fixturePath('report-kits')]);
+    expect(stdout).toContain('\nreporter keys: 4 compared, 0 differ\n');
+    expect(stdout).toContain('\nsteps: 8 compared, 0 differ\n');
+    expect(stdout).toContain('\nkits: 2 compared, 0 differ\n');
+    expect(stdout).not.toMatch(/ [1-9]\d* differ/);
+    expect(stdout).toContain('\nshowing: pass\n');
+    expect(status).toBe(0);
+  });
+
+  test("compares the kit reviews and their cost, summed over kits, with the scoreboard's, naming no kit", () => {
+    const file = changed('report-kits', (raw) => {
+      raw.totals.scoreboard.kit_review.ran += 1;
+      raw.totals.scoreboard.kit_review.cost += 0.01;
+    });
+    const { stdout, stderr } = checkReal(['cat', file]);
+    expect(stdout).toContain('\nkit_review\nkits: 2 compared, 2 differ\nrules: ');
+    expect(`${stdout}${stderr}`).not.toContain('prose');
+  });
+
+  test('counts a kit review with no kit, and its cost, in the kits line', () => {
+    const file = changed('report-kits', (raw) => {
+      delete raw.runs[1].steps.find((step: { step?: string }) => step.step === 'kit_review').kit;
+    });
+    expect(checkReal(['cat', file]).stdout).toContain('\nkits: 2 compared, 0 differ\n');
+  });
+
+  test('prints kits: not in the export from a scoreboard with no kit_review row', () => {
+    const file = changed('report-kits', (raw) => delete raw.totals.scoreboard.kit_review);
+    expect(checkReal(['cat', file]).stdout).toContain('\nkits: not in the export\nrules: ');
+  });
+
+  test("counts the leaks in the kits route, each kit's", () => {
+    // Only the prose kit ran in the shown project, aliased as the hidden one, so the default kit's (ui's) response names none.
+    const file = changed('report-kits', (raw) => {
+      const [tagWrap, , , syncLog] = raw.runs;
+      tagWrap.kits[0].name = 'prose';
+      for (const step of tagWrap.steps) if (step.kit) step.kit = 'prose';
+      syncLog.record.project = '/Users/example/Work/tidepool-api';
+    });
+    const { stdout, stderr, status } = checkReal(['cat', file], { aliases: { [LANTERN]: 'tidepool-api' } });
+    expect(stdout).toContain('\nshowing leak: /api/kits?weeks=52: project folder name, in a value\n');
+    expect(`${stdout}${stderr}`).not.toContain('tidepool-api');
+    expect(status).toBe(1);
   });
 
   test("names the goals' sum when a goal's cost drops out, printing no goal name", () => {

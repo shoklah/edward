@@ -15,6 +15,8 @@ test('the compliance page lists a cell’s warnings with their run and has no ax
   await page.getByRole('navigation').getByRole('link', { name: 'Compliance' }).click();
   await expect(page.getByRole('heading', { name: 'Compliance' })).toBeVisible();
   await expect(page.getByRole('rowheader', { name: 'Steps and the record' })).toBeVisible();
+  await expect(page.getByRole('rowheader', { name: 'Kits', exact: true })).toBeVisible();
+  await expect(page.getByRole('rowheader', { name: 'Kit checks not passed' })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   const cell = page.getByRole('button', { name: 'Step has no agent id, week of Nov 8: 1' });

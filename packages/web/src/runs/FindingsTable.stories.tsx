@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { NONE, PROBLEMS_SIDE } from '../lib/format.ts';
-import { HTML_TEXT, fullRun, runFull, workflowFindings } from '../test/runs.ts';
+import { HTML_TEXT, finding, fullRun, runFull, workflowFindings } from '../test/runs.ts';
 import { fact, visibleFact, visibleTerms, visibleValues, width, openedRow } from '../test/table.ts';
 import { FindingsTable } from './FindingsTable.tsx';
 
@@ -224,6 +224,22 @@ export const NotRequired: Story = {
     await expect(await fact(canvasElement, userEvent, 'Fix round 1')).toEqual(["Couldn't run"]);
     const severities = canvas.getByRole('combobox', { name: 'Severity' });
     await expect([...severities.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All', 'Not required']);
+  },
+};
+
+/** A kit finding's checklist line follows its category, and is left out when it names none. */
+export const ChecklistLine: Story = {
+  args: {
+    findings: [
+      finding({ id: 'F1', step: 'kit_review', summary: 'The empty list shows no message', label: 'States' }),
+      finding({ id: 'F2', step: 'kit_review', summary: 'The rows keep no hover state' }),
+    ],
+    categoryLabels: runFull.categoryLabels,
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await expect(await fact(canvasElement, userEvent, 'Checklist line')).toEqual(['States', null]);
+    const terms = visibleTerms(openedRow(canvas.getByRole('button', { name: 'F1' })));
+    await expect(terms[terms.indexOf('Category') + 1]).toBe('Checklist line');
   },
 };
 

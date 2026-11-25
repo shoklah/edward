@@ -17,7 +17,7 @@ test('the models page lists the period’s models, marks the reporter’s figure
   await expect(page.getByRole('heading', { name: 'Models and advisor', level: 1 })).toBeVisible();
   // One value per cell, models in the reader's words: requested model, effort, dispatches, then what it ran on.
   const checker = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'fix-checker' }) });
-  await expect(checker.getByRole('cell')).toHaveText(['Opus', 'medium', '1', 'Opus 5.5', 'high', '1', '1']);
+  await expect(checker.getByRole('cell')).toHaveText(['Opus', 'medium', '5', 'Opus 5.5', 'high', '5', '1']);
   const period = page.getByRole('region', { name: 'This period' });
   await expect(period.getByText('runs 2/5, weeks 1/3')).toBeVisible();
   await expect(period.getByText('reporter, all time')).toBeVisible();

@@ -11,14 +11,15 @@ import {
   type SessionEntry,
 } from '@cwd/shared';
 import type { StoredUnit, StoredWarning } from '../db/read.ts';
-import { currentWarnings, period, sessionWarningShown, storedFacts, storedNames } from './runs.ts';
+import { currentWarnings, newSince, period, sessionWarningShown, storedFacts, storedNames } from './runs.ts';
 import { showFacts, showWarning, type Scope } from './scope.ts';
 
 const OTHER = 'other';
 
 /**
- * The warning kinds by family, in the page's order: PR #8's kinds (in its table's order within a family), and CR10's
- * findings_unlabelled and strengths_unrecorded under steps_record. The reporter carries no grouping.
+ * The warning kinds by family, in the page's order: PR #8's kinds (in its table's order within a family), CR10's
+ * findings_unlabelled and strengths_unrecorded under steps_record, and the kit kinds under kits. The reporter carries no
+ * grouping.
  */
 export const FAMILIES: { family: string; kinds: readonly string[] }[] = [
   {
@@ -50,6 +51,17 @@ export const FAMILIES: { family: string; kinds: readonly string[] }[] = [
       'step_agent_duplicate',
       'findings_unlabelled',
       'strengths_unrecorded',
+    ],
+  },
+  {
+    family: 'kits',
+    kinds: [
+      'kit_unrecorded',
+      'kit_review_missing',
+      'kit_check_missing',
+      'kit_unverified',
+      'kit_rules_unread',
+      'kit_file_unread',
     ],
   },
   {
@@ -108,7 +120,7 @@ export function complianceView(input: {
 
   // With a scope, the grid leaves out the "other" kinds, which can name anything.
   const inGrid = scope ? inPeriod.filter((x) => x.family !== OTHER) : inPeriod;
-  const isNew = (w: StoredWarning) => seenAt === null || w.firstSeenAt > seenAt;
+  const isNew = newSince(seenAt);
   const others = new Set(inGrid.filter((x) => x.family === OTHER).map((x) => x.w.warningKind));
   const rowKeys = [
     ...FAMILIES.flatMap(({ family, kinds }) => kinds.map((kind) => ({ family, kind }))),
@@ -142,7 +154,7 @@ export function complianceView(input: {
         branch: facts?.branch ?? null,
         headline: facts?.headline ?? null,
         step: toStepKind(w.stepKind) ?? null,
-        isNew: isNew(w),
+        isNew: isNew(w.firstSeenAt),
       },
     ];
   });
@@ -151,7 +163,7 @@ export function complianceView(input: {
   return {
     weeks,
     rows,
-    newWarnings: inGrid.filter((x) => isNew(x.w)).length,
+    newWarnings: inGrid.filter((x) => isNew(x.w.firstSeenAt)).length,
     warnings,
     hidden: inPeriod.length - warnings.length,
     information: info?.length ? { lines: scope ? [] : info, hidden: scope ? info.length : 0, source: 'reporter' } : null,

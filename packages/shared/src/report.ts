@@ -31,6 +31,8 @@ const FindingSchema = z.object({
   kind: str,
   summary: str,
   category: str,
+  // The kit checklist line the finding names, on a kit's own review (schema 6).
+  label: str,
   validity: z.enum(RELEVANCE).nullish(),
   outcome: z.enum(OUTCOMES).nullish(),
   reason: str,
@@ -56,6 +58,11 @@ const StepSchema = z.object({
 });
 
 const WaveSchema = z.object({ wave: str, tasks: z.array(z.number()).nullish(), conflicts: num });
+
+// A kit the run used, with the tasks that carry it (schema 6); its files, absolute paths, are never read.
+const KitSchema = z.object({ name: str, version: str, tasks: z.array(z.number()).nullish() });
+// How a kit's checks ended on a task (schema 6), its result one the reporter may add to.
+const KitCheckSchema = z.object({ kit: str, task: num, result: str });
 
 // A record from the run log, as written; only the fields the dashboard reads.
 const RunRecordSchema = z.object({
@@ -164,6 +171,8 @@ export const RunEntrySchema = z.object({
     .object({ ran: z.enum(['agents', 'inline', 'no']).nullish(), applied: num, skipped: num })
     .nullish(),
   waves: z.array(WaveSchema).nullish(),
+  kits: z.array(KitSchema).nullish(),
+  kit_checks: z.array(KitCheckSchema).nullish(),
   offers: z.array(z.object({ skill: str, outcome: str })).nullish(),
   fable_points: num,
   all_points: num,

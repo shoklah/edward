@@ -115,6 +115,7 @@ export const categoryLabels: Record<string, string> = {
 /** A finding; a category given with no judge is the app's label. */
 export function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' | 'summary'>): FindingRow {
   return {
+    kit: null,
     task: null,
     wave: null,
     round: 0,
@@ -125,6 +126,7 @@ export function finding(f: Partial<FindingRow> & Pick<FindingRow, 'id' | 'step' 
     reason: null,
     verdicts: [],
     category: null,
+    label: null,
     validity: null,
     judge: f.category ? 'app' : null,
     relevance: null,
@@ -155,7 +157,7 @@ const F5 = finding({ id: 'F5', step: 'simplify', summary: 'Merge the two query b
 const F6 = finding({ id: 'F6', step: 'final_review', severity: 'minor', summary: 'Error text not localized', outcome: 'open' });
 
 export function step(s: Partial<TimelineStep> & Pick<TimelineStep, 'step'>): TimelineStep {
-  return { index: 0, round: 0, agent: null, model: null, effort: null, kit: null, planEffort: null, counts: {}, findings: [], ...s };
+  return { index: 0, round: 0, agent: null, model: null, effort: null, kit: null, planEffort: null, cost: null, counts: {}, findings: [], ...s };
 }
 
 /** A timeline whose steps carry their place in the run, in order. */
@@ -254,6 +256,8 @@ export const runFull: RunPageResponse = {
     { name: 'task_review', cost: 1.6 },
     { name: 'final_review', cost: 1.0 },
   ],
+  kits: [],
+  kitChecks: [],
 };
 
 /** Findings for Left for later: the full run's (one deferred, one ruled, one applied, one open, two fixed), with one
@@ -291,6 +295,8 @@ export const runBeforeSteps: RunPageResponse = {
   agents: [],
   sessionModel: null,
   phases: [],
+  kits: [],
+  kitChecks: [],
 };
 
 /** The full run with a stop. */
@@ -519,5 +525,52 @@ export const runLong: RunPageResponse = {
     { step: 'task_review', stepIndex: 0, task: 1, wave: null, round: 0, category: 'tests', summary: 'Each retry delay has its own test' },
     { step: 'task_review', stepIndex: 8, task: 4, wave: null, round: 0, category: 'simplicity', summary: 'The conflict rule is one pure function' },
     { step: 'final_review', stepIndex: 32, task: null, wave: null, round: 0, category: 'security_privacy', summary: 'No sync payload reaches a log' },
+  ],
+};
+
+const K1 = finding({ id: 'K1', step: 'kit_review', task: 1, severity: 'important', summary: 'The sync list scrolls the page sideways at 375 px', outcome: 'fixed', closedRound: 1, verdicts: ['fixed'], label: 'Every width' });
+const K2 = finding({ id: 'K2', step: 'kit_review', task: 1, severity: 'minor', summary: 'The empty sync list says nothing', outcome: 'deferred', label: 'States' });
+
+/** A review of a kit's, by `kit-reviewer`. */
+const kitReview = (s: Partial<TimelineStep>) => review({ step: 'kit_review', agent: 'kit-reviewer', kit: 'ui', ...s });
+
+/** A run whose three tasks carry the ui kit, the third the prose one too: checks that passed, failed and couldn't run, and
+ * a kit review re-checked once and one with no known cost. */
+export const runKits: RunPageResponse = {
+  ...runFull,
+  timeline: numbered([
+    runFull.timeline[0],
+    longGroup({
+      kind: 'task',
+      label: 'Task 1',
+      tasks: [
+        longTask(1, [
+          review({}),
+          kitReview({ cost: 1.32, counts: { important: 1, minor: 1 }, findings: [K1, K2] }),
+          kitReview({ step: 'fix_check', round: 1, cost: 0.3, counts: { fixed: 1 } }),
+        ]),
+      ],
+      steps: [],
+    }),
+    longGroup({ kind: 'task', label: 'Task 2', tasks: [longTask(2, [review({}), kitReview({})])], steps: [] }),
+    longGroup({
+      kind: 'task',
+      label: 'Task 3',
+      tasks: [longTask(3, [review({}), kitReview({ cost: 0.4 }), kitReview({ kit: 'prose', cost: 0.25 })])],
+      steps: [],
+    }),
+    runFull.timeline.at(-1)!,
+  ]),
+  findings: [K1, K2],
+  strengths: [],
+  kits: [
+    { name: 'ui', version: '0.2.0', tasks: [1, 2, 3] },
+    { name: 'prose', version: '0.1.0', tasks: [3] },
+  ],
+  kitChecks: [
+    { kit: 'ui', task: 1, result: 'passed' },
+    { kit: 'ui', task: 2, result: 'failed' },
+    { kit: 'ui', task: 3, result: 'couldnt_run' },
+    { kit: 'prose', task: 3, result: 'couldnt_run' },
   ],
 };

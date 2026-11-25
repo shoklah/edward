@@ -169,7 +169,7 @@ test("switching to mika-ito's dashboard shows only her kept project, read-only, 
   const switcher = rail.getByRole('combobox', { name: 'Dashboard' });
   const tidepoolRows = page.getByRole('row').filter({ hasText: /tidepool-api|fix\/retry-backoff/ });
   await expect(switcher).toHaveValue('');
-  await expect(tidepoolRows).toHaveCount(2);
+  await expect(tidepoolRows).toHaveCount(4);
 
   await switcher.selectOption('mika-ito');
   await expect(rail.getByText("mika-ito's projects: lantern-notes")).toBeVisible();
@@ -193,7 +193,7 @@ test("switching to mika-ito's dashboard shows only her kept project, read-only, 
   await switcher.selectOption('Yours');
   await expect(rail.getByRole('switch', { name: 'Showing mode' })).toBeVisible();
   await expect(rail.getByText('Read-only')).toHaveCount(0);
-  await expect(tidepoolRows).toHaveCount(2);
+  await expect(tidepoolRows).toHaveCount(4);
 });
 
 test('at 375 px the switcher and the read-only bar sit in the top row, and the page fits', async ({ page }) => {

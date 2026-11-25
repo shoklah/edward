@@ -281,11 +281,12 @@ describe('RULE_LABELS', () => {
 });
 
 describe('kindLabel', () => {
-  it('words each of PR #8’s and CR10’s 31 kinds by hand, capitalised', () => {
-    expect(Object.keys(KIND_LABELS)).toHaveLength(31);
+  it('words each of PR #8’s, CR10’s and the kits’ 37 kinds by hand, capitalised', () => {
+    expect(Object.keys(KIND_LABELS)).toHaveLength(37);
     expect(kindLabel('step_agent_missing')).toBe('Step has no agent id');
     expect(kindLabel('model_less_dispatch')).toBe('Model-less dispatch');
     expect(kindLabel('findings_unlabelled')).toBe('Findings unlabelled');
+    expect(kindLabel('kit_unverified')).toBe('Kit checks not passed');
   });
 
   it('shows a kind it doesn’t hold as its slug with spaces, and no kind as "Other", capitalised', () => {
@@ -299,6 +300,7 @@ describe('FAMILY_LABELS', () => {
     expect(FAMILY_LABELS).toEqual({
       review_flow: 'Review flow',
       steps_record: 'Steps and the record',
+      kits: 'Kits',
       agents_models: 'Agents and models',
       skills_offers: 'Skills and offers',
       sessions: 'Sessions',

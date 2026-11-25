@@ -31,6 +31,7 @@ export function listPath(
     over?: boolean;
     units?: SpendUnits;
     session?: string;
+    kit?: string;
   },
 ): string {
   const params = new URLSearchParams();
@@ -44,6 +45,7 @@ export function listPath(
   if (query.over) params.set('over', '1');
   if (query.units && query.units !== 'all') params.set('units', query.units);
   if (query.session) params.set('session', query.session);
+  if (query.kit) params.set('kit', query.kit);
   return `${base}?${params}`;
 }
 

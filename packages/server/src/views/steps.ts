@@ -25,6 +25,11 @@ const zeros = (keys: readonly string[]) => Object.fromEntries(keys.map((key) => 
 const byKey = <T>(record: Record<string, T>) =>
   Object.fromEntries(Object.entries(record).sort(([a], [b]) => (a < b ? -1 : 1)));
 
+/** Whether a step with these counts found something: any isn't 0. */
+export function foundSomething(counts: Record<string, number | null | undefined>): boolean {
+  return Object.values(counts).some(Boolean);
+}
+
 /**
  * One row per step kind, as the reporter's scoreboard: each logged step adds to its kind, and a schema 1 run adds its
  * final review from `final_findings`, and its simplify when `simplify.ran` is agents or inline. Tokens and cost come
@@ -50,11 +55,11 @@ export function stepSums(runs: RunEntry[]): StepRow[] {
       },
     ]),
   );
-  // A step that ran with these counts; it found something when any count isn't 0.
+  // A step that ran with these counts.
   const add = (step: StepKind, counts: Record<string, number | null | undefined>) => {
     const row = rows.get(step)!;
     row.ran += 1;
-    if (Object.values(counts).some(Boolean)) row.found += 1;
+    if (foundSomething(counts)) row.found += 1;
     for (const [key, n] of Object.entries(counts)) addCount(row.counts, key, n ?? 0);
   };
   for (const run of runs) {

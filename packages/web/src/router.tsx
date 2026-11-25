@@ -7,6 +7,7 @@ import { ContextPage } from './context/ContextPage.tsx';
 import { FindingsPage } from './findings/FindingsPage.tsx';
 import { HomePage } from './home/HomePage.tsx';
 import { SignInPage } from './hosted/SignInPage.tsx';
+import { KitsPage } from './kits/KitsPage.tsx';
 import { ErrorPage, NotFoundPage } from './layout/ErrorPages.tsx';
 import { Shell } from './layout/Shell.tsx';
 import { ModelsPage } from './models/ModelsPage.tsx';
@@ -123,6 +124,12 @@ const skillsRoute = createRoute({
   component: SkillsPage,
 });
 
+const kitsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/kits',
+  component: KitsPage,
+});
+
 const modelsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/models',
@@ -184,6 +191,7 @@ export const router = createRouter({
     complianceRoute,
     stepsRoute,
     skillsRoute,
+    kitsRoute,
     modelsRoute,
     spendRoute,
     weeksRoute,

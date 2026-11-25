@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { WARNING_INK } from '../lib/format.ts';
 import { cells } from '../test/table.ts';
-import { finding, runFull, runPlan } from '../test/runs.ts';
+import { finding, runFull, runKits, runPlan } from '../test/runs.ts';
 import { stagesOf, unitsOf, type Unit } from './flow.ts';
 import { StepDetail } from './StepDetail.tsx';
 
@@ -156,12 +156,53 @@ export const NotProportionate: Story = {
   },
 };
 
-/** A review that found nothing says so in one line, with no table. */
+/** Each kit's facts line, its terms with their values, in order. */
+const kitLines = (el: HTMLElement) =>
+  [...el.querySelectorAll('dl')].map((dl) => [...dl.querySelectorAll('dt')].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]));
+
+const kitUnit = (id: string) => unitsOf(stagesOf(runKits.timeline, runKits)).find((u) => u.id === id)!;
+
+/** A kit review's box: its kit, version, last check result and cost, its re-check's included, in one line. */
+export const KitReview: Story = {
+  args: { unit: kitUnit('k1') },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(kitLines(canvasElement)).toEqual([
+      [['Kit', 'ui'], ['Version', '0.2.0'], ['Kit checks', 'Passed'], ['Est. cost', '$1.62']],
+    ]);
+    await expect(canvas.getByText('Passed')).not.toHaveClass(WARNING_INK);
+  },
+};
+
+/** A task carrying two kits: a line for each, a check that couldn't run in the warning ink, over what its review found. */
+export const TwoKits: Story = {
+  args: { unit: kitUnit('t3') },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(kitLines(canvasElement)).toEqual([
+      [['Kit', 'ui'], ['Version', '0.2.0'], ['Kit checks', "Couldn't run"]],
+      [['Kit', 'prose'], ['Version', '0.1.0'], ['Kit checks', "Couldn't run"]],
+    ]);
+    for (const result of canvas.getAllByText("Couldn't run")) await expect(result).toHaveClass(WARNING_INK);
+    const line = canvas.getByText('Task review by task-reviewer · Opus 5.5, high found nothing.');
+    const last = [...canvasElement.querySelectorAll('dl')].at(-1)!;
+    await expect(last.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  },
+};
+
+/** A kit nothing is known of shows no line. */
+export const KitUnknown: Story = {
+  args: { unit: { ...kitUnit('k2'), kits: [{ name: null, version: null, result: null, cost: null }] } },
+  play: async ({ canvasElement }) => {
+    await expect(kitLines(canvasElement)).toEqual([]);
+  },
+};
+
+/** A review that found nothing says so in one line, with no table and, carrying no kit, no facts line. */
 export const FoundNothing: Story = {
   args: { unit: unit('t3') },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     await expect(canvas.getByText('Task review by task-reviewer · Opus 5.5, high found nothing.')).toBeVisible();
     await expect(canvas.queryByRole('table')).toBeNull();
+    await expect(canvasElement.querySelector('dl')).toBeNull();
   },
 };
 

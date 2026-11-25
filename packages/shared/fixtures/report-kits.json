@@ -1,0 +1,2290 @@
+{
+  "version": 1,
+  "generated": "2026-11-05T09:00:02.118204+00:00",
+  "since": null,
+  "now": "2026-11-05T09:00:02.118204+00:00",
+  "runs": [
+    {
+      "record": {
+        "schema": 9,
+        "date": "2026-10-28T10:20:00Z",
+        "started": "2026-10-28T09:40:00Z",
+        "project": "/Users/example/Work/lantern-notes",
+        "branch": "fix/tag-wrap",
+        "base": "a1b2c3d",
+        "head": "d4e5f60",
+        "path": "small",
+        "risk_area": false,
+        "stage": "2",
+        "advisor": false,
+        "tasks": 1,
+        "fix_rounds": 1,
+        "stops": 0,
+        "final_findings": {
+          "critical": 0,
+          "important": 0,
+          "minor": 1,
+          "unneeded": 0
+        },
+        "simplify": {
+          "ran": "inline",
+          "applied": 0,
+          "skipped": 0
+        },
+        "failing_test": [
+          {
+            "task": 1,
+            "result": "passed"
+          }
+        ],
+        "headline": "Wrap long tag names",
+        "goal": null
+      },
+      "schema": 9,
+      "steps": [
+        {
+          "step": "simplify",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "simplify",
+          "model": null,
+          "effort": null,
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "applied": 0,
+            "skipped": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "final_review",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "final-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 1,
+            "unneeded": 0
+          },
+          "strengths": [],
+          "findings": [
+            {
+              "id": "F1",
+              "severity": "minor",
+              "category": "reuse",
+              "label": null,
+              "validity": "valid",
+              "kind": null,
+              "summary": "The wrap width is written twice",
+              "outcome": "fixed",
+              "reason": null,
+              "closed_round": 1,
+              "verdicts": [
+                "fixed"
+              ]
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "kit_review",
+          "task": null,
+          "wave": null,
+          "kit": "ui",
+          "round": 0,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 1,
+            "minor": 1
+          },
+          "strengths": null,
+          "findings": [
+            {
+              "id": "F2",
+              "severity": "important",
+              "category": "kit",
+              "label": "Every width",
+              "validity": "valid",
+              "kind": null,
+              "summary": "A long tag still runs past the card at 375 px",
+              "outcome": "fixed",
+              "reason": null,
+              "closed_round": 1,
+              "verdicts": [
+                "fixed"
+              ]
+            },
+            {
+              "id": "F3",
+              "severity": "minor",
+              "category": "kit",
+              "label": "Reading order",
+              "validity": "valid",
+              "kind": null,
+              "summary": "The tag list comes before the note title",
+              "outcome": "open",
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "final_fix_check",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 1,
+          "agent": "fix-checker",
+          "model": "opus",
+          "effort": "medium",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "fixed": 1,
+            "not_proportionate": 0,
+            "open": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "final_fix_check",
+          "task": null,
+          "wave": null,
+          "kit": "ui",
+          "round": 1,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "fixed": 1,
+            "not_proportionate": 0,
+            "open": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        }
+      ],
+      "final_findings": {
+        "critical": 0,
+        "important": 0,
+        "minor": 1,
+        "unneeded": 0
+      },
+      "simplify": {
+        "ran": "inline",
+        "applied": 0,
+        "skipped": 0
+      },
+      "waves": [],
+      "offers": [],
+      "categories": null,
+      "fable_points": null,
+      "all_points": null,
+      "fable_pct": null,
+      "all_pct": null,
+      "minutes": 40,
+      "window": {
+        "transcript": "/Users/example/.claude/projects/-Users-example-Work-lantern-notes/4b7e19c2a6d0f385.jsonl",
+        "start": "2026-10-28T09:40:00Z",
+        "end": "2026-10-28T10:20:00Z"
+      },
+      "warns": [],
+      "warnings": [],
+      "info": [],
+      "later_fixes": [],
+      "dispatches": [
+        {
+          "kind": "final_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 1,
+          "agent": "final-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.7
+            }
+          }
+        },
+        {
+          "kind": "kit_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": null,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.45
+            }
+          }
+        },
+        {
+          "kind": "final_fix_check",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 3,
+          "agent": "fix-checker",
+          "description": null,
+          "requested_model": "opus",
+          "requested_effort": "medium",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.15
+            }
+          }
+        },
+        {
+          "kind": "final_fix_check",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 4,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.1
+            }
+          }
+        }
+      ],
+      "skills": [],
+      "missing_skills": [],
+      "refusals": {},
+      "models": {
+        "claude-opus-5-5": {
+          "input": 30000,
+          "output": 15000,
+          "cache_read": 2400000,
+          "cache_write": 120000,
+          "cost": 3
+        }
+      },
+      "phases": null,
+      "efforts": null,
+      "advisor": null,
+      "notes": null,
+      "main": {
+        "model": "claude-opus-5-5",
+        "effort": "medium"
+      },
+      "title": null,
+      "typed": [],
+      "key": "c67707aa32d061c2",
+      "git_evidence": true,
+      "context": null,
+      "tool_results": null,
+      "sweeps": null,
+      "headline": "Wrap long tag names",
+      "goal": null,
+      "spec": null,
+      "kits": [
+        {
+          "name": "ui",
+          "version": "0.1.0",
+          "files": [
+            "/Users/example/.claude/kits/ui/guidance.md"
+          ],
+          "tasks": []
+        }
+      ],
+      "kit_checks": [
+        {
+          "kit": "ui",
+          "task": null,
+          "result": "passed"
+        }
+      ]
+    },
+    {
+      "record": {
+        "schema": 9,
+        "date": "2026-11-02T09:45:00Z",
+        "started": "2026-11-02T09:00:00Z",
+        "project": "/Users/example/Work/tidepool-api",
+        "branch": "fix/empty-payload",
+        "base": "a1b2c3d",
+        "head": "d4e5f60",
+        "path": "small",
+        "risk_area": false,
+        "stage": "2",
+        "advisor": false,
+        "tasks": 1,
+        "fix_rounds": 0,
+        "stops": 0,
+        "final_findings": {
+          "critical": 0,
+          "important": 0,
+          "minor": 0,
+          "unneeded": 0
+        },
+        "simplify": {
+          "ran": "inline",
+          "applied": 0,
+          "skipped": 0
+        },
+        "failing_test": [
+          {
+            "task": 1,
+            "result": "passed"
+          }
+        ],
+        "headline": "Refuse an empty payload",
+        "goal": null
+      },
+      "schema": 9,
+      "steps": [
+        {
+          "step": "simplify",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "simplify",
+          "model": null,
+          "effort": null,
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "applied": 0,
+            "skipped": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "final_review",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "final-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 0,
+            "unneeded": 0
+          },
+          "strengths": [],
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "kit_review",
+          "task": null,
+          "wave": null,
+          "kit": "ui",
+          "round": 0,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        }
+      ],
+      "final_findings": {
+        "critical": 0,
+        "important": 0,
+        "minor": 0,
+        "unneeded": 0
+      },
+      "simplify": {
+        "ran": "inline",
+        "applied": 0,
+        "skipped": 0
+      },
+      "waves": [],
+      "offers": [],
+      "categories": null,
+      "fable_points": null,
+      "all_points": null,
+      "fable_pct": null,
+      "all_pct": null,
+      "minutes": 45,
+      "window": {
+        "transcript": "/Users/example/.claude/projects/-Users-example-Work-tidepool-api/8d2f60a4c91be753.jsonl",
+        "start": "2026-11-02T09:00:00Z",
+        "end": "2026-11-02T09:45:00Z"
+      },
+      "warns": [
+        "WARN: fix/empty-payload (2026-11-02): kit ui was reviewed but the record names no such kit"
+      ],
+      "warnings": [
+        {
+          "kind": "kit_unrecorded",
+          "text": "WARN: fix/empty-payload (2026-11-02): kit ui was reviewed but the record names no such kit",
+          "step": {
+            "step": "kit_review",
+            "task": null,
+            "round": null,
+            "wave": null
+          },
+          "skill": null,
+          "agent": null,
+          "run": {
+            "date": "2026-11-02T09:45:00Z",
+            "project": "/Users/example/Work/tidepool-api",
+            "branch": "fix/empty-payload"
+          },
+          "session": null
+        }
+      ],
+      "info": [],
+      "later_fixes": [],
+      "dispatches": [
+        {
+          "kind": "final_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 1,
+          "agent": "final-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.5
+            }
+          }
+        },
+        {
+          "kind": "kit_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 2,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-6-preview",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-6-preview": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": null
+            }
+          }
+        }
+      ],
+      "skills": [],
+      "missing_skills": [],
+      "refusals": {},
+      "models": {
+        "claude-opus-5-5": {
+          "input": 15000,
+          "output": 7500,
+          "cache_read": 1200000,
+          "cache_write": 60000,
+          "cost": 1.2
+        },
+        "claude-opus-6-preview": {
+          "input": 5000,
+          "output": 2500,
+          "cache_read": 400000,
+          "cache_write": 20000,
+          "cost": null
+        }
+      },
+      "phases": null,
+      "efforts": null,
+      "advisor": null,
+      "notes": null,
+      "main": {
+        "model": "claude-opus-5-5",
+        "effort": "medium"
+      },
+      "title": null,
+      "typed": [],
+      "key": "7630dffeddc21642",
+      "git_evidence": true,
+      "context": null,
+      "tool_results": null,
+      "sweeps": null,
+      "headline": "Refuse an empty payload",
+      "goal": null,
+      "spec": null,
+      "kits": [],
+      "kit_checks": []
+    },
+    {
+      "record": {
+        "schema": 9,
+        "date": "2026-11-03T16:00:00Z",
+        "started": "2026-11-03T11:00:00Z",
+        "project": "/Users/example/Work/tidepool-api",
+        "branch": "feature/event-log",
+        "base": "a1b2c3d",
+        "head": "d4e5f60",
+        "path": "full",
+        "risk_area": false,
+        "stage": "2",
+        "advisor": false,
+        "tasks": 2,
+        "fix_rounds": 1,
+        "stops": 0,
+        "final_findings": {
+          "critical": 0,
+          "important": 0,
+          "minor": 0,
+          "unneeded": 0
+        },
+        "simplify": {
+          "ran": "agents",
+          "applied": 0,
+          "skipped": 0
+        },
+        "failing_test": [
+          {
+            "task": 1,
+            "result": "passed"
+          },
+          {
+            "task": 2,
+            "result": "passed"
+          }
+        ],
+        "headline": "Keep the events each webhook sent",
+        "goal": null
+      },
+      "schema": 9,
+      "steps": [
+        {
+          "step": "task_review",
+          "task": 1,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "task-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 0
+          },
+          "strengths": [],
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "kit_review",
+          "task": 1,
+          "wave": null,
+          "kit": "prose",
+          "round": 0,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 1
+          },
+          "strengths": null,
+          "findings": [
+            {
+              "id": "F1",
+              "severity": "minor",
+              "category": "kit",
+              "label": "Plain words",
+              "validity": "valid",
+              "kind": null,
+              "summary": "A label names the class, not the event",
+              "outcome": "deferred",
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "task_review",
+          "task": 2,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "task-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 1
+          },
+          "strengths": [],
+          "findings": [
+            {
+              "id": "F2",
+              "severity": "minor",
+              "category": "tests",
+              "label": null,
+              "validity": "valid",
+              "kind": null,
+              "summary": "No test covers an event with no body",
+              "outcome": "fixed",
+              "reason": null,
+              "closed_round": 1,
+              "verdicts": [
+                "fixed"
+              ]
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "kit_review",
+          "task": 2,
+          "wave": null,
+          "kit": "ui",
+          "round": 0,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 1,
+            "minor": 0
+          },
+          "strengths": null,
+          "findings": [
+            {
+              "id": "F3",
+              "severity": "important",
+              "category": "kit",
+              "label": "States",
+              "validity": "valid",
+              "kind": null,
+              "summary": "The event list has no loading state",
+              "outcome": null,
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "fix_check",
+          "task": 2,
+          "wave": null,
+          "kit": null,
+          "round": 1,
+          "agent": "fix-checker",
+          "model": "opus",
+          "effort": "medium",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "fixed": 1,
+            "not_proportionate": 0,
+            "open": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "simplify",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "simplify",
+          "model": null,
+          "effort": null,
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "applied": 0,
+            "skipped": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "final_review",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "final-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 0,
+            "unneeded": 0
+          },
+          "strengths": [],
+          "findings": [],
+          "time": null,
+          "end": null
+        }
+      ],
+      "final_findings": {
+        "critical": 0,
+        "important": 0,
+        "minor": 0,
+        "unneeded": 0
+      },
+      "simplify": {
+        "ran": "agents",
+        "applied": 0,
+        "skipped": 0
+      },
+      "waves": [],
+      "offers": [],
+      "categories": null,
+      "fable_points": null,
+      "all_points": null,
+      "fable_pct": null,
+      "all_pct": null,
+      "minutes": 300,
+      "window": {
+        "transcript": "/Users/example/.claude/projects/-Users-example-Work-tidepool-api/e05a3c7194bd82f6.jsonl",
+        "start": "2026-11-03T11:00:00Z",
+        "end": "2026-11-03T16:00:00Z"
+      },
+      "warns": [
+        "WARN: feature/event-log (2026-11-03): task 2 carries kit prose but has no kit review step",
+        "WARN: feature/event-log (2026-11-03): kit prose's checks did not run on task 2"
+      ],
+      "warnings": [
+        {
+          "kind": "kit_review_missing",
+          "text": "WARN: feature/event-log (2026-11-03): task 2 carries kit prose but has no kit review step",
+          "step": {
+            "step": "kit_review",
+            "task": 2,
+            "round": null,
+            "wave": null
+          },
+          "skill": null,
+          "agent": null,
+          "run": {
+            "date": "2026-11-03T16:00:00Z",
+            "project": "/Users/example/Work/tidepool-api",
+            "branch": "feature/event-log"
+          },
+          "session": null
+        },
+        {
+          "kind": "kit_check_missing",
+          "text": "WARN: feature/event-log (2026-11-03): kit prose's checks did not run on task 2",
+          "step": null,
+          "skill": null,
+          "agent": null,
+          "run": {
+            "date": "2026-11-03T16:00:00Z",
+            "project": "/Users/example/Work/tidepool-api",
+            "branch": "feature/event-log"
+          },
+          "session": null
+        }
+      ],
+      "info": [],
+      "later_fixes": [],
+      "dispatches": [
+        {
+          "kind": "task_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 0,
+          "agent": "task-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.6
+            }
+          }
+        },
+        {
+          "kind": "kit_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 1,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.35
+            }
+          }
+        },
+        {
+          "kind": "task_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 2,
+          "agent": "task-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.7
+            }
+          }
+        },
+        {
+          "kind": "kit_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 3,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.4
+            }
+          }
+        },
+        {
+          "kind": "kit_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": null,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.25
+            }
+          }
+        },
+        {
+          "kind": "fix_check",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 4,
+          "agent": "fix-checker",
+          "description": null,
+          "requested_model": "opus",
+          "requested_effort": "medium",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.2
+            }
+          }
+        },
+        {
+          "kind": "final_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 6,
+          "agent": "final-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.9
+            }
+          }
+        }
+      ],
+      "skills": [],
+      "missing_skills": [],
+      "refusals": {},
+      "models": {
+        "claude-opus-5-5": {
+          "input": 45000,
+          "output": 22500,
+          "cache_read": 3600000,
+          "cache_write": 180000,
+          "cost": 8
+        }
+      },
+      "phases": null,
+      "efforts": null,
+      "advisor": null,
+      "notes": null,
+      "main": {
+        "model": "claude-opus-5-5",
+        "effort": "medium"
+      },
+      "title": null,
+      "typed": [],
+      "key": "291f4769c2948de9",
+      "git_evidence": true,
+      "context": null,
+      "tool_results": null,
+      "sweeps": null,
+      "headline": "Keep the events each webhook sent",
+      "goal": null,
+      "spec": null,
+      "kits": [
+        {
+          "name": "prose",
+          "version": "0.1.0",
+          "files": [
+            "/Users/example/.claude/kits/prose/tone.md"
+          ],
+          "tasks": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "ui",
+          "version": "0.2.0",
+          "files": [
+            "/Users/example/.claude/kits/ui/guidance.md"
+          ],
+          "tasks": [
+            2
+          ]
+        }
+      ],
+      "kit_checks": [
+        {
+          "kit": "prose",
+          "task": 1,
+          "result": "passed"
+        },
+        {
+          "kit": "ui",
+          "task": 2,
+          "result": "passed"
+        }
+      ]
+    },
+    {
+      "record": {
+        "schema": 9,
+        "date": "2026-11-04T15:30:00Z",
+        "started": "2026-11-04T09:30:00Z",
+        "project": "/Users/example/Work/lantern-notes",
+        "branch": "feature/sync-log",
+        "base": "a1b2c3d",
+        "head": "d4e5f60",
+        "path": "full",
+        "risk_area": false,
+        "stage": "2",
+        "advisor": false,
+        "tasks": 3,
+        "fix_rounds": 2,
+        "stops": 0,
+        "final_findings": {
+          "critical": 0,
+          "important": 1,
+          "minor": 1,
+          "unneeded": 1
+        },
+        "simplify": {
+          "ran": "agents",
+          "applied": 1,
+          "skipped": 0
+        },
+        "failing_test": [
+          {
+            "task": 1,
+            "result": "passed"
+          },
+          {
+            "task": 2,
+            "result": "passed"
+          },
+          {
+            "task": 3,
+            "result": "passed"
+          }
+        ],
+        "headline": "Show what each sync did",
+        "goal": null
+      },
+      "schema": 9,
+      "steps": [
+        {
+          "step": "task_review",
+          "task": 1,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "task-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 1,
+            "minor": 1
+          },
+          "strengths": [],
+          "findings": [
+            {
+              "id": "F1",
+              "severity": "important",
+              "category": "correctness",
+              "label": null,
+              "validity": "valid",
+              "kind": null,
+              "summary": "A failed sync is logged as done",
+              "outcome": "fixed",
+              "reason": null,
+              "closed_round": 1,
+              "verdicts": [
+                "fixed"
+              ]
+            },
+            {
+              "id": "F2",
+              "severity": "minor",
+              "category": "naming",
+              "label": null,
+              "validity": "valid",
+              "kind": null,
+              "summary": "Rename entry to syncEntry",
+              "outcome": "deferred",
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "kit_review",
+          "task": 1,
+          "wave": null,
+          "kit": "ui",
+          "round": 0,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 1,
+            "minor": 2
+          },
+          "strengths": null,
+          "findings": [
+            {
+              "id": "F3",
+              "severity": "important",
+              "category": "kit",
+              "label": "Every width",
+              "validity": "valid",
+              "kind": null,
+              "summary": "The sync log table scrolls the whole page sideways at 375 px",
+              "outcome": "fixed",
+              "reason": null,
+              "closed_round": 1,
+              "verdicts": [
+                "fixed"
+              ]
+            },
+            {
+              "id": "F4",
+              "severity": "minor",
+              "category": "kit",
+              "label": "States",
+              "validity": "valid",
+              "kind": null,
+              "summary": "The empty sync log says nothing about what fills it",
+              "outcome": "deferred",
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            },
+            {
+              "id": "F5",
+              "severity": "minor",
+              "category": "kit",
+              "label": "Every width",
+              "validity": "valid",
+              "kind": null,
+              "summary": "The filter row wraps to three lines at 768 px",
+              "outcome": "to_owner",
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "fix_check",
+          "task": 1,
+          "wave": null,
+          "kit": null,
+          "round": 1,
+          "agent": "fix-checker",
+          "model": "opus",
+          "effort": "medium",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "fixed": 1,
+            "not_proportionate": 0,
+            "open": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "fix_check",
+          "task": 1,
+          "wave": null,
+          "kit": "ui",
+          "round": 1,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "fixed": 1,
+            "not_proportionate": 0,
+            "open": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "task_review",
+          "task": 2,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "task-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 0
+          },
+          "strengths": [],
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "kit_review",
+          "task": 2,
+          "wave": null,
+          "kit": "ui",
+          "round": 0,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 1
+          },
+          "strengths": null,
+          "findings": [
+            {
+              "id": "F6",
+              "severity": "minor",
+              "category": "kit",
+              "label": null,
+              "validity": "invalid",
+              "kind": null,
+              "summary": "A list item has no icon",
+              "outcome": "declined",
+              "reason": "The brief asks for a plain list",
+              "closed_round": null,
+              "verdicts": []
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "task_review",
+          "task": 3,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "task-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 0
+          },
+          "strengths": [],
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "kit_review",
+          "task": 3,
+          "wave": null,
+          "kit": "ui",
+          "round": 0,
+          "agent": "kit-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 0,
+            "minor": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "simplify",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "simplify",
+          "model": null,
+          "effort": null,
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "applied": 1,
+            "skipped": 0
+          },
+          "strengths": null,
+          "findings": [
+            {
+              "id": "F7",
+              "severity": null,
+              "category": "reuse",
+              "label": null,
+              "validity": "valid",
+              "kind": null,
+              "summary": "Use the shared time formatter",
+              "outcome": "applied",
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "final_review",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 0,
+          "agent": "final-reviewer",
+          "model": "opus",
+          "effort": "high",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "critical": 0,
+            "important": 1,
+            "minor": 1,
+            "unneeded": 1
+          },
+          "strengths": [],
+          "findings": [
+            {
+              "id": "F8",
+              "severity": "important",
+              "category": "data_safety",
+              "label": null,
+              "validity": "valid",
+              "kind": null,
+              "summary": "The sync log keeps entries of a deleted note",
+              "outcome": "fixed",
+              "reason": null,
+              "closed_round": 1,
+              "verdicts": [
+                "fixed"
+              ]
+            },
+            {
+              "id": "F9",
+              "severity": "minor",
+              "category": "simplicity",
+              "label": null,
+              "validity": "valid",
+              "kind": null,
+              "summary": "The log date repeats on every row",
+              "outcome": "open",
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            },
+            {
+              "id": "F10",
+              "severity": "unneeded",
+              "category": "simplicity",
+              "label": null,
+              "validity": "valid",
+              "kind": null,
+              "summary": "An export button nobody asked for",
+              "outcome": "to_owner",
+              "reason": null,
+              "closed_round": null,
+              "verdicts": []
+            }
+          ],
+          "time": null,
+          "end": null
+        },
+        {
+          "step": "final_fix_check",
+          "task": null,
+          "wave": null,
+          "kit": null,
+          "round": 1,
+          "agent": "fix-checker",
+          "model": "opus",
+          "effort": "medium",
+          "plan_effort": null,
+          "agent_id": null,
+          "counts": {
+            "fixed": 1,
+            "not_proportionate": 0,
+            "open": 0
+          },
+          "strengths": null,
+          "findings": [],
+          "time": null,
+          "end": null
+        }
+      ],
+      "final_findings": {
+        "critical": 0,
+        "important": 1,
+        "minor": 1,
+        "unneeded": 1
+      },
+      "simplify": {
+        "ran": "agents",
+        "applied": 1,
+        "skipped": 0
+      },
+      "waves": [],
+      "offers": [],
+      "categories": null,
+      "fable_points": null,
+      "all_points": null,
+      "fable_pct": null,
+      "all_pct": null,
+      "minutes": 360,
+      "window": {
+        "transcript": "/Users/example/.claude/projects/-Users-example-Work-lantern-notes/17c9d4f2805ea36b.jsonl",
+        "start": "2026-11-04T09:30:00Z",
+        "end": "2026-11-04T15:30:00Z"
+      },
+      "warns": [
+        "WARN: feature/sync-log (2026-11-04): kit ui's checks ended failed on task 2",
+        "WARN: feature/sync-log (2026-11-04): kit ui's checks ended couldnt_run on task 3"
+      ],
+      "warnings": [
+        {
+          "kind": "kit_unverified",
+          "text": "WARN: feature/sync-log (2026-11-04): kit ui's checks ended failed on task 2",
+          "step": null,
+          "skill": null,
+          "agent": null,
+          "run": {
+            "date": "2026-11-04T15:30:00Z",
+            "project": "/Users/example/Work/lantern-notes",
+            "branch": "feature/sync-log"
+          },
+          "session": null
+        },
+        {
+          "kind": "kit_unverified",
+          "text": "WARN: feature/sync-log (2026-11-04): kit ui's checks ended couldnt_run on task 3",
+          "step": null,
+          "skill": null,
+          "agent": null,
+          "run": {
+            "date": "2026-11-04T15:30:00Z",
+            "project": "/Users/example/Work/lantern-notes",
+            "branch": "feature/sync-log"
+          },
+          "session": null
+        }
+      ],
+      "info": [],
+      "later_fixes": [],
+      "dispatches": [
+        {
+          "kind": null,
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": null,
+          "agent": "implementer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "medium",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 4
+            }
+          }
+        },
+        {
+          "kind": "task_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 0,
+          "agent": "task-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 1
+            }
+          }
+        },
+        {
+          "kind": "kit_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 1,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.8
+            }
+          }
+        },
+        {
+          "kind": "fix_check",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 2,
+          "agent": "fix-checker",
+          "description": null,
+          "requested_model": "opus",
+          "requested_effort": "medium",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.3
+            }
+          }
+        },
+        {
+          "kind": "fix_check",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 3,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.2
+            }
+          }
+        },
+        {
+          "kind": "task_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 4,
+          "agent": "task-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.9
+            }
+          }
+        },
+        {
+          "kind": "kit_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 5,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.6
+            }
+          }
+        },
+        {
+          "kind": "task_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 6,
+          "agent": "task-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.8
+            }
+          }
+        },
+        {
+          "kind": "kit_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 7,
+          "agent": "kit-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.5
+            }
+          }
+        },
+        {
+          "kind": "final_review",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 9,
+          "agent": "final-reviewer",
+          "description": null,
+          "requested_model": null,
+          "requested_effort": null,
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 1.5
+            }
+          }
+        },
+        {
+          "kind": "final_fix_check",
+          "id": null,
+          "time": null,
+          "end": null,
+          "step": 10,
+          "agent": "fix-checker",
+          "description": null,
+          "requested_model": "opus",
+          "requested_effort": "medium",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "skills": [],
+          "counts": null,
+          "models": {
+            "claude-opus-5-5": {
+              "input": 5000,
+              "output": 2500,
+              "cache_read": 400000,
+              "cache_write": 20000,
+              "cost": 0.25
+            }
+          }
+        }
+      ],
+      "skills": [],
+      "missing_skills": [],
+      "refusals": {},
+      "models": {
+        "claude-opus-5-5": {
+          "input": 65000,
+          "output": 32500,
+          "cache_read": 5200000,
+          "cache_write": 260000,
+          "cost": 14
+        }
+      },
+      "phases": null,
+      "efforts": null,
+      "advisor": null,
+      "notes": null,
+      "main": {
+        "model": "claude-opus-5-5",
+        "effort": "medium"
+      },
+      "title": null,
+      "typed": [],
+      "key": "6bc423e6814243f9",
+      "git_evidence": true,
+      "context": null,
+      "tool_results": null,
+      "sweeps": null,
+      "headline": "Show what each sync did",
+      "goal": null,
+      "spec": null,
+      "kits": [
+        {
+          "name": "ui",
+          "version": "0.2.0",
+          "files": [
+            "/Users/example/.claude/kits/ui/guidance.md"
+          ],
+          "tasks": [
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "kit_checks": [
+        {
+          "kit": "ui",
+          "task": 1,
+          "result": "passed"
+        },
+        {
+          "kit": "ui",
+          "task": 2,
+          "result": "failed"
+        },
+        {
+          "kit": "ui",
+          "task": 3,
+          "result": "couldnt_run"
+        }
+      ]
+    }
+  ],
+  "sessions": [],
+  "totals": {
+    "scoreboard": {
+      "plan_simplify": {
+        "ran": 0,
+        "found": 0,
+        "counts": {},
+        "outcomes": {},
+        "tokens": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_write": 0
+        },
+        "cost": 0
+      },
+      "plan_review": {
+        "ran": 0,
+        "found": 0,
+        "counts": {},
+        "outcomes": {},
+        "tokens": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_write": 0
+        },
+        "cost": 0
+      },
+      "task_review": {
+        "ran": 5,
+        "found": 2,
+        "counts": {
+          "critical": 0,
+          "important": 1,
+          "minor": 2
+        },
+        "outcomes": {
+          "fixed": 2,
+          "deferred": 1
+        },
+        "tokens": {
+          "input": 25000,
+          "output": 12500,
+          "cache_read": 2000000,
+          "cache_write": 100000
+        },
+        "cost": 4
+      },
+      "fix_check": {
+        "ran": 3,
+        "found": 3,
+        "counts": {
+          "fixed": 3,
+          "not_proportionate": 0,
+          "open": 0
+        },
+        "outcomes": {},
+        "tokens": {
+          "input": 15000,
+          "output": 7500,
+          "cache_read": 1200000,
+          "cache_write": 60000
+        },
+        "cost": 0.7
+      },
+      "simplify": {
+        "ran": 4,
+        "found": 1,
+        "counts": {
+          "applied": 1,
+          "skipped": 0
+        },
+        "outcomes": {
+          "applied": 1
+        },
+        "tokens": null,
+        "cost": null
+      },
+      "final_review": {
+        "ran": 4,
+        "found": 2,
+        "counts": {
+          "critical": 0,
+          "important": 1,
+          "minor": 2,
+          "unneeded": 1
+        },
+        "outcomes": {
+          "fixed": 2,
+          "open": 1,
+          "to_owner": 1
+        },
+        "tokens": {
+          "input": 20000,
+          "output": 10000,
+          "cache_read": 1600000,
+          "cache_write": 80000
+        },
+        "cost": 3.6
+      },
+      "final_fix_check": {
+        "ran": 3,
+        "found": 3,
+        "counts": {
+          "fixed": 3,
+          "not_proportionate": 0,
+          "open": 0
+        },
+        "outcomes": {},
+        "tokens": {
+          "input": 15000,
+          "output": 7500,
+          "cache_read": 1200000,
+          "cache_write": 60000
+        },
+        "cost": 0.5
+      },
+      "kit_review": {
+        "ran": 7,
+        "found": 5,
+        "counts": {
+          "critical": 0,
+          "important": 3,
+          "minor": 5
+        },
+        "outcomes": {
+          "fixed": 2,
+          "open": 1,
+          "deferred": 2,
+          "to_owner": 1,
+          "declined": 1
+        },
+        "tokens": {
+          "input": 40000,
+          "output": 20000,
+          "cache_read": 3200000,
+          "cache_write": 160000
+        },
+        "cost": 3.35
+      },
+      "failing_test": {
+        "passed": 7,
+        "failed": 0,
+        "no_tests": 0,
+        "couldnt_run": 0,
+        "exempt": 0
+      },
+      "dispatch_guard": {},
+      "advisor": {
+        "calls": 0,
+        "notes": 0,
+        "changed": 0,
+        "cost": 0,
+        "share": 0
+      },
+      "startup": {
+        "with": 0,
+        "without": 0
+      },
+      "fix_round_cap": {
+        "runs": 0,
+        "ruled": 0
+      },
+      "stop_rule": {
+        "stops": 0
+      }
+    },
+    "weeks": [
+      {
+        "week": "2026-10-25",
+        "runs": {
+          "small": 1
+        },
+        "tasks": 1,
+        "findings": {
+          "critical": 0,
+          "important": 0,
+          "minor": 1,
+          "unneeded": 0
+        },
+        "fix_rounds": 1,
+        "stops": 0,
+        "fable_points": null,
+        "all_points": null,
+        "cost": 3,
+        "fable_pct": null,
+        "all_pct": null,
+        "pct_unknown": 1,
+        "minutes_per_run": 40,
+        "later_fixes": 0
+      },
+      {
+        "week": "2026-11-01",
+        "runs": {
+          "small": 1,
+          "full": 2
+        },
+        "tasks": 6,
+        "findings": {
+          "critical": 0,
+          "important": 1,
+          "minor": 1,
+          "unneeded": 1
+        },
+        "fix_rounds": 3,
+        "stops": 0,
+        "fable_points": null,
+        "all_points": null,
+        "cost": 23.2,
+        "fable_pct": null,
+        "all_pct": null,
+        "pct_unknown": 3,
+        "minutes_per_run": 300,
+        "later_fixes": 0
+      }
+    ],
+    "run_time": {
+      "with_waves": {
+        "runs": 0,
+        "timed": 0,
+        "median_minutes": null
+      },
+      "without_waves": {
+        "runs": 2,
+        "timed": 2,
+        "median_minutes": 330
+      }
+    },
+    "skills": {},
+    "models": {
+      "agents": {
+        "final-reviewer": {
+          "requested": {
+            "-/-": 4
+          },
+          "actual": {
+            "claude-opus-5-5/high": 4
+          },
+          "mismatches": 0
+        },
+        "kit-reviewer": {
+          "requested": {
+            "-/-": 10
+          },
+          "actual": {
+            "claude-opus-5-5/high": 9,
+            "claude-opus-6-preview/high": 1
+          },
+          "mismatches": 0
+        },
+        "fix-checker": {
+          "requested": {
+            "opus/medium": 4
+          },
+          "actual": {
+            "claude-opus-5-5/high": 4
+          },
+          "mismatches": 4
+        },
+        "task-reviewer": {
+          "requested": {
+            "-/-": 5
+          },
+          "actual": {
+            "claude-opus-5-5/high": 5
+          },
+          "mismatches": 0
+        },
+        "implementer": {
+          "requested": {
+            "-/-": 1
+          },
+          "actual": {
+            "claude-opus-5-5/medium": 1
+          },
+          "mismatches": 0
+        }
+      },
+      "main": {
+        "full": {
+          "recommended": {
+            "1": "opus/medium",
+            "2": "opus/medium",
+            "3": "opus/medium",
+            "out": "opus/medium"
+          },
+          "actual": {
+            "claude-opus-5-5/medium": 2
+          },
+          "differs": 0
+        },
+        "plan": {
+          "recommended": {
+            "1": "fable",
+            "2": "fable",
+            "3": "opus",
+            "out": "opus"
+          },
+          "actual": {},
+          "differs": 0
+        },
+        "small": {
+          "recommended": {
+            "1": null,
+            "2": "opus",
+            "3": "opus",
+            "out": "opus"
+          },
+          "actual": {
+            "claude-opus-5-5/medium": 2
+          },
+          "differs": 0
+        }
+      }
+    },
+    "advisor": {
+      "calls": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "cost": 0,
+      "by_role": {},
+      "failed": {},
+      "notes": 0,
+      "changed": 0,
+      "missing": 0,
+      "weeks": [],
+      "trial": "runs 0/5, weeks 0/3"
+    },
+    "offers": {},
+    "context": [],
+    "health": {
+      "info": []
+    },
+    "usage": []
+  }
+}

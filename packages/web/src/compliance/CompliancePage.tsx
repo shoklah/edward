@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ComplianceResponse, ComplianceWarning, FindingsQuery, StepKind } from '@cwd/shared';
+import type { ComplianceResponse, ComplianceWarning, FindingsQuery, KitWarning, StepKind } from '@cwd/shared';
 import { useLiveQuery } from '../api.ts';
 import { DataList, type ListColumn } from '../components/DataList.tsx';
 import { FilterChip } from '../components/FilterChip.tsx';
@@ -39,46 +39,47 @@ function groupsOf(rows: ComplianceResponse['rows']): HeatmapGroup[] {
   return groups;
 }
 
-/** The listed warnings' columns: the run (a session's has none), its project, the warning and whether it is new, the
- * project and whether it is new folding while narrow. */
-const WARNING_COLUMNS: ListColumn<ComplianceWarning>[] = [
-  {
-    id: 'run',
-    header: 'Run',
-    names: true,
-    value: (w) => runName(w.headline, w.branch),
-    cell: (w) => (w.runKey === null ? <Unknown label="no run" /> : <RunLink runKey={w.runKey} branch={w.branch} title={w.headline} />),
-  },
-  {
-    id: 'project',
-    header: 'Project',
-    fold: true,
-    value: (w) => (w.runKey === null ? projectLabel(w.project) : w.project),
-    cell: (w) => (
-      <span className="text-muted-foreground">
-        {w.runKey === null ? projectLabel(w.project) : <Text value={w.project} />}
-      </span>
-    ),
-  },
-  {
-    id: 'warning',
-    header: 'Warning',
-    wide: true,
-    value: (w) => w.text,
-    cell: (w) => (
-      <span className="flex flex-col gap-1">
-        <WarningText text={w.text} sessionId={w.sessionId} branch={w.branch} />
-      </span>
-    ),
-  },
-  {
-    id: 'seen',
-    header: 'Since you last looked',
-    fold: true,
-    value: (w) => (w.isNew ? 'New' : 'Seen'),
-    cell: (w) => <span className={w.isNew ? WARNING_INK : 'text-muted-foreground'}>{w.isNew ? 'New' : 'Seen'}</span>,
-  },
-];
+// A listed warning's columns, Compliance's and the Kits page's: the run (a session's warning has none), its project, the
+// warning and whether it is new, the project and whether it is new folding while narrow.
+export const RUN_COLUMN: ListColumn<KitWarning> = {
+  id: 'run',
+  header: 'Run',
+  names: true,
+  value: (w) => runName(w.headline, w.branch),
+  cell: (w) => (w.runKey === null ? <Unknown label="no run" /> : <RunLink runKey={w.runKey} branch={w.branch} title={w.headline} />),
+};
+export const PROJECT_COLUMN: ListColumn<KitWarning> = {
+  id: 'project',
+  header: 'Project',
+  fold: true,
+  value: (w) => (w.runKey === null ? projectLabel(w.project) : w.project),
+  cell: (w) => (
+    <span className="text-muted-foreground">
+      {w.runKey === null ? projectLabel(w.project) : <Text value={w.project} />}
+    </span>
+  ),
+};
+export const WARNING_COLUMN: ListColumn<KitWarning> = {
+  id: 'warning',
+  header: 'Warning',
+  wide: true,
+  value: (w) => w.text,
+  cell: (w) => (
+    <span className="flex flex-col gap-1">
+      <WarningText text={w.text} sessionId={w.sessionId} branch={w.branch} />
+    </span>
+  ),
+};
+export const SEEN_COLUMN: ListColumn<KitWarning> = {
+  id: 'seen',
+  header: 'Since you last looked',
+  fold: true,
+  value: (w) => (w.isNew ? 'New' : 'Seen'),
+  cell: (w) => <span className={w.isNew ? WARNING_INK : 'text-muted-foreground'}>{w.isNew ? 'New' : 'Seen'}</span>,
+};
+
+/** The listed warnings' columns. */
+const WARNING_COLUMNS: ListColumn<ComplianceWarning>[] = [RUN_COLUMN, PROJECT_COLUMN, WARNING_COLUMN, SEEN_COLUMN];
 
 /** A reporter's information line as a term and its value, split at the first ": "; a line with none is "Line N". */
 function informationPair(line: string, i: number): [string, string] {
