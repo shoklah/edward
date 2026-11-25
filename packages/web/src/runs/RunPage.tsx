@@ -313,8 +313,7 @@ export function RunPage({ runKey }: { runKey: string }) {
   const [selection, setSelection] = useState<{ runKey: string; unit: string } | null>(null);
   const selected = selection?.runKey === runKey ? selection.unit : null;
   const select = (unit: string | null) => setSelection(unit === null ? null : { runKey, unit });
-  const timeline = run.data?.timeline;
-  const stages = useMemo(() => stagesOf(timeline ?? []), [timeline]);
+  const stages = useMemo(() => stagesOf(run.data?.timeline ?? [], run.data), [run.data]);
   const units = useMemo(() => unitsOf(stages), [stages]);
   if (run.isPending) return <State>Loading the run…</State>;
   if (run.error instanceof ApiError && run.error.status === 404) {

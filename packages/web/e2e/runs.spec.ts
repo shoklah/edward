@@ -184,3 +184,17 @@ test('the schema 5 run page lists its strengths in the Strengths table', async (
   await expect(strengths.getByText('The signing secret never reaches a log')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
+
+// report-kits' Full run on feature/sync-log: its tasks carry the ui kit, whose checks passed, failed and couldn't run.
+test("a kit run's page marks its checks, shows a box's kit, and passes axe", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/runs/6bc423e6814243f9');
+  const flow = page.getByRole('group', { name: "The run's flow" });
+  await expect(flow.getByText('Checks failed')).toHaveCount(1);
+  await expect(flow.getByText('Not verified')).toHaveCount(1);
+  await flow.getByRole('button', { name: /^Task 1 kit review/ }).click();
+  const detail = page.getByRole('region', { name: 'Task 1 kit review', exact: true });
+  await expect(detail.getByRole('term')).toHaveText(['Kit', 'Version', 'Kit checks', 'Est. cost']);
+  await expect(detail.getByRole('definition')).toHaveText(['ui', '0.2.0', 'Passed', '$1.00']);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});

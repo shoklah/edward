@@ -1,5 +1,17 @@
-import { OUTCOME_GROUPS, type FindingRow, type Outcome, type StrengthRow, type TimelineGroup, type TimelineStep } from '@cwd/shared';
-import { STEP_LABELS, outcomeLabel, reviewerLabel } from '../lib/format.ts';
+import {
+  OUTCOME_GROUPS,
+  addKnown,
+  type FindingRow,
+  type Outcome,
+  type RunPageResponse,
+  type StrengthRow,
+  type TimelineGroup,
+  type TimelineStep,
+} from '@cwd/shared';
+import { KIT_CHECK_CHIPS, STEP_LABELS, formatWhole, outcomeLabel, outcomeWarns, reviewerLabel } from '../lib/format.ts';
+
+/** A kit on a box: its version, its last check result on the box's task, and on a kit's own box its steps' cost. */
+export type UnitKit = { name: string | null; version: string | null; result: string | null; cost: number | null };
 
 /** One review with its fix rounds, and their steps' places in the run: a box of the graph. */
 export type Unit = {
@@ -9,6 +21,7 @@ export type Unit = {
   lines: [string, string];
   task: number | null;
   kit: boolean;
+  kits: UnitKit[];
   steps: number[];
   review: TimelineStep | null;
   rounds: TimelineStep[];
@@ -18,11 +31,11 @@ export type Stage = { kind: TimelineGroup['kind']; at: string | null; parallel: 
 
 const isRound = (s: TimelineStep) => s.step === 'fix_check' || s.step === 'final_fix_check';
 /** A unit of no task, not a kit's. */
-const NOWHERE = { task: null, kit: false };
+const NOWHERE = { task: null, kit: false, kits: [] };
 /** A kit's own step, as the server's `timeline` tells them apart. */
 const isKit = (s: TimelineStep) => s.step === 'kit_review' || s.kit != null;
 
-function unitOf(id: string, name: string, steps: TimelineStep[], where: Pick<Unit, 'task' | 'kit'>): Unit {
+function unitOf(id: string, name: string, steps: TimelineStep[], where: Pick<Unit, 'task' | 'kit' | 'kits'>): Unit {
   const review = steps.find((s) => !isRound(s)) ?? null;
   return {
     id,
@@ -36,12 +49,32 @@ function unitOf(id: string, name: string, steps: TimelineStep[], where: Pick<Uni
   };
 }
 
-/** A task's units: its review, and beside it its kit's review when it has one. */
-function taskUnits({ task, steps }: { task: number; steps: TimelineStep[] }): Unit[] {
+type RunKits = Pick<RunPageResponse, 'kits' | 'kitChecks'>;
+
+/** A run's kit on a box of `task`, or of no task. */
+function unitKit(run: RunKits, name: string | null, task: number | null, cost: number | null): UnitKit {
+  return {
+    name,
+    version: run.kits.find((k) => k.name === name)?.version ?? null,
+    result: run.kitChecks.filter((c) => c.kit === name && c.task === task).at(-1)?.result ?? null,
+    cost,
+  };
+}
+
+/** A kit's own box's kits: its steps', each with its steps' cost. */
+function ownKits(run: RunKits, steps: TimelineStep[], task: number | null): UnitKit[] {
+  const costs = new Map<string | null, number | null>();
+  for (const s of steps) costs.set(s.kit, addKnown(costs.get(s.kit) ?? null, s.cost));
+  return [...costs].map(([name, cost]) => unitKit(run, name, task, cost));
+}
+
+/** A task's units: its review, with the kits it carries, and beside it its kit's review when it has one. */
+function taskUnits(run: RunKits, { task, steps }: { task: number; steps: TimelineStep[] }): Unit[] {
   const kit = steps.filter(isKit);
+  const kits = run.kits.filter((k) => k.tasks.includes(task)).map((k) => unitKit(run, k.name, task, null));
   return [
-    unitOf(`t${task}`, `Task ${task}`, steps.filter((s) => !isKit(s)), { task, kit: false }),
-    ...(kit.length ? [unitOf(`k${task}`, `Task ${task} kit review`, kit, { task, kit: true })] : []),
+    unitOf(`t${task}`, `Task ${task}`, steps.filter((s) => !isKit(s)), { task, kit: false, kits }),
+    ...(kit.length ? [unitOf(`k${task}`, `Task ${task} kit review`, kit, { task, kit: true, kits: ownKits(run, kit, task) })] : []),
   ];
 }
 
@@ -59,8 +92,8 @@ function planUnit(step: TimelineStep, steps: TimelineStep[]): Unit {
 }
 
 /** The timeline's groups as stages of units: a wave's tasks (a kit-reviewed task's two boxes together) side by side,
- * then its check; a task with a kit review, or the final review with a task-less one, side by side. */
-export function stagesOf(timeline: TimelineGroup[]): Stage[] {
+ * then its check; a task with a kit review, or the final review with a task-less one, side by side. A box's kits come from the run's. */
+export function stagesOf(timeline: TimelineGroup[], run: RunKits = { kits: [], kitChecks: [] }): Stage[] {
   return timeline.map((g) => {
     const stage = (parallel: Unit[], then: Unit[]): Stage => ({ kind: g.kind, at: g.at, parallel, then, conflicts: g.conflicts ?? 0 });
     const side = (units: Unit[]) => (units.length > 1 ? stage(units, []) : stage([], units));
@@ -68,10 +101,10 @@ export function stagesOf(timeline: TimelineGroup[]): Stage[] {
       case 'wave': {
         const wave = g.label.replace(/^Wave /, '');
         const check = g.steps.length ? [unitOf(`w${wave}`, `${g.label} check`, g.steps, NOWHERE)] : [];
-        return stage(g.tasks.flatMap(taskUnits), check);
+        return stage(g.tasks.flatMap((t) => taskUnits(run, t)), check);
       }
       case 'task':
-        return side(g.tasks.flatMap(taskUnits));
+        return side(g.tasks.flatMap((t) => taskUnits(run, t)));
       case 'plan':
         return stage([], g.steps.map((s) => planUnit(s, g.steps)));
       case 'simplify':
@@ -81,7 +114,7 @@ export function stagesOf(timeline: TimelineGroup[]): Stage[] {
         const kit = g.steps.filter(isKit);
         return side([
           ...(main.length ? [unitOf('final', 'Final review', main, NOWHERE)] : []),
-          ...(kit.length ? [unitOf('kit', 'Kit review', kit, { ...NOWHERE, kit: true })] : []),
+          ...(kit.length ? [unitOf('kit', 'Kit review', kit, { ...NOWHERE, kit: true, kits: ownKits(run, kit, null) })] : []),
         ]);
       }
       default:
@@ -105,6 +138,18 @@ export function leftOf(unit: Unit): [Outcome | 'none', number][] {
   });
 }
 
+export type Chip = { text: string; warns: boolean };
+
+/** A box's chips: its kit checks' (each wording once), then what it left (`leftOf`). */
+export function chipsOf(unit: Unit): Chip[] {
+  // A task's check is its own box's, not its kit review's.
+  const checks = unit.kit && unit.task !== null ? [] : unit.kits.flatMap((k) => KIT_CHECK_CHIPS[k.result ?? ''] ?? []);
+  return [
+    ...[...new Set(checks)].map((text) => ({ text, warns: true })),
+    ...leftOf(unit).map(([outcome, count]) => ({ text: `${outcomeLabel(outcome)} ${formatWhole(count)}`, warns: outcomeWarns(outcome) })),
+  ];
+}
+
 /** Its last round left a finding open or "fixed, not proportionate", which the workflow counts as open. */
 export function stuck(unit: Unit): boolean {
   const last = unit.rounds.at(-1);
@@ -123,7 +168,7 @@ export type Placed = Rect &
     | { kind: 'unit'; unit: Unit }
     | { kind: 'pill'; end: 'start' | 'end'; at: string | null }
     | { kind: 'conflicts'; count: number }
-    | { kind: 'chip'; unit: Unit; outcome: Outcome | 'none'; count: number }
+    | ({ kind: 'chip'; unit: Unit } & Chip)
     // The loop's label, over its box.
     | { kind: 'arc'; unit: Unit }
   );
@@ -194,16 +239,16 @@ function ranksOf(stages: Stage[]): Rank[] {
 const joined = (layers: Layer[]): Edge[] =>
   layers.slice(1).flatMap((layer, i) => layers[i].outs.flatMap((from) => layer.ins.map(({ at, head }) => ({ from, to: at, head }))));
 
-const chipWidth = (outcome: Outcome | 'none', count: number) => `${outcomeLabel(outcome)} ${count}`.length * CHAR + CHIP_PAD;
+const chipWidth = (chip: Chip) => chip.text.length * CHAR + CHIP_PAD;
 
 /** The narrowest a box can be with its two lines and its exit chips whole, by the text estimate. */
 export function boxNeed(unit: Unit): number {
   const text = unit.lines.map((t) => t.length * CHAR + BOX_PAD);
-  const chips = leftOf(unit).map(([outcome, count]) => chipWidth(outcome, count) + CHIP_IN + SIDE_IN + 4);
+  const chips = chipsOf(unit).map((chip) => chipWidth(chip) + CHIP_IN + SIDE_IN + 4);
   return Math.max(...text, ...chips);
 }
 
-const blockHeight = (u: Unit) => LOOP + H + leftOf(u).length * EXIT;
+const blockHeight = (u: Unit) => LOOP + H + chipsOf(u).length * EXIT;
 const rankHeight = (r: Rank) =>
   r.merge ? MERGE_H : r.pill ? PILL_H : r.units.reduce((sum, u) => sum + blockHeight(u), 0) + (r.units.length - 1) * GY;
 const rankWidth = (r: Rank, w = W, p = PILL) => (r.merge ? MERGE : r.pill ? p : w);
@@ -233,14 +278,13 @@ function block(unit: Unit, x: number, top: number, w: number, row: number): Plac
   return [
     { kind: 'unit', unit, x, y: top, w, h: H, row },
     ...(unit.rounds.length ? [{ kind: 'arc', unit, x: x + ARC_IN, y: top - LOOP, w: w - ARC_IN, h: LOOP, row } as const] : []),
-    ...leftOf(unit).map(([outcome, count], i): Placed => ({
+    ...chipsOf(unit).map((chip, i): Placed => ({
       kind: 'chip',
       unit,
-      outcome,
-      count,
+      ...chip,
       x: x + CHIP_IN,
       y: top + H + i * EXIT + 4,
-      w: Math.min(chipWidth(outcome, count), w - CHIP_IN - SIDE_IN - 4),
+      w: Math.min(chipWidth(chip), w - CHIP_IN - SIDE_IN - 4),
       h: EXIT - 4,
       row,
     })),
@@ -405,7 +449,7 @@ function upright(ranks: Rank[], avail: number): Layout {
       for (const u of line) {
         const top = y + LOOP;
         placed.push(...block(u, x, top, w, 0));
-        const exits = leftOf(u).length > 0;
+        const exits = chipsOf(u).length > 0;
         ins.push({ at: { x: u.rounds.length ? x + SIDE_IN : x + w / 2, y: top, lead: LOOP }, head: true });
         outs.push({ x: exits ? x + w - SIDE_IN : x + w / 2, y: top + H, lead: bottom - top - H });
         x += w + GH;

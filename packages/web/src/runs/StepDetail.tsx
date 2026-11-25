@@ -2,8 +2,8 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { OUTCOME_GROUPS, type FindingRow } from '@cwd/shared';
 import { ArrowRight, X } from 'lucide-react';
 import { cn } from 'cn';
-import { Text } from '../components/Num.tsx';
-import { Line, ScrollTable, Section } from '../components/Panel.tsx';
+import { Num, Text } from '../components/Num.tsx';
+import { Line, Pairs, ScrollTable, Section } from '../components/Panel.tsx';
 import { Button } from '../components/ui/button.tsx';
 import {
   STEP_LABELS,
@@ -11,13 +11,14 @@ import {
   WARNING_INK,
   byLabel,
   countName,
+  formatCost,
   outcomeLabel,
   outcomeWarns,
   roundVerdictLabel,
   stepBy,
   verdictLabel,
 } from '../lib/format.ts';
-import type { Unit } from './flow.ts';
+import type { Unit, UnitKit } from './flow.ts';
 
 /** A finding's line: the Ended chip and every mark cell are this tall, so rules, dots and chip share a middle, a skipped
  * round's lone rule too. */
@@ -107,8 +108,19 @@ function Head({ title, by }: { title: string; by?: string }) {
   );
 }
 
+/** A kit's facts on the selected box, the known ones only: a check that did not pass in the warning ink. */
+function kitFacts({ name, version, result, cost }: UnitKit): [string, ReactNode][] {
+  const facts: [string, ReactNode][] = [
+    ['Kit', name],
+    ['Version', version],
+    ['Kit checks', result && <span className={cn(result !== 'passed' && WARNING_INK)}>{countName(result)}</span>],
+    ['Est. cost', cost !== null && <Num value={cost} format={formatCost} />],
+  ];
+  return facts.filter(([, value]) => value);
+}
+
 /**
- * The selected step's detail: its name with a Close pill, then one line per finding, from its review through each fix
+ * The selected step's detail: its name with a Close pill, a line of facts for each kit on it, then one line per finding, from its review through each fix
  * round to how it ended; a table from `md` up, a stacked list below. A step that found nothing says so in one line.
  */
 export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void }) {
@@ -132,6 +144,12 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
         </Button>
       }
     >
+      {unit.kits
+        .map(kitFacts)
+        .filter((facts) => facts.length > 0)
+        .map((facts, i) => (
+          <Pairs key={i} inline="beside" pairs={facts} />
+        ))}
       {findings.length === 0 ? (
         <Line muted>{`${kind} ${byLabel(review)} found nothing.`}</Line>
       ) : (

@@ -26,3 +26,10 @@ test("the run page with a step selected matches its screenshot", async ({ page }
   await expect(page.getByRole('region', { name: 'Wave A check', exact: true })).toBeVisible();
   await expect(page.getByRole('main')).toHaveScreenshot('run-step.png');
 });
+
+test("a kit run's page with a kit review selected matches its screenshot", async ({ page }) => {
+  await page.goto('/runs/6bc423e6814243f9');
+  await page.getByRole('group', { name: "The run's flow" }).getByRole('button', { name: /^Task 1 kit review/ }).click();
+  await expect(page.getByRole('region', { name: 'Task 1 kit review', exact: true })).toBeVisible();
+  await expect(page.getByRole('main')).toHaveScreenshot('run-kit.png');
+});

@@ -5,7 +5,7 @@ import { parseTime, type FindingRow, type StatusResponse } from '@cwd/shared';
 import { formatDayTime, LATER_FIXES_TERM, WARNING_INK } from '../lib/format.ts';
 import { mockApi } from '../test/mock-api.ts';
 import { cells, expectNoJoined, fact } from '../test/table.ts';
-import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runPlanPair, runPlanTwice, runSmall, runStopped, smallRun } from '../test/runs.ts';
+import { fullRun, oldRun, planRun, runAlone, runBeforeSteps, runFull, runHandedOff, runKits, runPlanPair, runPlanTwice, runSmall, runStopped, smallRun } from '../test/runs.ts';
 import { RunPage } from './RunPage.tsx';
 
 const meta = { component: RunPage, args: { runKey: fullRun.key } } satisfies Meta<typeof RunPage>;
@@ -266,6 +266,18 @@ export const SelectStep: Story = {
     await expect(flow.getByText(HINT)).toBeVisible();
     await expect(flow.queryByRole('region', { name: 'Task 1' })).toBeNull();
     await expect(task1).toHaveAttribute('aria-pressed', 'false');
+  },
+};
+
+/** Selecting a kit task's box shows how its kit's checks ended, in its detail. */
+export const Kits: Story = {
+  beforeEach: () => {
+    mockApi({ '/api/status': status, [`/api/runs/${fullRun.key}`]: runKits });
+  },
+  play: async ({ canvas, userEvent }) => {
+    const flow = within(await canvas.findByRole('region', { name: 'Flow' }));
+    await userEvent.click(flow.getByRole('button', { name: /^Task 2\s*task-reviewer/ }));
+    await expect(pairs(flow.getByRole('region', { name: 'Task 2' }))).toContainEqual(['Kit checks', 'Failed']);
   },
 };
 
