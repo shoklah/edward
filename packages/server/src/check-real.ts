@@ -206,8 +206,7 @@ else {
   // name a kit.
   const sum = (values: (number | null | undefined)[]) => values.reduce<number>((n, value) => n + (value ?? 0), 0);
   const kitNames = [...new Set(entries.flatMap(kitsOf))];
-  const noKit = entries.flatMap((run) => run.steps ?? []).filter((s) => s.step === 'kit_review' && s.kit == null);
-  const kitRan = sum(kitNames.map((kit) => reviewSums(entries, kit, 'kit_review').ran)) + noKit.length;
+  const kitRan = sum([...kitNames, null].map((kit) => reviewSums(entries, kit, 'kit_review').ran));
   const kitCost = sum(
     [...kitNames, null].flatMap((kit) =>
       entries.map((run) => dispatchCost(run, (d, k) => d.kind === 'kit_review' && k === kit)),
