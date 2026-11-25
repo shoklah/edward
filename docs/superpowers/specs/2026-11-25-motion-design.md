@@ -107,7 +107,7 @@ From `grill-me`, 2026-11-25:
 
 Closing a row, paging, filtering, switching a view or a measure, hover, focus, selecting nothing, a chart's data and a loading or error state all change at once, and so does everything under reduced motion.
 
-Springs, through `linear()` easings made by one function: firm (damping 0.75) for pages, sorting and rows; soft (0.55) for arrivals; jelly (0.38) for numbers and bobs. Travelling between two places (pill, ring) is a stretch over 30% of the time, then the soft spring.
+Springs, through `linear()` easings made by one function: firm (damping 0.75) for pages, sorting and rows; soft (0.55) for arrivals; jelly (0.38) for numbers and bobs; calm (0.95, which never overshoots) for everything inside a list, in place of firm and soft, so no row springs past its list's end. Travelling between two places (pill, ring) is a stretch over 30% of the time, then the soft spring.
 
 ### Why each place moves, and why the rest doesn't
 
