@@ -36,6 +36,7 @@ Edward is a playground and a portfolio piece. Its look is glass, but nothing on 
 - No dependency is added. CSS, the Web Animations API, SVG filters and one WebGL2 canvas cover it; a motion library (Motion, GSAP) and React's or the browser's view transitions were considered and dropped (Approaches).
 - Motion animates `transform` and `opacity`, plus `stroke-dashoffset` for the run graph's lines, and on one element while a wave runs two SVG filters, or outside Chromium a `clip-path` on the page's copy. Charts, hover, the backdrop, filters, paging, the focus and closing a row never move.
 - Nothing carries a `backdrop-filter`. The page is drawn through a filter only while a wave runs (at most 2.3 s), and the live page never while it scrolls.
+- No motion makes anything scroll, in the page or in a list, or a list's edge fade: no row springs past its list's end, and a drop's glass stays inside its cell, whatever the number's width.
 - Text under a wave still reads: the light adds to the page, it never covers it.
 
 ## What was measured
