@@ -74,19 +74,24 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
       for (const { el } of rows) for (const animation of el.getAnimations()) animation.cancel();
     }
     if (!why || (why === 'open' && !rows.some(({ isNew }) => isNew))) return;
-    const end = Math.max(...rows.map(({ key, el }) => now.get(key)! + el.offsetHeight));
-    const gap = ({ key, el }: (typeof rows)[number]) => Math.min(was.get(key)!, end - el.offsetHeight) - now.get(key)!;
-    const moving = rows.filter((row) => row.isNew || gap(row));
+    const end = list.current!.getBoundingClientRect().bottom;
+    // A row starts no lower than where its foot meets the list's end, in real pixels: the places are whole ones, and even
+    // part of a pixel past the end scrolls the list.
+    const gap = ({ key, el }: (typeof rows)[number]) => {
+      const from = was.get(key)! - now.get(key)!;
+      return from > 0 ? Math.min(from, end - el.getBoundingClientRect().bottom) : from;
+    };
+    const moving = rows.map((row) => ({ ...row, from: row.isNew ? 0 : gap(row) })).filter(({ isNew, from }) => isNew || from);
     if (why === 'sort') {
       for (const [i, row] of moving.entries()) {
         const delay = 18 * Math.min(i, 8);
         if (row.isNew) condense(row.el, { ms: 520, easing: CALM, delay });
-        else slide(row.el, gap(row), 520, delay);
+        else slide(row.el, row.from, 520, delay);
       }
       return;
     }
     const below = moving.filter(({ isNew }) => !isNew);
-    for (const [i, row] of below.entries()) slide(row.el, gap(row), 460, 12 * Math.max(0, Math.min(below.length, 8) - 1 - i));
+    for (const [i, row] of below.entries()) slide(row.el, row.from, 460, 12 * Math.max(0, Math.min(below.length, 8) - 1 - i));
     for (const { el } of rows.filter(({ isNew }) => isNew)) {
       const content = el.querySelector(':scope > td > div');
       if (content) condense(content, { ms: 480, from: 'scale(0.96, 0.6)', easing: CALM });

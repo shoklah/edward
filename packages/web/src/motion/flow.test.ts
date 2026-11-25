@@ -2,7 +2,7 @@ import { createElement, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, test } from 'vitest';
-import { motionOn, played } from '../test/motion.ts';
+import { eachFrame, motionOn, played } from '../test/motion.ts';
 import { flow, useFlow } from './flow.ts';
 import { CALM, SOFT } from './play.ts';
 
@@ -57,20 +57,20 @@ describe('a list', () => {
   let unmount = () => {};
   afterEach(() => unmount());
 
-  function List({ keys }: { keys: string[] }) {
+  function List({ keys, last }: { keys: string[]; last: number }) {
     const list = useRef<HTMLUListElement>(null);
     why = useFlow(list, keys);
-    const row = (key: string) => createElement('li', { key, id: key, style: { height: 40 } }, createElement('td', null, createElement('div')));
+    const row = (key: string, i: number) => createElement('li', { key, id: key, style: { height: i === keys.length - 1 ? last : 40 } }, createElement('td', null, createElement('div')));
     return createElement('ul', { ref: list, style: { margin: 0, padding: 0, listStyle: 'none' } }, keys.map(row));
   }
 
-  /** A list of rows of 40 px in a page of 2000: draws other keys. */
-  function list(keys: string[]): (keys: string[]) => void {
+  /** A list of rows of 40 px, its last of `last`, in a page of 2000: draws other keys. */
+  function list(keys: string[], last = 40): (keys: string[]) => void {
     const page = document.body.appendChild(document.createElement('div'));
     page.style.height = '2000px';
     const root = createRoot(page);
     unmount = () => root.unmount();
-    const draw = (next: string[]) => flushSync(() => root.render(createElement(List, { keys: next })));
+    const draw = (next: string[]) => flushSync(() => root.render(createElement(List, { keys: next, last })));
     draw(keys);
     return draw;
   }
@@ -143,6 +143,20 @@ describe('a list', () => {
     ]);
     expect(from('f')).toBe('translateY(40px)');
     expect(delays(['f', 'new'])).toEqual([0, 18]);
+    on.mockRestore();
+  });
+
+  test('no row passes its end in any frame, where the rows\' heights are no whole pixels', async () => {
+    const on = motionOn();
+    const draw = list(['a', 'b', 'c'], 39.5);
+    why('sort');
+    draw(['c', 'b', 'a']);
+    const ul = document.querySelector('ul')!;
+    const bottom = (el: Element) => el.getBoundingClientRect().bottom;
+    expect(bottom(row('c'))).toBeCloseTo(bottom(ul), 3);
+    await eachFrame(ul, () => {
+      for (const key of 'abc') expect(bottom(row(key)) - bottom(ul)).toBeLessThanOrEqual(0.01);
+    });
     on.mockRestore();
   });
 
