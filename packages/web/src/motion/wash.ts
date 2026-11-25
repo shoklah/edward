@@ -2,6 +2,7 @@ import { createElement, useEffect, type ReactNode, type RefObject } from 'react'
 import { useIsFetching } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { bend, endBends, type Front } from './bend.ts';
+import { clip } from './clip.ts';
 import { condense } from './condense.ts';
 import { Filters } from './Filters.tsx';
 import { centre, inWindow, reach, sourceOf, wide } from './place.ts';
@@ -139,21 +140,6 @@ export function opaqueIn(el: Element): number {
   return 0;
 }
 
-/** When the last clip of the app's root ends, and what ends it. */
-let clippedUntil = 0;
-let unclip = 0;
-
-/** Clips the app's root for `ms`, so nothing in flight in it makes the page scroll; `clip` makes no scroller, so the
- * sticky rail and feed still stick. */
-export function clipRoot(ms: number): void {
-  const root = document.getElementById('root');
-  if (!root) return;
-  root.style.overflow = 'clip';
-  clippedUntil = Math.max(clippedUntil, performance.now() + ms);
-  clearTimeout(unclip);
-  unclip = window.setTimeout(() => (root.style.overflow = ''), clippedUntil - performance.now());
-}
-
 /** The wave of a page switch: the old page's copy washes away behind the front, and the new page's blocks condense once
  * it has passed, those added meanwhile included; with the link a run was opened by, the run's title travels from it. */
 function wave(main: HTMLElement, source: DOMRect, copy: { el: HTMLElement; at: DOMRect } | null, link: { size: number } | null): void {
@@ -185,7 +171,7 @@ function wave(main: HTMLElement, source: DOMRect, copy: { el: HTMLElement; at: D
       });
     }
   };
-  clipRoot(1600);
+  clip(new Promise((end) => setTimeout(end, 1600)));
 
   const watch = new MutationObserver((records) => {
     const added = records.flatMap((record) => [...record.addedNodes]);

@@ -1,13 +1,11 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
+import { clip } from './clip.ts';
 import { condense } from './condense.ts';
 import { CALM, SOFT, motionRuns, play } from './play.ts';
 
-/** What last flows in each container clipped for it. */
-const flowing = new WeakMap<HTMLElement, Animation>();
-
 /** What moves: `el` flows from `from`, relative to where it now is: it stretches over the gap, then gathers. It springs
- * past its place, so `within` is clipped while it does, for it not to make what holds it scroll. */
-export function flow(el: Element, from: { x: number; y: number }, within?: HTMLElement | null, pseudoElement?: '::before'): void {
+ * past its place, so `within`, the app's root unless told, is clipped while it does. */
+export function flow(el: Element, from: { x: number; y: number }, within?: HTMLElement, pseudoElement?: '::before'): void {
   if (!from.x && !from.y) return;
   // A side that doesn't stretch thins.
   const stretch = (gap: number, size: number) => {
@@ -28,12 +26,7 @@ export function flow(el: Element, from: { x: number; y: number }, within?: HTMLE
     420,
     { easing: 'ease-in', pseudoElement },
   );
-  if (!animation || !within) return;
-  flowing.set(within, animation);
-  within.style.overflow = 'clip';
-  animation.onfinish = () => {
-    if (flowing.get(within) === animation) within.style.overflow = '';
-  };
+  if (animation) clip(animation.finished, within);
 }
 
 /** The pill of a `nav`'s current link, its `::before`, flows from the last current one's place once `path` changes. */
@@ -76,12 +69,14 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
       for (const { el } of rows) for (const animation of el.getAnimations()) animation.cancel();
     }
     if (!why || (why === 'open' && !rows.some(({ isNew }) => isNew))) return;
-    const end = list.current!.getBoundingClientRect().bottom;
+    const { bottom: end, height } = list.current!.getBoundingClientRect();
+    // What a condensing panel scales the list by; `offsetHeight` is a whole number.
+    const scale = height / parseFloat(getComputedStyle(list.current!).height);
     // A row starts no lower than where its foot meets the list's end, in real pixels: the places are whole ones, and even
     // part of a pixel past the end scrolls the list.
     const gap = ({ key, el }: (typeof rows)[number]) => {
       const from = was.get(key)! - now.get(key)!;
-      return from > 0 ? Math.min(from, end - el.getBoundingClientRect().bottom) : from;
+      return from > 0 ? Math.min(from, (end - el.getBoundingClientRect().bottom) / scale) : from;
     };
     const moving = rows.map((row) => ({ ...row, from: row.isNew ? 0 : gap(row) })).filter(({ isNew, from }) => isNew || from);
     if (why === 'sort') {

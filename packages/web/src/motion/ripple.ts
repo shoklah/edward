@@ -3,11 +3,12 @@ import { flushSync } from 'react-dom';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import type { StatusResponse } from '@cwd/shared';
 import { bend } from './bend.ts';
+import { clip } from './clip.ts';
 import { Drop, SMALL } from './Drop.tsx';
 import { centre, importSource, inWindow, reach } from './place.ts';
 import { JELLY, motionRuns, play } from './play.ts';
 import { drop } from './water.ts';
-import { clipRoot, frontAt, panelsOf } from './wash.ts';
+import { frontAt, panelsOf } from './wash.ts';
 
 /** What a commit changed: the front's delay is measured at `at`. With `counts` false it starts no wave, and lands only in
  * one something else starts; a `number` may get one of the wave's drops. */
@@ -76,7 +77,7 @@ function startWave(of: string): NonNullable<typeof wave> {
   const main = document.getElementById('main');
   if (main) {
     // Until the last panel's bob is over.
-    clipRoot(front.ms + 1200);
+    clip(new Promise((end) => setTimeout(end, front.ms + 1200)));
     if (!document.querySelector('[data-copy="page"]')) bend(main, { ...front, ms: 2240 }, 'bend');
     for (const panel of panelsOf(main)) {
       const to = centre(panel.getBoundingClientRect());

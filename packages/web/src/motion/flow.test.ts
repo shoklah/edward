@@ -1,7 +1,7 @@
 import { createElement, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { eachFrame, motionOn, played } from '../test/motion.ts';
 import { flow, useFlow } from './flow.ts';
 import { CALM, SOFT } from './play.ts';
@@ -42,6 +42,16 @@ test('it stretches sideways too, over a long gap no more than over 200 px across
   };
   expect(middle({ x: 400, y: 0 })).toBe('translate(200px, 0px) scale(1.5, 0.9)');
   expect(middle({ x: 400, y: 320 })).toBe('translate(200px, 160px) scale(1.5, 3.2)');
+  on.mockRestore();
+});
+
+test('what holds it is clipped until it ends, also when it is cut short', async () => {
+  const on = motionOn();
+  const [holder, el] = [box(), box()];
+  flow(el, { x: 80, y: 0 }, holder);
+  expect(holder.style.overflow).toBe('clip');
+  el.getAnimations()[0].cancel();
+  await vi.waitFor(() => expect(holder.style.overflow).toBe(''));
   on.mockRestore();
 });
 
@@ -146,9 +156,10 @@ describe('a list', () => {
     on.mockRestore();
   });
 
-  test('no row passes its end in any frame, where the rows\' heights are no whole pixels', async () => {
+  test.each([1, 1.1])('no row passes its end in any frame, where the rows\' heights are no whole pixels, its panel drawn at scale %f', async (scale) => {
     const on = motionOn();
     const draw = list(['a', 'b', 'c'], 39.5);
+    document.querySelector('ul')!.parentElement!.style.transform = `scale(${scale})`;
     why('sort');
     draw(['c', 'b', 'a']);
     const ul = document.querySelector('ul')!;

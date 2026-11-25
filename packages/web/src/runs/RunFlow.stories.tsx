@@ -164,24 +164,25 @@ const long = stagesOf([
   runFull.timeline.at(-1)!,
 ]);
 
-/** The ring springs past the row's last box and the page doesn't scroll: its panel is clipped while the ring flows, also
- * when the ring is gone by then, and no longer. */
+/** The ring springs past the row's last box and the page doesn't scroll: the app's root is clipped while the ring flows,
+ * also when the ring is gone by then, and no longer. */
 export const RingFits: Story = {
   args: { stages: long },
   decorators: [
     (Story) => (
       // The page's room around a panel 2314 px wide inside.
       <div data-testid="page" className="overflow-auto p-4" style={{ width: 2314 + 66 }}>
-        <Panel title="Flow">
-          <Story />
-        </Panel>
+        <div id="root">
+          <Panel title="Flow">
+            <Story />
+          </Panel>
+        </div>
       </div>
     ),
   ],
   render: RingFlows.render,
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const panel = canvas.getByRole('region', { name: 'Flow' });
-    const overflow = () => getComputedStyle(panel).overflow;
+    const overflow = () => getComputedStyle(document.getElementById('root')!).overflow;
     const boxes = canvas.getAllByRole('button');
     const top = boxes[0].offsetTop;
     const last = boxes.filter((box) => box.offsetTop === top).at(-1)!;
