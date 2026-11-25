@@ -59,7 +59,12 @@ html[data-dir]::view-transition-new(page) { animation-name: vt-in-dir; }
 ::view-transition-old(run-title), ::view-transition-new(run-title) { animation-duration: calc(160ms * var(--k)); height: 100%; width: auto; }
 
 /* Liquid glass (liquid.js). */
-.m-melt { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; filter: url(#melt); }
+.m-copy { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.m-melt { filter: url(#melt); }
+.m-goo { position: fixed; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; filter: url(#goo); }
+.m-goo > i { position: absolute; background: rgb(96 74 190); }
+html:not(.dark) .m-goo > i { background: rgb(214 226 250); }
+.m-surface { position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: 90; pointer-events: none; }
 main { position: relative; z-index: 1; }
 .m-rim { position: fixed; z-index: 90; width: 600px; height: 600px; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%);
   background: radial-gradient(closest-side, transparent 84%, rgb(255 255 255 / 0.05) 88%, rgb(255 255 255 / 0.34) 95%, rgb(126 249 255 / 0.22) 97%, transparent 100%); }

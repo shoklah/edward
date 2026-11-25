@@ -4,7 +4,8 @@ const html = document.documentElement, main = $('#main');
 const tpl = (id) => document.getElementById('t-' + id).content.cloneNode(true);
 
 const MOMENTS = {
-  switch: ['Page switch', { off: 'Off', settle: 'Settle: fade and rise', cross: 'Crossfade', dir: 'Slide, by rail order', drops: 'Melt and inflate: droplets', drop: 'Melt and inflate: one drop' }],
+  switch: ['Page switch', { off: 'Off', settle: 'Settle: fade and rise', cross: 'Crossfade', dir: 'Slide, by rail order', drain: 'Drain', mercury: 'Mercury', wash: 'Wash', drip: 'Drip' }],
+  wave: ['Import wave', { off: 'Off', ring: 'Ring', water: 'Water', refract: 'Water, the page bends' }],
   rail: ['Rail pill', { off: 'Off', glide: 'Glides', flow: 'Flows like a drop' }],
   title: ['Open a run', { off: 'As page switch', morph: 'Title travels' }],
   values: ['Values change', { off: 'Off', glow: 'Glow', swap: 'Swap', both: 'Swap and glow', ripple: 'Wave, values condense' }],
@@ -22,10 +23,12 @@ const PRESETS = {
   quiet: { label: 'A Quiet', set: { switch: 'settle', values: 'swap', row: 'fade', ring: 'detail', feedIn: 'drop', feedOut: 'fade', showing: 'settle' } },
   moments: { label: 'B Moments', set: { switch: 'settle', rail: 'glide', values: 'glow', eye: 'blink', row: 'slide', sort: 'move', graph: 'stages', ring: 'glide', feedIn: 'drop', feedOut: 'sweep', showing: 'settle' } },
   playful: { label: 'C Playful', set: { switch: 'dir', rail: 'glide', title: 'morph', values: 'both', eye: 'blink', row: 'slide', sort: 'move', graph: 'draw', ring: 'glide', feedIn: 'drop', feedOut: 'sweep', showing: 'settle' } },
-  drops: { label: 'D1 Droplets', set: { switch: 'drops', rail: 'flow', title: 'morph', values: 'ripple', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
-  drop: { label: 'D2 One drop', set: { switch: 'drop', rail: 'flow', title: 'morph', values: 'ripple', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
+  drain: { label: 'Drain', set: { switch: 'drain', rail: 'flow', title: 'morph', values: 'ripple', wave: 'refract', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
+  mercury: { label: 'Mercury', set: { switch: 'mercury', rail: 'flow', title: 'morph', values: 'ripple', wave: 'water', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
+  wash: { label: 'Wash', set: { switch: 'wash', rail: 'flow', title: 'morph', values: 'ripple', wave: 'refract', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
+  drip: { label: 'Drip', set: { switch: 'drip', rail: 'flow', title: 'morph', values: 'ripple', wave: 'ring', eye: 'blink', row: 'liquid', sort: 'liquid', graph: 'draw', ring: 'flow', feedIn: 'drip', feedOut: 'melt', showing: 'settle' } },
 };
-let S = {}, preset = 'drops', k = 1, reduced = false;
+let S = {}, preset = 'wash', k = 1, reduced = false;
 const sysReduced = matchMedia('(prefers-reduced-motion: reduce)');
 const on = (m) => (reduced || sysReduced.matches ? 'off' : S[m] ?? 'off');
 
@@ -68,7 +71,7 @@ function go(p, link) {
   const mode = on('switch'), morph = p === 'run' && link && on('title') === 'morph' && document.startViewTransition;
   setRail(p, from);
   if (RAIL_SWITCH.includes(mode) && !morph && document.startViewTransition) {
-    liquidSwitch(mode, p, () => { change(); if (p === 'run') graphIn(); });
+    liquidSwitch(mode, p, () => { change(); if (p === 'run') graphIn(); }, from);
   } else if ((mode === 'cross' || mode === 'dir' || morph) && document.startViewTransition) {
     if (mode === 'dir') html.dataset.dir = ORDER.indexOf(railOf(p)) >= ORDER.indexOf(railOf(from)) ? 'down' : 'up';
     if (morph) link.style.viewTransitionName = 'run-title';
@@ -130,7 +133,7 @@ function feedItem() {
   const ul = feedList(); if (!ul) return;
   const item = document.getElementById('t-home').content.querySelector('[data-scroll-cue=block] li').cloneNode(true);
   $('a', item).textContent = ['Keep drafts across tabs', 'Trim the sync log daily', 'Name exports by notebook'][imports % 3]; $('time', item).textContent = $('#imported').textContent;
-  if (on('feedIn') === 'drip') { const delay = wave ? wave.delay(ul) : 0; setTimeout(() => { flip(() => $$('li', ul), () => ul.prepend(item), 560, { easing: SOFT, stagger: 16, last: true }); play(item, [{ opacity: 0, transform: 'translateY(-34px) scale(0.5, 1.2)' }, { opacity: 1, offset: 0.18 }, {}], 680, { delay: 150, easing: SOFT }); }, delay * k); }
+  if (on('feedIn') === 'drip') { const delay = wave ? wave.delay(ul) : 0; setTimeout(() => { flip(() => $$('li', ul), () => ul.prepend(item), 560, { easing: SOFT, stagger: 16, last: true }); play(item, [{ opacity: 0, transform: 'translateY(-34px) scale(0.5, 1.2)' }, { opacity: 1, offset: 0.18 }, {}], 680, { delay: 150, easing: SOFT }); item.style.transformOrigin = '0 0'; if (wave?.water) { const b = ul.getBoundingClientRect(); surface.drip(b.left + b.width / 2, b.top + 30, { R: 190, ms: 1400, amp: 0.9, pow: 1.6, train: 80 }); } }, delay * k); }
   else if (on('feedIn') === 'drop') { flip(() => $$('li', ul), () => ul.prepend(item)); play(item, [{ opacity: 0, transform: 'translateY(-8px)' }, {}], 180, { delay: 90 }); } else ul.prepend(item);
 }
 function emptyFeed() {
@@ -262,7 +265,7 @@ function renderCtl() {
   ctl.innerHTML = `<h3>Motion mockup <button data-do="shut">${ctl.classList.contains('shut') ? 'Open' : 'Hide'}</button></h3><div class="body">
   <div class="btns">${Object.entries(PRESETS).map(([id, p]) => `<button data-preset="${id}" aria-pressed="${preset === id}">${p.label}</button>`).join('')}</div>
   <div class="btns"><button class="act" data-do="land">Land an import</button><button class="act" data-do="run">Open a run</button><button class="act" data-do="replay">Replay</button></div>
-  <div class="btns"><button data-do="slow" aria-pressed="${k !== 1}">Slow ×5</button><button data-do="reduced" aria-pressed="${reduced}">Reduced motion</button><button data-do="theme">${html.classList.contains('dark') ? 'Light' : 'Dark'}</button></div>
+  <div class="btns"><button data-do="slow" aria-pressed="${k !== 1}">${k === 1 ? 'Full speed' : 'Slow ×' + k}</button><button data-do="reduced" aria-pressed="${reduced}">Reduced motion</button><button data-do="theme">${html.classList.contains('dark') ? 'Light' : 'Dark'}</button></div>
   <button data-do="more" aria-expanded="${more}">${more ? 'Hide each moment' : 'Choose each moment'}</button>${!more ? '' : Object.entries(MOMENTS).map(([id, [name, o]]) => `<label class="row"><span>${name}</span><select data-m="${id}">${Object.entries(o).map(([v, t]) => `<option value="${v}" ${(S[id] ?? 'off') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`).join('')}
   <p>Invented data. Rail, rows, headers, graph boxes, Refresh, Showing mode and the feed's broom work.</p></div>`;
 }
@@ -270,11 +273,11 @@ ctl.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.preset) { preset = b.dataset.preset; S = { ...PRESETS[preset].set }; renderCtl(); return; }
   ({ land, run: () => { if (page === 'run') page = 'x'; go('run'); }, replay: () => { const p = page; if (p === 'run') { page = 'work'; draw('work'); page = 'work'; setTimeout(() => go('run', $('a[href^="/runs/"]', main)), 350); } else { page = 'x'; go(p); } },
-    slow: () => { k = k === 1 ? 5 : 1; html.style.setProperty('--k', k); renderCtl(); }, reduced: () => { reduced = !reduced; renderCtl(); },
+    slow: () => { k = k === 1 ? 2 : k === 2 ? 5 : 1; html.style.setProperty('--k', k); renderCtl(); }, reduced: () => { reduced = !reduced; renderCtl(); },
     theme: () => { html.classList.toggle('dark'); renderCtl(); }, shut: () => { ctl.classList.toggle('shut'); renderCtl(); }, more: () => { more = !more; renderCtl(); } })[b.dataset.do]?.();
 });
 ctl.addEventListener('change', (e) => { S[e.target.dataset.m] = e.target.value; preset = 'custom'; renderCtl(); html.dataset.preset = 'custom'; });
 
 const nav = $('aside nav'); nav.classList.add('piloted'); nav.prepend(Object.assign(document.createElement('span'), { className: 'm-pill', ariaHidden: 'true' }));
-S = { ...PRESETS.drops.set }; renderCtl(); draw('home'); setRail('home');
+S = { ...PRESETS.wash.set }; renderCtl(); draw('home'); setRail('home');
 document.fonts.ready.then(() => setRail(page));
