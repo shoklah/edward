@@ -45,7 +45,7 @@ export function useLiveQuery<T>(path: string) {
     enabled: !status.isPending,
     placeholderData: keepPreviousData,
   });
-  useLanding(path, status.data, query.data !== undefined && !query.isPlaceholderData);
+  useLanding(path, status.data, query.data === undefined ? undefined : !query.isPlaceholderData);
   return query;
 }
 

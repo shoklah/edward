@@ -80,6 +80,34 @@ export const OnImport: Story = {
   },
 };
 
+/** An old number wider than its cell now is: it changes at once, since a cropped one would read as another number. */
+export const OnImportNoRoom: Story = {
+  render: () => (
+    <Import
+      draw={(landed) => (
+        <table>
+          <tbody>
+            <tr>
+              <td className="p-2">
+                <Num value={landed ? 2 : 1234567} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+    />
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const cell = canvas.getByRole('cell');
+    await expect(cell).toHaveTextContent('1,234,567');
+    const on = motionOn();
+    await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
+    await expect(cell.firstElementChild!.innerHTML).toBe('2');
+    await expect(played(canvasElement)).toEqual([]);
+    on.mockRestore();
+  },
+};
+
 /** On the backdrop (a goal section's totals), the dash in primary ink, still read out. */
 export const UnknownOnBackdrop: Story = {
   render: () => <Unknown backdrop />,

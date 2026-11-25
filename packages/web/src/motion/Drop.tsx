@@ -8,7 +8,7 @@ export const SMALL = { R: 110, ms: 1300, amp: 0.75, pow: 1.6, train: 60 };
 
 /** A changed number: its old look stands over it for `delay` ms, until the front is there, then melts off as the new one
  * forms inside a drop of glass that evaporates; without `drop` the two swap at once. Nothing around it moves: the glass
- * and the old number stand in the room its cell leaves, clipped to the cell. */
+ * and the old number stand in its cell, clipped to it, and where the old one no longer fits the new one shows at once. */
 export function Drop({ old, children, delay, drop, onDone }: { old: string; children: ReactNode; delay: number; drop: boolean; onDone: () => void }) {
   const box = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
@@ -17,16 +17,26 @@ export function Drop({ old, children, delay, drop, onDone }: { old: string; chil
     const glass = el.querySelector('i');
     const cell = el.closest('td, th, dd, button') ?? el;
     const [inner, outer] = [el, cell].map((e) => e.getBoundingClientRect());
-    const gx = Math.max(0, Math.min(inner.left - outer.left, outer.right - inner.right));
-    const gy = Math.max(0, Math.min(inner.top - outer.top, outer.bottom - inner.bottom));
-    el.style.padding = `${gy}px ${gx}px`;
-    el.style.margin = `${-gy}px ${-gx}px`;
-    if (glass) glass.style.inset = `${gy - Math.min(3, gy / 2)}px ${gx - Math.min(11, gx / 2)}px`;
+    const [left, top] = [Math.max(0, inner.left - outer.left), Math.max(0, inner.top - outer.top)];
+    const [right, bottom] = [Math.max(0, outer.right - inner.right), Math.max(0, outer.bottom - inner.bottom)];
+    const sides = [top, right, bottom, left];
+    const px = (lengths: number[]) => lengths.map((length) => `${length}px`).join(' ');
+    el.style.padding = px(sides);
+    el.style.margin = px(sides.map((side) => -side));
+    const [x, y] = [Math.min(11, Math.min(left, right) / 2), Math.min(3, Math.min(top, bottom) / 2)];
+    if (glass) glass.style.inset = px([top - y, right - x, bottom - y, left - x]);
     // The old number stands where it stood, whatever its width.
     const align = getComputedStyle(cell).textAlign;
-    was.style.top = `${gy}px`;
-    if (align === 'center') [was.style.left, was.style.translate] = ['50%', '-50%'];
-    else was.style[align === 'right' || align === 'end' ? 'right' : 'left'] = `${gx}px`;
+    was.style.top = `${top}px`;
+    if (align === 'center') [was.style.left, was.style.translate] = [`${left + inner.width / 2}px`, '-50%'];
+    else if (align === 'right' || align === 'end') was.style.right = `${right}px`;
+    else was.style.left = `${left}px`;
+    // Cropped, it would read as another number (half a pixel is a rectangle's rounding).
+    const stood = was.getBoundingClientRect();
+    if (stood.left < outer.left - 0.5 || stood.right > outer.right + 0.5) {
+      onDone();
+      return;
+    }
 
     const at = (ms: number, easing: string) => ({ delay: delay + ms, easing, fill: 'both' }) as const;
     const animations = glass
@@ -66,8 +76,8 @@ export function Drop({ old, children, delay, drop, onDone }: { old: string; chil
     };
   }, []);
   return (
-    <span ref={box} data-drop={drop ? 'drop' : 'swap'} className="relative inline-block overflow-clip">
-      {drop && <i aria-hidden className="pointer-events-none absolute drop-glass" />}
+    <span ref={box} data-drop={drop ? 'drop' : 'swap'} className="pointer-events-none relative inline-block overflow-clip">
+      {drop && <i aria-hidden className="absolute drop-glass" />}
       <span aria-hidden className="absolute whitespace-nowrap">
         {old}
       </span>

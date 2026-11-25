@@ -1,5 +1,6 @@
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { page } from 'vitest/browser';
 import type { StatusResponse } from '@cwd/shared';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -13,7 +14,7 @@ let on: { mockRestore(): void };
 let host: HTMLElement;
 let root: Root;
 
-type Landing = { at: number | null; viewing?: string | null; path?: string; drawn?: boolean; values: number[]; top?: number };
+type Landing = { at: number | null; viewing?: string | null; path?: string; drawn?: boolean | null; values: number[]; top?: number };
 
 const status = ({ at, viewing = null }: Pick<Landing, 'at' | 'viewing'>): StatusResponse | undefined =>
   at === null
@@ -31,9 +32,9 @@ function Cell({ value }: { value: number }) {
   return <td ref={ref} style={{ padding: 20 }}>{children}</td>;
 }
 
-/** A page's panel: what it draws of one live query. */
+/** A page's panel: what it draws of one live query (`drawn` null with no data, false with placeholder data). */
 function Probe({ path = '/api/home', drawn = true, values, top = 0, ...landing }: Landing) {
-  ripple.useLanding(path, status(landing), drawn);
+  ripple.useLanding(path, status(landing), drawn ?? undefined);
   return (
     <div className="glass" style={{ marginTop: top }}>
       <table>
@@ -137,6 +138,60 @@ test('the first status and a switch of account are no import', async () => {
   await render({ at: 12, viewing: 'mika-ito', values: [4] });
   expect(held()).toHaveLength(1);
 });
+
+test.each([['status', { at: null }], ['data', { at: 10, drawn: null }]] as const)('with no %s, what it knew starts afresh', async (_, none) => {
+  await render({ at: 10, values: [1] });
+  await render({ ...none, values: [1] });
+  await render({ at: 11, values: [2] });
+  expect(held()).toEqual([]);
+  expect(times()).toEqual([]);
+  await render({ at: 12, values: [3] });
+  expect(held()).toHaveLength(1);
+});
+
+test('placeholder data keeps what it knew', async () => {
+  await render({ at: 10, values: [1] });
+  await render({ at: 11, drawn: false, values: [1] });
+  await render({ at: 11, values: [2] });
+  expect(held()).toHaveLength(1);
+});
+
+test('a status gone and back with a later import, as showing mode starts, is no import', async () => {
+  const client = new QueryClient();
+  function Imports({ at }: { at: number | null }) {
+    ripple.useImports(status({ at }));
+    return <svg data-eye />;
+  }
+  const shell = async (at: number | null) => {
+    flushSync(() =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <Imports at={at} />
+        </QueryClientProvider>,
+      ),
+    );
+    await new Promise((done) => setTimeout(done));
+  };
+  // Earlier tests' water leaves first.
+  const waves = () => document.querySelectorAll('canvas[data-water="wave"]').length;
+  await vi.waitFor(() => expect(waves()).toBe(0), { timeout: 6000 });
+  for (const at of [10, null, 11]) await shell(at);
+  expect(times()).toEqual([]);
+  // One not answered yet, its data still on the way, is forgotten too.
+  let answer = () => {};
+  const fetching = client.fetchQuery({ queryKey: ['/api/home'], queryFn: () => new Promise((resolve) => (answer = () => resolve(1))) });
+  await shell(12);
+  expect(times()).toEqual([260]);
+  await shell(null);
+  await shell(12);
+  answer();
+  await fetching;
+  await shell(12);
+  expect(waves()).toBe(0);
+  // Another import, with nothing on the way, is answered.
+  await shell(13);
+  expect(waves()).toBe(1);
+}, 15_000);
 
 test('placeholder data lands nothing', async () => {
   await render({ at: 10, values: [1] });

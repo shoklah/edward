@@ -7,7 +7,7 @@ import { Drop, SMALL } from './Drop.tsx';
 import { centre, importSource, inWindow, reach } from './place.ts';
 import { JELLY, motionRuns, play } from './play.ts';
 import { drop } from './water.ts';
-import { frontAt, panelsOf } from './wash.ts';
+import { clipRoot, frontAt, panelsOf } from './wash.ts';
 
 /** What a commit changed: the front's delay is measured at `at`. With `counts` false it starts no wave, and lands only in
  * one something else starts; a `number` may get one of the wave's drops. */
@@ -75,6 +75,8 @@ function startWave(of: string): NonNullable<typeof wave> {
   if (line) play('ripple', line, [{ transform: 'scale(0.86, 1.3)' }, { transform: 'none' }], 900, { easing: JELLY });
   const main = document.getElementById('main');
   if (main) {
+    // Until the last panel's bob is over.
+    clipRoot(front.ms + 1200);
     if (!document.querySelector('[data-copy="page"]')) bend(main, { ...front, ms: 2240 }, 'bend');
     for (const panel of panelsOf(main)) {
       const to = centre(panel.getBoundingClientRect());
@@ -90,21 +92,23 @@ function startWave(of: string): NonNullable<typeof wave> {
 }
 
 /** Calls `land` in the commit that first draws a later import than the last one drawn for the same `key` and viewed
- * account. */
-function useLater(key: string, status: StatusResponse | undefined, drawn: boolean, land: (at: string) => void): void {
+ * account. `drawn` is undefined with no data, which, as no status does, starts afresh; placeholder data isn't drawn. */
+function useLater(key: string, status: StatusResponse | undefined, drawn: boolean | undefined, land: (at: string) => void): void {
   const last = useRef<{ of: string; at: string } | null>(null);
   const of = JSON.stringify([key, status?.account?.viewing ?? null]);
+  const known = status !== undefined && drawn !== undefined;
   const at = drawn ? status?.lastGoodImportAt : null;
   useLayoutEffect(() => {
+    if (!known) last.current = null;
     if (!at) return;
     const was = last.current;
     last.current = { of, at };
     if (was?.of === of && at > was.at) land(at);
-  }, [of, at]);
+  }, [known, of, at]);
 }
 
-/** An import's data landed: `path`'s, drawn (no longer placeholder data). */
-export function useLanding(path: string, status: StatusResponse | undefined, drawn: boolean): void {
+/** An import's data landed: `path`'s, `drawn` (false while it is placeholder data, undefined while there is none). */
+export function useLanding(path: string, status: StatusResponse | undefined, drawn: boolean | undefined): void {
   useLater(path, status, drawn, (at) => {
     landed = at;
     settleSoon();
@@ -124,6 +128,7 @@ export function useImports(status: StatusResponse | undefined): void {
     }
   });
   useEffect(() => {
+    if (!status) unanswered.current = null;
     const at = unanswered.current;
     // Asked again, since this commit's own queries may have just started.
     if (at === null || queryClient.isFetching() > 0) return;

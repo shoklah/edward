@@ -422,22 +422,28 @@ test.describe('an import', () => {
   });
 
   test('nothing scrolls or grows through its wave', async ({ page }) => {
-    for (const path of ['/', '/weeks']) {
+    // On a wide window a panel's bob is larger than the space beside it.
+    for (const [path, width] of [['/', 1440], ['/weeks', 1440], ['/', 3440], ['/weeks', 3440]] as const) {
+      await page.setViewportSize({ width, height: 900 });
       await page.goto(path, { waitUntil: 'networkidle' });
       const size = () => page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]);
       const rest = await size();
+      expect(rest[0]).toBe(width);
       const sizes = page.evaluate(async () => {
-        const moving = () => document.getAnimations().some((a) => a.id === 'ripple' && a.effect!.getTiming().duration === 1200);
-        while (!moving()) await new Promise(requestAnimationFrame);
+        const bobs = () => document.getAnimations().filter((a) => a.id === 'ripple' && a.effect!.getTiming().duration === 1200);
+        while (bobs().length === 0) await new Promise(requestAnimationFrame);
         const seen = new Set<string>();
-        while (moving()) {
+        // Stepped, all at once, since a browser's own frames can miss a bob's farthest, early on.
+        for (const bob of bobs()) bob.pause();
+        for (let ms = 0; ms <= 1200; ms += ms < 200 ? 1 : 20) {
+          for (const bob of bobs()) bob.currentTime = bob.effect!.getTiming().delay! + ms;
           seen.add(JSON.stringify([document.documentElement.scrollWidth, document.documentElement.scrollHeight]));
-          await new Promise(requestAnimationFrame);
         }
         return [...seen].map((s) => JSON.parse(s));
       });
       await landImport(page, { '/api/home': moreRuns, '/api/weeks': (weeks) => { for (const w of weeks.weeks) w.laterFixes += 1; } });
-      expect(await sizes).toEqual([rest]);
+      expect(await sizes, `${path} at ${width} px`).toEqual([rest]);
+      await expect.poll(() => page.evaluate(() => getComputedStyle(document.getElementById('root')!).overflow)).toBe('visible');
       await page.unrouteAll();
     }
   });

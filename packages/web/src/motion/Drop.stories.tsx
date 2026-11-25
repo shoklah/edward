@@ -90,7 +90,7 @@ export const Inside: Story = {
       )}
     />
   ),
-  play: async ({ canvas, canvasElement, userEvent }) => {
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
     const container = canvasElement.querySelector('[data-slot="table-container"]')!;
     const cells = [...canvasElement.querySelectorAll('tr:last-child td')];
     const rects = () => cells.map((cell) => cell.getBoundingClientRect().toJSON());
@@ -142,6 +142,54 @@ export const Inside: Story = {
       }
     });
     await expect(shown).toBeGreaterThan(0);
+    await waitFor(() => expect(args.onDone).toHaveBeenCalledTimes(3));
+    on.mockRestore();
+  },
+};
+
+/** A narrower new number, in a right-aligned cell with no right padding and in one padded all round, dropping and
+ * swapping: the old one stands whole where it stood, inside its cell. */
+export const Narrower: Story = {
+  decorators: [width(420)],
+  render: (args) => (
+    <Start
+      draw={(started) => (
+        <table>
+          <tbody>
+            {[true, false].map((drop) => (
+              <tr key={String(drop)}>
+                {[['24', '2', 'py-0.5 pl-3'], ['12.4', '–', 'p-2']].map(([old, now, padding]) => (
+                  <td key={old} className={`w-24 ${padding} ${NUM}`}>
+                    <span>{started ? <Drop {...args} old={old} drop={drop}>{now}</Drop> : old}</span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    />
+  ),
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
+    const numbers = [...canvasElement.querySelectorAll('td > span')];
+    const at = numbers.map((el) => el.getBoundingClientRect());
+    const on = motionOn();
+    await userEvent.click(canvas.getByRole('button'));
+    const boxes = [...canvasElement.querySelectorAll('[data-drop]')];
+    await expect(boxes.map((box) => box.getAttribute('data-drop'))).toEqual(['drop', 'drop', 'swap', 'swap']);
+    for (const [i, box] of boxes.entries()) {
+      const was = box.querySelector(':scope > span[aria-hidden]')!.getBoundingClientRect();
+      const clip = box.getBoundingClientRect();
+      for (const side of ['left', 'top'] as const) await expect(was[side]).toBeGreaterThanOrEqual(clip[side] - 0.02);
+      for (const side of ['right', 'bottom'] as const) await expect(was[side]).toBeLessThanOrEqual(clip[side] + 0.02);
+      for (const side of ['left', 'right'] as const) await expect(was[side]).toBeCloseTo(at[i][side], 1);
+      // The clip is the cell's, so the glass stays in it too.
+      const cell = box.closest('td')!.getBoundingClientRect();
+      for (const side of ['left', 'top', 'right', 'bottom'] as const) await expect(clip[side]).toBeCloseTo(cell[side], 1);
+    }
+    await expect(args.onDone).not.toHaveBeenCalled();
+    finish(canvasElement);
+    await waitFor(() => expect(args.onDone).toHaveBeenCalledTimes(4));
     on.mockRestore();
   },
 };

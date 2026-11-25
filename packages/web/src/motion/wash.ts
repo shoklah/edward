@@ -91,7 +91,6 @@ function blocks(main: HTMLElement): Element[] {
 let pending: { at: number; copy: { el: HTMLElement; at: DOMRect } | null } | null = null;
 /** Stops the running wave, its light aside. */
 let stopWave: (() => void) | null = null;
-let unclip = 0;
 /** Whether the filters and the shader have run. */
 let prepared = false;
 
@@ -104,6 +103,21 @@ export const wash = {
     endBends();
   },
 };
+
+/** When the last clip of the app's root ends, and what ends it. */
+let clippedUntil = 0;
+let unclip = 0;
+
+/** Clips the app's root for `ms`, so nothing in flight in it makes the page scroll; `clip` makes no scroller, so the
+ * sticky rail and feed still stick. */
+export function clipRoot(ms: number): void {
+  const root = document.getElementById('root');
+  if (!root) return;
+  root.style.overflow = 'clip';
+  clippedUntil = Math.max(clippedUntil, performance.now() + ms);
+  clearTimeout(unclip);
+  unclip = window.setTimeout(() => (root.style.overflow = ''), clippedUntil - performance.now());
+}
 
 /** The wave of a page switch: the old page's copy washes away behind the front, and the new page's blocks condense once
  * it has passed, those added meanwhile included. */
@@ -131,11 +145,7 @@ function wave(main: HTMLElement, source: DOMRect, copy: { el: HTMLElement; at: D
       });
     }
   };
-  // No block in flight makes the page scroll; `clip` makes no scroller, so the sticky rail and feed still stick.
-  const root = document.getElementById('root')!;
-  root.style.overflow = 'clip';
-  clearTimeout(unclip);
-  unclip = window.setTimeout(() => (root.style.overflow = ''), 1600);
+  clipRoot(1600);
 
   const watch = new MutationObserver((records) => {
     const added = records.flatMap((record) => [...record.addedNodes]);
