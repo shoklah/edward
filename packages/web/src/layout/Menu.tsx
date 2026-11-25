@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 import type { LinkProps } from '@tanstack/react-router';
 import {
-  Bot, CalendarDays, CircleDollarSign, Gauge, House, Layers, ListChecks, Menu as MenuIcon, Puzzle, SearchCheck,
+  Bot, CalendarDays, CircleDollarSign, Gauge, House, Layers, ListChecks, Menu as MenuIcon, Package, Puzzle, SearchCheck,
   ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -36,6 +36,7 @@ const SECTIONS: { name: string | null; entries: Entry[] }[] = [
     { to: '/compliance', label: 'Compliance', icon: ShieldCheck },
     { to: '/steps', label: 'Steps and rules', icon: ListChecks },
     { to: '/skills', label: 'Skills', icon: Puzzle },
+    { to: '/kits', label: 'Kits', icon: Package },
     { to: '/models', label: 'Models and advisor', icon: Bot },
   ] },
 ];
