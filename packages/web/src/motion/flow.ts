@@ -93,11 +93,13 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
     if (!why) {
       const fresh = rows.filter(({ key }) => !held!.has(key));
       const shown = fresh.find(({ el }) => inWindow(el));
+      // A row brought onto the page is drawn at once, so the rest is: waiting at its old place, one would stand on it.
+      const moved = rows.some(({ key, isNew }) => isNew && held!.has(key)) ? [] : below;
       // Scrolled past its head, the browser keeps what is read in place: there its rows haven't moved.
-      const at = shown ?? (below.length > 0 && inWindow(rows[0].el) ? below[0] : null);
+      const at = shown ?? (moved.length > 0 && inWindow(rows[0].el) ? moved[0] : null);
       if (!at) return;
       const land = (delay: number) => {
-        for (const [i, row] of below.entries()) slide(row.el, row.from, 560, delay + 16 * lastFirst(i));
+        for (const [i, row] of moved.entries()) slide(row.el, row.from, 560, delay + 16 * lastFirst(i));
         for (const { el } of fresh) fall(el, el.getBoundingClientRect().height / scale, delay);
         if (!shown) return;
         light.current = window.setTimeout(() => {

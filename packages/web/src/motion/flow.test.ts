@@ -324,14 +324,25 @@ describe('a list an import changes', () => {
     expect(played(document.body)).toEqual([]);
   });
 
-  test('a row it held, brought onto the page, is drawn at once', async () => {
-    const draw = await list({ keys: ['a', 'b'], all: ['a', 'b', 'c'] });
-    await draw({ keys: ['b', 'c'], all: ['b', 'c'] });
+  test('a row it held, brought onto the page, is drawn at once, and in a wave moves no other', async () => {
+    const draw = await list({ keys: ['a', 'b', 'c'], all: ['a', 'b', 'c', 'd', 'e'] });
+    await draw({ keys: ['b', 'c', 'd'], all: ['b', 'c', 'd', 'e'] });
     expect(played(document.body)).toEqual([]);
-    // Nor in a wave: only what moved, from where it stood.
-    await draw({ keys: ['c', 'b'], all: ['d', 'c', 'b'] }, false);
-    await draw({ keys: ['d', 'c'], all: ['d', 'c', 'b'], value: 1 });
-    expect(played(body())).toEqual([{ verb: 'flow', ms: 560, el: row('c') }]);
+    await draw({ keys: ['c', 'd', 'e'], all: ['c', 'd', 'e'], value: 1 });
+    expect(waves()).toBe(1);
+    const apart = () => {
+      const rects = [...body().children].map((el) => el.getBoundingClientRect());
+      for (const [i, { top }] of rects.entries()) if (i > 0) expect(top).toBeGreaterThanOrEqual(rects[i - 1].bottom);
+    };
+    expect(played(body())).toEqual([]);
+    apart();
+    await eachFrame(document.body, apart);
+  });
+
+  test('with one brought onto the page, a row new to it still lands, and no other moves', async () => {
+    const draw = await list({ keys: ['a', 'b', 'c'], all: ['a', 'b', 'c', 'd'] });
+    await draw({ keys: ['new', 'c', 'd'], all: ['new', 'c', 'd'] });
+    expect(played(body())).toEqual([{ verb: 'ripple', ms: 680, el: row('new') }]);
   });
 
   test('scrolled past its head, where the browser keeps what is read in place, it stays still in a wave', async () => {
