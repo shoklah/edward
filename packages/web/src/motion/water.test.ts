@@ -51,13 +51,14 @@ test('a second drop joins the first on the one canvas, which stays until both ar
 test.each([['dark', true], ['light', false]])('it draws its light in %s', async (mode, adds) => {
   document.documentElement.classList.toggle('dark', mode === 'dark');
   const pixels = new Uint8Array(4 * 300 * 300);
-  // Again while the shader's first frames outlast the drop, under load.
-  for (let tries = 0; tries < 8 && !pixels.some((value) => value > 8); tries++) {
-    drop(150, 150, { R: 120, ms: 2000, amp: 1.4, pow: 1.8, train: 150 });
-    const gl = canvases()[0].getContext('webgl2')!;
-    for (const start = performance.now(); performance.now() - start < 100; ) await frame();
-    gl.readPixels(0, gl.drawingBufferHeight - 300, 300, 300, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-  }
+  // A long drop, read early: its light holds for seconds, however slow the shader's first frames are under load.
+  drop(150, 150, { R: 120, ms: 10_000, amp: 1.4, pow: 1.8, train: 150 });
+  const canvas = canvases()[0];
+  const gl = canvas.getContext('webgl2')!;
+  for (const start = performance.now(); performance.now() - start < 500; ) await frame();
+  gl.readPixels(0, gl.drawingBufferHeight - 300, 300, 300, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  // Its frames end now rather than in 10 s.
+  canvas.dispatchEvent(new Event('webglcontextlost'));
   const over = Math.max(...Array.from({ length: 300 * 300 }, (_, i) => Math.max(...pixels.subarray(4 * i, 4 * i + 3)) - pixels[4 * i + 3]));
   expect(pixels.some((value) => value > 8)).toBe(true);
   expect(over > 8).toBe(adds);

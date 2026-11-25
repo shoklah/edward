@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { accessibleText, finish, motionOn, played } from '../test/motion.ts';
 import { endBends } from './bend.ts';
 import { Filters } from './Filters.tsx';
+import { wash } from './wash.ts';
 
 let ripple: typeof import('./ripple.ts');
 let fresh = 0;
@@ -271,4 +272,19 @@ test('a filter changing a number inside its drop ends the drop', async () => {
   await render({ at: 11, values: [2] });
   await render({ at: 11, path: '/api/home?weeks=8', values: [3] });
   expect(cell(0).innerHTML).toBe('3');
+});
+
+test("an import's second drop doesn't fall once the copies are cleared, as showing mode starts", async () => {
+  // Earlier tests' water leaves first.
+  await vi.waitFor(() => expect(document.querySelector('canvas[data-water]')).toBeNull(), { timeout: 6000 });
+  // How many drops each of the shader's frames sums.
+  const sums = vi.spyOn(WebGL2RenderingContext.prototype, 'uniform1i');
+  await render({ at: 10, values: [1] });
+  await render({ at: 11, values: [2] });
+  wash.clear();
+  await new Promise((done) => setTimeout(done, 600));
+  await new Promise(requestAnimationFrame);
+  expect(sums).toHaveBeenCalled();
+  expect(Math.max(...sums.mock.calls.map(([, n]) => n))).toBe(1);
+  sums.mockRestore();
 });

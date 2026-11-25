@@ -70,6 +70,8 @@ test('eachFrame checks every frame of what plays, to its end, and fits sees a sc
   expect(times).toHaveLength(40);
   expect([times[0], times.at(-1)]).toEqual([10, 400]);
   expect(played(scroller)).toEqual([]);
+  // With nothing playing it checks nothing, so it fails.
+  await expect(eachFrame(scroller, () => {})).rejects.toThrow();
   expect(() => fits(scroller)).not.toThrow();
   el.style.width = '101px';
   expect(() => fits(scroller)).toThrow();

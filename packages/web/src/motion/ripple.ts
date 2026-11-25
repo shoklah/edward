@@ -8,7 +8,7 @@ import { Drop, SMALL } from './Drop.tsx';
 import { centre, importSource, inWindow, reach } from './place.ts';
 import { JELLY, motionRuns, play } from './play.ts';
 import { drop } from './water.ts';
-import { panelsOf } from './wash.ts';
+import { cleared, panelsOf } from './wash.ts';
 
 /** What a commit changed: the front's delay is measured at `at`. With `counts` false it starts no wave, and lands only in
  * one something else starts; a `number` may get one of the wave's drops. */
@@ -66,7 +66,9 @@ function startWave(of: string): NonNullable<typeof wave> {
   const main = document.getElementById('main');
   const panels = main ? panelsOf(main).map((panel) => ({ panel, to: centre(panel.getBoundingClientRect()) })) : [];
   drop(x, y, { R, ms: 2240, amp: 1.5, pow, train: 230 });
-  setTimeout(() => drop(x, y, { R: R / 2, ms: 1600, amp: 0.8, pow, train: 120 }), 420);
+  const made = cleared();
+  // Not once the copies are dropped, as showing mode starts.
+  setTimeout(() => made === cleared() && drop(x, y, { R: R / 2, ms: 1600, amp: 0.8, pow, train: 120 }), 420);
   const line = document.querySelector('[data-imported]');
   if (line) play('ripple', line, [{ transform: 'scale(0.86, 1.3)' }, { transform: 'none' }], 900, { easing: JELLY });
   if (main && !document.querySelector('[data-copy="page"]')) bend(main, { ...front, ms: 2240 }, 'bend');

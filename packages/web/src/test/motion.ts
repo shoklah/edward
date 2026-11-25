@@ -30,9 +30,10 @@ export function finish(root: Element): void {
 }
 
 /** Steps what plays under `root` through one clock to its end, in 40 steps, calling `check` in a frame after each; then
- * lets it finish, as it would have. */
+ * lets it finish, as it would have. Fails when nothing plays. */
 export async function eachFrame(root: Element, check: () => void): Promise<void> {
   const all = animations(root);
+  expect(all.filter(({ playState }) => playState === 'running').length).toBeGreaterThan(0);
   for (const animation of all) animation.pause();
   const end = Math.max(...all.map(({ effect }) => effect!.getComputedTiming().endTime as number));
   for (let step = 1; step <= 40; step++) {

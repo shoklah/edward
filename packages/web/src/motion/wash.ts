@@ -173,14 +173,20 @@ export function wash(list: HTMLElement, keys: string[]): { left(remaining: strin
   };
 }
 
-/** Drops every copy, made or pending, and ends the bends. */
+/** Drops every copy, made or pending, and any arrival not yet taken, and ends the bends. */
 wash.clear = (): void => {
   pending = null;
+  arrived = false;
   clears += 1;
   stopWave();
   for (const layer of document.querySelectorAll('[data-copy]')) layer.remove();
   endBends();
 };
+
+/** How many times the copies have been dropped so far: what is due later is only for the page it was made on. */
+export function cleared(): number {
+  return clears;
+}
 
 /** Whether a page switch brought the reader here, once: not on a first load. */
 export function takeArrival(): boolean {
@@ -294,11 +300,10 @@ export function useWash(main: RefObject<HTMLElement | null>): ReactNode {
         });
       }),
       router.subscribe('onRendered', ({ fromLocation, toLocation, pathChanged }) => {
-        if (fromLocation && pathChanged) arrived = true;
         const switched = pending;
-        if (!switched) return;
-        wash.clear();
-        if (!motionRuns()) return;
+        if (switched) wash.clear();
+        if (fromLocation && pathChanged) arrived = true;
+        if (!switched || !motionRuns()) return;
         const { rect, link } = sourceOf(switched.at);
         wave(main.current!, rect, switched.copy, toLocation.pathname.startsWith('/runs/') ? link : null);
       }),

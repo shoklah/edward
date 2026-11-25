@@ -79,7 +79,7 @@ export const CopyToken: Story = {
     await expect(navigator.clipboard.writeText).toHaveBeenCalledOnce();
     await expect(navigator.clipboard.writeText).toHaveBeenCalledWith('EDWARD_TOKEN=ed_test');
     await waitFor(() => expect(copy).toHaveAccessibleName('Copied'));
-    await expect(copy.querySelector('.lucide-check')).toBeVisible();
+    await waitFor(() => expect(copy.querySelector('.lucide-check')).toBeVisible());
   },
 };
 

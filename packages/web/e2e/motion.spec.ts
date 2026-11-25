@@ -433,6 +433,37 @@ test.describe('a run', () => {
       });
       await still(() => page.getByRole('complementary').getByRole('button', { name: 'Stop showing' }).click());
     });
+
+    test("a run hidden while showing doesn't draw its graph when showing mode stops", async ({ page, request }) => {
+      // The kept list outlives the test's showing mode, so it is put back as it was.
+      const { projects } = await (await request.get('/api/showing')).json();
+      const kept = projects.filter((p: { picked: boolean }) => p.picked).map((p: { key: string }) => p.key);
+      try {
+        await watchPlayed(page);
+        await page.goto(FULL_RUN, { waitUntil: 'networkidle' });
+        await page.getByRole('complementary').getByRole('link', { name: 'Weeks' }).click();
+        await expect(title(page)).toHaveCount(0);
+        await rested(page);
+        // Showing another project than the run's, which hides it.
+        await page.getByRole('complementary').getByRole('switch', { name: 'Showing mode' }).click();
+        const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
+        await dialog.getByRole('checkbox', { name: 'lantern-notes' }).uncheck();
+        await dialog.getByRole('checkbox', { name: 'tidepool-api' }).check();
+        await dialog.getByRole('button', { name: 'Start showing' }).click();
+        await expect(dialog).toHaveCount(0);
+        await page.goBack();
+        await expect(page.getByText('No run with this key.')).toBeVisible();
+        await rested(page);
+        await takePlayed(page);
+        await page.getByRole('complementary').getByRole('button', { name: 'Stop showing' }).click();
+        await expect(flow(page)).toBeVisible();
+        await frames(page);
+        expect(drawn(await takePlayed(page))).toEqual([]);
+      } finally {
+        const response = await request.post('/api/showing/projects', { data: { projects: kept }, headers: { 'X-Dashboard-Refresh': '1' } });
+        expect(response.status()).toBe(204);
+      }
+    });
   });
 
   test("Back to a run draws its graph, its title doesn't travel", async ({ page }) => {
