@@ -39,6 +39,9 @@ document.addEventListener(
   true,
 );
 
+/** Where a wave starts when nothing it could start from shows. */
+const TOP_LEFT = new DOMRect(12, 12, 60, 36);
+
 /** Where a load started at `now` was called from: the link just pressed, once (with its text's size when it was in the
  * page), else the rail's current entry, the Menu button or the top left, whichever shows. */
 export function sourceOf(now: number): { rect: DOMRect; link: { size: number } | null } {
@@ -46,5 +49,11 @@ export function sourceOf(now: number): { rect: DOMRect; link: { size: number } |
   pressed = null;
   if (last && now - last.at < 1000 && !last.inDialog) return { rect: last.rect, link: last.inPage ? { size: last.size } : null };
   const shown = [...document.querySelectorAll('aside nav a[aria-current="page"], header [aria-haspopup="dialog"]')].find((el) => el.checkVisibility());
-  return { rect: shown?.getBoundingClientRect() ?? new DOMRect(12, 12, 60, 36), link: null };
+  return { rect: shown?.getBoundingClientRect() ?? TOP_LEFT, link: null };
+}
+
+/** Where an import's wave starts: the "Imported" line, else the Refresh button, else the top left, whichever shows. */
+export function importSource(): { x: number; y: number } {
+  const shown = ['[data-imported]', '[data-refresh]'].flatMap((place) => [...document.querySelectorAll(place)]).find((el) => el.checkVisibility());
+  return centre(shown?.getBoundingClientRect() ?? TOP_LEFT);
 }

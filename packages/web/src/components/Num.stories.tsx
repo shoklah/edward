@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
+import { accessibleText, eachFrame, Import, motionOn, played } from '../test/motion.ts';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from './ui/table.tsx';
 import { EmptyRow, GroupHead, Lines, Num, Text, Unknown } from './Num.tsx';
 
@@ -48,6 +49,34 @@ export const Values: Story = {
     await expect(canvas.getByTestId('formatted')).toHaveTextContent('12.40');
     await expect(canvas.getByTestId('text')).toHaveTextContent('main');
     await expect(canvas.getByTestId('no-text').querySelector('.sr-only')).toHaveTextContent('no branch');
+  },
+};
+
+/** An import that changed it: the old number melts off and the new one forms inside a drop, also where one was unknown;
+ * assistive tech reads the new one throughout. */
+export const OnImport: Story = {
+  render: () => (
+    <Import
+      draw={(landed) => (
+        <p>
+          <Num value={landed ? 1240 : 1234} />
+          {' and '}
+          <Num value={landed ? 7 : null} />
+        </p>
+      )}
+    />
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const numbers = [...canvasElement.querySelectorAll('p > span')];
+    const read = () => numbers.map(accessibleText);
+    await expect(read()).toEqual(['1,234', 'not known']);
+    const on = motionOn();
+    await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
+    await expect(numbers.map((el) => el.querySelector('[data-drop="drop"]')!.children[1].textContent)).toEqual(['1,234', '–']);
+    await expect(played(numbers[0]).map(({ verb, ms }) => [verb, ms])).toEqual([['ripple', 374], ['ripple', 1054], ['ripple', 2550]]);
+    await eachFrame(canvasElement, () => expect(read()).toEqual(['1,240', '7']));
+    await waitFor(() => expect(numbers.map((el) => [el.childNodes.length, el.innerHTML])).toEqual([[1, '1,240'], [1, '7']]));
+    on.mockRestore();
   },
 };
 

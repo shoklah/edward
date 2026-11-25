@@ -66,10 +66,15 @@ export function attach(kind: 'page' | 'items' | 'prepare', at: DOMRect, copies: 
   return layer;
 }
 
+/** A page's outermost panels in the window. */
+export function panelsOf(main: HTMLElement): Element[] {
+  const PANEL = '.glass, [data-slot="table-container"]';
+  return [...main.querySelectorAll(PANEL)].filter((el) => !el.parentElement!.closest(PANEL) && inWindow(el)).slice(0, 16);
+}
+
 /** A page's blocks in the window: its outermost panels, then the smallest set of elements covering what they don't. */
 function blocks(main: HTMLElement): Element[] {
-  const PANEL = '.glass, [data-slot="table-container"]';
-  const panels = [...main.querySelectorAll(PANEL)].filter((el) => !el.parentElement!.closest(PANEL) && inWindow(el)).slice(0, 16);
+  const panels = panelsOf(main);
   const loose: Element[] = [];
   const walk = (el: Element) => {
     for (const child of el.children) {
@@ -152,7 +157,8 @@ function wave(main: HTMLElement, source: DOMRect, copy: { el: HTMLElement; at: D
 
 /** Runs the filters and the shader unseen, so the first switch doesn't stall. */
 function prepare(main: HTMLElement): void {
-  if (prepared || !motionRuns()) return;
+  // Not while an import's wave bends the page, which this would end: at the next idle moment, then.
+  if (prepared || main.style.filter || !motionRuns()) return;
   prepared = true;
   warm();
   if (!wide()) return;

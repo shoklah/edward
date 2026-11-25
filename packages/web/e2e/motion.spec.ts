@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
-import { added, playing, watchAdded } from './motion.ts';
+import { added, landImport, playing, watchAdded } from './motion.ts';
 import { settled } from './settled.ts';
 
 // The one e2e file with motion on: the others run under reduced motion (`playwright.config.ts`).
@@ -314,5 +314,131 @@ test.describe('the page switch', () => {
       return [document.activeElement!.tagName, document.activeElement!.textContent];
     });
     expect(focused).toEqual(['H1', 'Weeks']);
+  });
+});
+
+test.describe('an import', () => {
+  test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
+
+  const drops = (page: Page) => page.locator('[data-drop]');
+  const filter = (page: Page) => page.locator('#main').evaluate((el) => el.style.filter);
+  const moreRuns = (home: any) => { home.thisWeek.runs.full += 3; };
+
+  test('an import with a change in the window starts the wave', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await landImport(page, { '/api/home': moreRuns });
+    await expect(page.locator('[data-drop="drop"]')).toHaveCount(2); // Full and All paths
+    expect(await filter(page)).toContain('motion-bend');
+    expect((await playing(page)).filter((a) => a.verb === 'ripple').map((a) => a.ms)).toContain(1200);
+    await page.mouse.wheel(0, 200);
+    await expect.poll(() => filter(page)).toBe('');
+    await expect(drops(page)).toHaveCount(0, { timeout: 8000 });
+  });
+
+  test('an import that changes nothing plays the small ripple', async ({ page }) => {
+    await watchAdded(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await landImport(page, {});
+    await expect.poll(async () => (await added(page)).canvases).toBe(1);
+    await expect(drops(page)).toHaveCount(0);
+    expect(await filter(page)).toBe('');
+    expect((await playing(page)).map((a) => a.ms)).not.toContain(1200);
+  });
+
+  test('a landing of /api/showing alone starts neither', async ({ page }) => {
+    await watchAdded(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/api/home', async (route) => {
+      await held;
+      await route.continue();
+    });
+    const showing = page.waitForResponse('**/api/showing');
+    await landImport(page, {});
+    await (await showing).finished();
+    await page.waitForTimeout(300);
+    expect(await added(page)).toMatchObject({ canvases: 0 });
+    release();
+    await expect.poll(async () => (await added(page)).canvases).toBe(1);
+    expect(await filter(page)).toBe('');
+    expect((await playing(page)).map((a) => a.ms)).not.toContain(1200);
+  });
+
+  test('with a dialog open the new numbers show at once, with the small ripple', async ({ page }) => {
+    await watchAdded(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    // The week's runs on the Full path, this week's.
+    const full = page.locator('table[aria-label="Runs"] tr', { hasText: 'Full' }).locator('td').first();
+    const was = Number(await full.textContent());
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await landImport(page, { '/api/home': moreRuns }, held);
+    await page.getByRole('complementary').getByRole('switch', { name: 'Showing mode' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    release();
+    await expect(full).toHaveText(String(was + 3));
+    await expect(drops(page)).toHaveCount(0);
+    await expect.poll(async () => (await added(page)).canvases).toBe(1);
+    expect(await filter(page)).toBe('');
+  });
+
+  test('the eye blinks on any import', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const blink = page.evaluate(async () => {
+      for (;;) {
+        const found = document.getAnimations().find((a) => a.id && (a.effect as KeyframeEffect).target!.matches('a[aria-label="edward, Home"] svg'));
+        if (found) return [found.id, found.effect!.getTiming().duration];
+        await new Promise(requestAnimationFrame);
+      }
+    });
+    await landImport(page, {});
+    expect(await blink).toEqual(['ripple', 260]);
+  });
+
+  test('preparing never ends the bend of an import under way', async ({ page }) => {
+    // The browser is idle only once the test says so.
+    await page.addInitScript(() => {
+      const waiting = new Map<number, () => void>();
+      let next = 0;
+      window.requestIdleCallback = (run) => {
+        waiting.set(++next, run as () => void);
+        return next;
+      };
+      window.cancelIdleCallback = (id) => void waiting.delete(id);
+      (window as unknown as { idle: () => void }).idle = () => {
+        for (const run of waiting.values()) run();
+        waiting.clear();
+      };
+    });
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await landImport(page, { '/api/home': moreRuns });
+    await expect(page.locator('[data-drop="drop"]')).toHaveCount(2);
+    const during = await page.evaluate(() => {
+      (window as unknown as { idle: () => void }).idle();
+      return [document.getElementById('main')!.style.filter, document.querySelectorAll('[data-copy]').length];
+    });
+    expect(during).toEqual(['url("#motion-bend")', 0]);
+  });
+
+  test('nothing scrolls or grows through its wave', async ({ page }) => {
+    for (const path of ['/', '/weeks']) {
+      await page.goto(path, { waitUntil: 'networkidle' });
+      const size = () => page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]);
+      const rest = await size();
+      const sizes = page.evaluate(async () => {
+        const moving = () => document.getAnimations().some((a) => a.id === 'ripple' && a.effect!.getTiming().duration === 1200);
+        while (!moving()) await new Promise(requestAnimationFrame);
+        const seen = new Set<string>();
+        while (moving()) {
+          seen.add(JSON.stringify([document.documentElement.scrollWidth, document.documentElement.scrollHeight]));
+          await new Promise(requestAnimationFrame);
+        }
+        return [...seen].map((s) => JSON.parse(s));
+      });
+      await landImport(page, { '/api/home': moreRuns, '/api/weeks': (weeks) => { for (const w of weeks.weeks) w.laterFixes += 1; } });
+      expect(await sizes).toEqual([rest]);
+      await page.unrouteAll();
+    }
   });
 });
