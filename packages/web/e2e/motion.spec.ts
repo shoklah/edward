@@ -316,3 +316,182 @@ test.describe('the page switch', () => {
     expect(focused).toEqual(['H1', 'Weeks']);
   });
 });
+
+test.describe('a run', () => {
+  const FULL_TITLE = 'Queue edits offline and replay them on reconnect';
+  const FULL_RUN = '/runs/97d6367dec7d9739';
+  test.beforeEach(({ page }) => page.setViewportSize({ width: 1440, height: 900 }));
+
+  const flow = (page: Page) => page.getByRole('group', { name: "The run's flow" });
+  const title = (page: Page) => page.getByRole('main').getByRole('heading', { level: 1, name: FULL_TITLE });
+  const rested = (page: Page) => expect.poll(() => playing(page)).toEqual([]);
+
+  type Played = { verb: string; ms: number; delay: number; tag: string; ring: boolean; inFlow: boolean };
+  /** Keeps, from the next load on, all that is played in the page. */
+  const watchPlayed = (page: Page) =>
+    page.addInitScript(() => {
+      const played: Played[] = ((window as unknown as { played: Played[] }).played = []);
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (this: Element, frames, options) {
+        const { id, duration, delay } = options as KeyframeAnimationOptions;
+        const inFlow = this.closest('[aria-label="The run\'s flow"]') !== null;
+        played.push({ verb: id!, ms: duration as number, delay: delay ?? 0, tag: this.tagName, ring: this.hasAttribute('data-ring'), inFlow });
+        return animate.call(this, frames, options);
+      };
+    });
+  /** All that was played since the last time it was read. */
+  const read = (page: Page) => page.evaluate(() => (window as unknown as { played: Played[] }).played.splice(0));
+  const drawn = (all: Played[]) => all.filter((a) => a.inFlow && !a.ring);
+  const frames = (page: Page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+
+  test('a run opened by its link: the title travels, then the graph draws itself', async ({ page }) => {
+    await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
+    await page.getByRole('link', { name: FULL_TITLE }).click();
+    await expect(page.getByRole('heading', { level: 1, name: FULL_TITLE })).toBeVisible();
+    // The graph starts in the frame after its page.
+    await frames(page);
+    const anims = await page.evaluate(() => document.getAnimations().filter((a) => a.id).map((a) => {
+      const el = (a.effect as KeyframeEffect).target!;
+      return { verb: a.id, tag: el.tagName, flow: !!el.closest('[aria-label="The run\'s flow"]'), ...a.effect!.getComputedTiming() };
+    }));
+    expect(anims.filter((a) => a.tag === 'H1')).toMatchObject([{ verb: 'flow', duration: 620 }]);
+    const drawn = anims.filter((a) => a.flow);
+    expect(drawn.filter((a) => a.tag === 'BUTTON').every((a) => a.verb === 'condense' && a.duration === 180)).toBe(true);
+    const delays = drawn.filter((a) => a.verb === 'condense').map((a) => a.delay!);
+    expect(Math.max(...delays) - Math.min(...delays)).toBeCloseTo(900, 0);
+    expect(drawn.some((a) => a.tag === 'path' && a.verb === 'flow' && a.duration === 260)).toBe(true);
+    await expect.poll(() => playing(page)).toEqual([]);
+  });
+
+  test("the title travels from its link's place and size, and the graph waits for its panel to be opaque", async ({ page }) => {
+    await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
+    const link = page.getByRole('link', { name: FULL_TITLE });
+    const at = (await link.boundingBox())!;
+    const size = await link.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    await link.click();
+    await expect(title(page)).toBeVisible();
+    await frames(page);
+    const { start, panel, first } = await page.evaluate(async () => {
+      const of = (el: Element) => el.getAnimations().find((a) => a.id)!;
+      const begins = async (a: Animation) => {
+        await a.ready;
+        const delay = a.effect!.getTiming().delay!;
+        return { delay, at: (a.startTime as number) + delay };
+      };
+      const start = (of(document.querySelector('#main h1')!).effect as KeyframeEffect).getKeyframes()[0].transform as string;
+      const flow = document.querySelector('[aria-label="The run\'s flow"]')!;
+      const item = flow.firstElementChild!.querySelector(':scope > :not(svg)')!;
+      return { start, panel: await begins(of(flow.closest('.glass')!)), first: await begins(of(item)) };
+    });
+    // The graph waits no longer than it has to, though a busy browser may start it some frames later.
+    expect(first.at - panel.at).toBeGreaterThan(180);
+    expect(first.delay - panel.delay).toBeLessThanOrEqual(190);
+    await rested(page);
+    const to = (await title(page).boundingBox())!;
+    const its = await title(page).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    const [x, y, scale] = start.match(/-?[\d.]+/g)!.map(Number);
+    expect(x).toBeCloseTo(at.x - to.x, 0);
+    expect(y).toBeCloseTo(at.y - to.y, 0);
+    expect(scale).toBeCloseTo(size / its, 2);
+  });
+
+  test("on a first load, a resize and a return to a box the graph doesn't draw", async ({ page }) => {
+    await watchPlayed(page);
+    await page.goto(FULL_RUN, { waitUntil: 'networkidle' });
+    await expect(flow(page)).toBeVisible();
+    await frames(page);
+    expect(await read(page)).toEqual([]);
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await frames(page);
+    expect(await read(page)).toEqual([]);
+    const boxes = [/^Task 1(?!\d)/, /^Task 2(?!\d)/, /^Task 1(?!\d)/].map((name) => flow(page).getByRole('button', { name }));
+    for (const box of boxes) {
+      await box.click();
+      await expect(box).toHaveAttribute('aria-pressed', 'true');
+      await frames(page);
+    }
+    const all = await read(page);
+    expect(drawn(all)).toEqual([]);
+    expect(all.filter((a) => a.ring)).toMatchObject([{ verb: 'flow', ms: 420 }, { verb: 'flow', ms: 420 }]);
+    expect(all.filter((a) => a.tag === 'SECTION')).toMatchObject([{ verb: 'condense', ms: 420 }, { verb: 'condense', ms: 420 }, { verb: 'condense', ms: 420 }]);
+  });
+
+  test.describe('showing mode', () => {
+    test.afterEach(async ({ request }) => {
+      const response = await request.post('/api/showing', { data: { projects: [] }, headers: { 'X-Dashboard-Refresh': '1' } });
+      expect(response.status()).toBe(204);
+    });
+
+    test("a run reached by a press doesn't draw again when showing mode starts", async ({ page }) => {
+      await watchPlayed(page);
+      await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
+      await page.getByRole('link', { name: FULL_TITLE }).click();
+      await expect(flow(page)).toBeVisible();
+      await rested(page);
+      expect(drawn(await read(page)).length).toBeGreaterThan(20);
+      // Marked, so the graph drawn after the reset is told from this one.
+      await flow(page).evaluate((el) => el.setAttribute('data-before', ''));
+      await page.getByRole('switch', { name: 'Showing mode' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
+      await dialog.getByRole('checkbox', { name: 'lantern-notes' }).check();
+      await dialog.getByRole('button', { name: 'Start showing' }).click();
+      await expect(dialog).toHaveCount(0);
+      await expect(flow(page)).toBeVisible();
+      await expect(flow(page)).not.toHaveAttribute('data-before');
+      await frames(page);
+      expect(drawn(await read(page))).toEqual([]);
+    });
+  });
+
+  test("Back to a run draws its graph, its title doesn't travel", async ({ page }) => {
+    await watchPlayed(page);
+    await page.goto(FULL_RUN, { waitUntil: 'networkidle' });
+    await page.getByRole('complementary').getByRole('link', { name: 'Weeks' }).click();
+    await expect(title(page)).toHaveCount(0);
+    await rested(page);
+    await read(page);
+    await page.goBack();
+    await expect(flow(page)).toBeVisible();
+    await rested(page);
+    const all = await read(page);
+    expect(drawn(all).some((a) => a.tag === 'BUTTON' && a.verb === 'condense')).toBe(true);
+    expect(all.filter((a) => a.tag === 'H1')).toMatchObject([{ verb: 'condense', ms: 640 }]);
+  });
+
+  test("a run opened from Home's feed, on the right, doesn't make the page scroll while its title travels", async ({ page }) => {
+    await watchPlayed(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const link = page.getByRole('region', { name: 'Since you last looked', exact: true }).locator('a[href^="/runs/"]').first();
+    expect((await link.boundingBox())!.x).toBeGreaterThan(900);
+    const sideways = await link.evaluate(async (el: HTMLElement) => {
+      el.click();
+      while (!document.querySelector('[data-copy="page"]')) await new Promise(requestAnimationFrame);
+      const sideways = [];
+      while (document.getAnimations().some((a) => a.id)) {
+        sideways.push(document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        await new Promise(requestAnimationFrame);
+      }
+      return sideways;
+    });
+    expect(sideways.length).toBeGreaterThan(20);
+    expect(Math.max(...sideways)).toBe(0);
+    expect((await read(page)).filter((a) => a.tag === 'H1')).toMatchObject([{ verb: 'flow', ms: 620 }]);
+  });
+
+  test("a run's data that comes after the wave draws the graph and leaves the title still", async ({ page }) => {
+    await watchPlayed(page);
+    await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
+    await page.route('**/api/runs/*', async (route) => {
+      await new Promise((done) => setTimeout(done, 1200));
+      await route.continue();
+    });
+    await page.getByRole('link', { name: FULL_TITLE }).click();
+    await expect(flow(page)).toBeVisible();
+    await rested(page);
+    const all = await read(page);
+    const boxes = drawn(all);
+    expect(boxes.some((a) => a.tag === 'BUTTON' && a.verb === 'condense')).toBe(true);
+    expect(Math.min(...boxes.map((a) => a.delay))).toBe(0);
+    expect(all.filter((a) => a.tag === 'H1')).toEqual([]);
+  });
+});

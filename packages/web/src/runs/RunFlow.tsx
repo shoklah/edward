@@ -3,6 +3,7 @@ import { CircleAlert } from 'lucide-react';
 import { cn } from 'cn';
 import { Time } from '../layout/StatusBanner.tsx';
 import { STEP_LABELS, WARNING_BORDER, WARNING_INK, formatWhole, plural, roundsLabel } from '../lib/format.ts';
+import { flow, useDraw } from '../motion/index.ts';
 import { layout, stuck, type Anchor, type Edge, type Placed, type Shape, type Stage, type Unit } from './flow.ts';
 
 type Pick = { selected: string | null; onSelect: (id: string | null) => void };
@@ -113,12 +114,7 @@ function Box({ box, selected, onSelect }: { box: Of<'unit'> } & Pick) {
       type="button"
       aria-pressed={on}
       onClick={() => onSelect(on ? null : unit.id)}
-      className={cn(
-        BOX,
-        'hover:bg-accent',
-        stuck(unit) && WARNING_BORDER,
-        on && 'outline-2 outline-offset-2 outline-ring',
-      )}
+      className={cn(BOX, 'hover:bg-accent', stuck(unit) && WARNING_BORDER)}
       style={at(box)}
     >
       <span className="truncate text-sm font-semibold">{name}</span>
@@ -145,9 +141,11 @@ function Chip({ chip }: { chip: Of<'chip'> }) {
 }
 
 /** The run as a graph, laid out by `layout` for the width it is given: edges as SVG paths, hidden from assistive
- * tech, and everything with text as HTML at its rectangle, in reading order (a box, its loop's label, its chips). */
+ * tech, and everything with text as HTML at its rectangle, in reading order (a box, its loop's label, its chips), then
+ * one ring at the selected box, which flows to the next one selected. */
 export function RunFlow({ stages, ...pick }: { stages: Stage[] } & Pick) {
   const frame = useRef<HTMLDivElement>(null);
+  const ring = useRef<HTMLDivElement>(null);
   const [avail, setAvail] = useState<number | null>(null);
   useLayoutEffect(() => {
     const el = frame.current!;
@@ -157,9 +155,17 @@ export function RunFlow({ stages, ...pick }: { stages: Stage[] } & Pick) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  useDraw(frame, avail !== null);
   const id = useId();
   const { shape, width, height, placed, edges } = useMemo(() => layout(stages, avail), [stages, avail]);
   const boxes = placed.filter((p): p is Of<'unit'> => p.kind === 'unit');
+  const selected = boxes.find((box) => box.unit.id === pick.selected);
+  const last = useRef<Of<'unit'> | undefined>(undefined);
+  useLayoutEffect(() => {
+    const was = last.current;
+    last.current = selected;
+    if (was && selected && was.unit.id !== selected.unit.id) flow(ring.current!, { x: was.x - selected.x, y: was.y - selected.y });
+  }, [selected]);
   const chipsOf = (unit: Unit) => placed.filter((p): p is Of<'chip'> => p.kind === 'chip' && p.unit === unit);
   const arrow = (tone: string) => `url(#${id}-${tone})`;
   return (
@@ -245,6 +251,15 @@ export function RunFlow({ stages, ...pick }: { stages: Stage[] } & Pick) {
               return <Chip key={i} chip={p} />;
           }
         })}
+        {selected && (
+          <div
+            ref={ring}
+            data-ring
+            aria-hidden
+            className="pointer-events-none absolute rounded-lg outline-2 outline-offset-2 outline-ring"
+            style={at(selected)}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { OUTCOME_GROUPS, type FindingRow } from '@cwd/shared';
 import { ArrowRight, X } from 'lucide-react';
 import { cn } from 'cn';
@@ -18,7 +18,7 @@ import {
   stepBy,
   verdictLabel,
 } from '../lib/format.ts';
-import { motionRuns } from '../motion/index.ts';
+import { condense, motionRuns } from '../motion/index.ts';
 import type { Unit, UnitKit } from './flow.ts';
 
 /** A finding's line: the Ended chip and every mark cell are this tall, so rules, dots and chip share a middle, a skipped
@@ -129,6 +129,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
   const kind = review ? STEP_LABELS[review.step] : name;
   const columns = Math.max(rounds.length, ...findings.map((f) => f.verdicts.length));
   const titleRow = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => condense(titleRow.current!.closest('section')!), [unit.id]);
   // A step's detail opening, or showing another step, brings its title row into view if it isn't (instant under
   // reduced motion); closing it doesn't scroll.
   useEffect(() => {
