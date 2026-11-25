@@ -17,11 +17,11 @@ import {
   verdictLabel,
 } from '../lib/format.ts';
 
-// A finding, and with `run` its run's key, project, branch and headline, as the Findings page lists them; `stepName`, on
-// the run page, its plan step's box title, its Step in place of the kind.
+// A finding, and with `run` its run's key, project, branch and headline, as the Findings and Kits pages list them;
+// `stepName`, on the run page, its plan step's box title, its Step in place of the kind.
 type Row = FindingRow & Partial<Pick<FindingItem, 'runKey' | 'project' | 'branch' | 'headline'>> & { stepName?: string };
 
-/** The run column, on the Findings page only: it folds into the opened row while the list is narrow. */
+/** The run column, with `run` only: it folds into the opened row while the list is narrow. */
 const RUN_COLUMN: ListColumn<Row> = {
   id: 'run',
   header: 'Run',
@@ -55,7 +55,7 @@ const columnsOf = (labels: Record<string, string>): ListColumn<Row>[] => [
   },
 ];
 
-/** The opened row's facts, one "Fix round N" per verdict of the finding with the most, then its project (the Findings page's rows only). */
+/** The opened row's facts, one "Fix round N" per verdict of the finding with the most, then its project (with `run` only). */
 const factsOf = (labels: Record<string, string>, rounds: number): ListFact<Row>[] => [
   ['Step', (f) => f.stepName ?? STEP_LABELS[f.step]],
   ['Task', taskLabel],
@@ -81,11 +81,11 @@ const FILTERS = [
 type FilterId = (typeof FILTERS)[number]['id'];
 
 /**
- * Every finding of the run in one list, filtered by step, severity and outcome: its id, summary, the app's call and
+ * Findings in one list, filtered by step, severity and outcome: its id, summary, the app's call and
  * the validity at first glance, the rest in its opened row with its labels (the workflow's, which win, and the app's;
  * each category named by `categoryLabels`, the response's). With `run`, a first column links each finding to its run.
- * On the run page, `heading` is its title, starting the filter row and naming its `Section` as a region, `label` names
- * the list's region, `skip` leaves out filters and `containerClassName` adds to the container's classes (its coloured
+ * `heading` is its title, starting the filter row and naming its `Section` as a region, `label` names the list's
+ * region, `skip` leaves out filters and `containerClassName` adds to the container's classes (the run page's coloured
  * side).
  */
 export function FindingsTable({
