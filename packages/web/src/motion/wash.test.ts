@@ -4,7 +4,7 @@ import { finish, motionOn, played } from '../test/motion.ts';
 import { condense } from './condense.ts';
 import { centre, sourceOf } from './place.ts';
 import { FIRM } from './play.ts';
-import { attach, copyOf, pageCopy, wash } from './wash.ts';
+import { attach, pageCopy, wash } from './wash.ts';
 
 afterEach(() => document.body.replaceChildren());
 
@@ -108,7 +108,7 @@ test('a copy keeps the ids its own url() references point to, renamed, so its gr
         <path id="named" marker-end="url(#outside)"></path>
       </svg>
     </main>`;
-  const copy = copyOf(document.querySelector('main')!);
+  const copy = pageCopy(document.querySelector('main')!);
   expect([copy, ...copy.querySelectorAll('[id]')].map((el) => el.id).filter(Boolean)).toEqual(['copy-fade', 'copy-:r1:-arrow']);
   const [path, other] = copy.querySelectorAll('path');
   expect([path.getAttribute('stroke'), path.getAttribute('marker-end')]).toEqual(['url(#copy-fade)', 'url(#copy-:r1:-arrow)']);
@@ -118,7 +118,7 @@ test('a copy keeps the ids its own url() references point to, renamed, so its gr
 
 test('clear drops every copy', () => {
   const el = document.body.appendChild(document.createElement('p'));
-  for (const kind of ['page', 'items', 'prepare'] as const) attach(kind, [copyOf(el)]);
+  for (const kind of ['page', 'items', 'prepare'] as const) attach(kind, [pageCopy(el)]);
   expect(document.querySelectorAll('[data-copy]')).toHaveLength(3);
   wash.clear();
   expect(document.querySelectorAll('[data-copy]')).toHaveLength(0);

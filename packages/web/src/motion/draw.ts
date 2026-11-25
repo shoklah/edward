@@ -3,10 +3,10 @@ import { condense } from './condense.ts';
 import { EASE_OUT, motionRuns, play } from './play.ts';
 import { opaqueIn, takeArrival } from './wash.ts';
 
-/** How far `(x, y)` is from `el`'s rectangle, both in its graph's own pixels, which no condensing panel scales. */
-function away({ x, y }: DOMPoint, { offsetLeft, offsetTop, offsetWidth, offsetHeight }: Pick<HTMLElement, 'offsetLeft' | 'offsetTop' | 'offsetWidth' | 'offsetHeight'>): number {
+/** How far `(x, y)` is from a box, both in its graph's own pixels, which no condensing panel scales. */
+function away({ x, y }: DOMPoint, { left, top, width, height }: DOMRect): number {
   const over = (at: number, start: number, size: number) => Math.max(start - at, 0, at - start - size);
-  return Math.hypot(over(x, offsetLeft, offsetWidth), over(y, offsetTop, offsetHeight));
+  return Math.hypot(over(x, left, width), over(y, top, height));
 }
 
 /** Draws the graph in `frame` in its children's own order, reading order, each line after the child it leaves, all
@@ -16,7 +16,7 @@ export function draw(frame: HTMLElement, after: number): void {
   const items = [...frame.querySelectorAll<HTMLElement>(':scope > * > :not(svg, [data-ring])')];
   const delays = items.map((_, i) => after + (900 * i) / (items.length - 1));
   // All read before the first is moved.
-  const boxes = items.map(({ offsetLeft, offsetTop, offsetWidth, offsetHeight }) => ({ offsetLeft, offsetTop, offsetWidth, offsetHeight }));
+  const boxes = items.map((item) => new DOMRect(item.offsetLeft, item.offsetTop, item.offsetWidth, item.offsetHeight));
   const lines = [...frame.querySelectorAll<SVGPathElement>(':scope > * > svg > path')].map((path) => {
     const start = path.getPointAtLength(0);
     const far = boxes.map((box) => away(start, box));

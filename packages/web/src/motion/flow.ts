@@ -29,7 +29,7 @@ export function flow(el: Element, from: { x: number; y: number }, within?: HTMLE
     420,
     { easing: 'ease-in', pseudoElement },
   );
-  if (animation) clip(animation.finished, within);
+  if (animation) clip([animation], within);
 }
 
 /** The pill of a `nav`'s current link, its `::before`, flows from the last current one's place once `path` changes. */
@@ -102,9 +102,9 @@ export function useFlow(list: RefObject<HTMLElement | null>, keys: string[], all
       const moved = crowded || !inWindow(rows[0].el) ? [] : below;
       const at = shown ?? moved[0];
       if (!at) return;
+      // All read before the first is moved.
+      const heights = fresh.map(({ el }) => el.getBoundingClientRect().height / scale);
       const land = (delay: number) => {
-        // All read before the first is moved.
-        const heights = fresh.map(({ el }) => el.getBoundingClientRect().height / scale);
         for (const [i, row] of moved.entries()) slide(row.el, row.from, 560, delay + 16 * lastFirst(i));
         for (const [i, { el }] of fresh.entries()) fall(el, heights[i], delay);
         if (!shown) return;

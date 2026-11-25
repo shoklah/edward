@@ -1,9 +1,9 @@
 /** How many things in flight each element is clipped for. */
 const flying = new WeakMap<HTMLElement, number>();
 
-/** Clips `el`, the app's root unless told, until `end` settles and nothing else in flight needs it clipped, so what is in
+/** Clips `el`, the app's root unless told, until `moving` ends and nothing else in flight needs it clipped, so what is in
  * flight in it makes nothing scroll; `clip` makes no scroller, so the sticky rail and feed still stick. */
-export function clip(end: Promise<unknown>, el = document.getElementById('root')): void {
+export function clip(moving: (Animation | null)[], el = document.getElementById('root')): void {
   if (!el) return;
   flying.set(el, (flying.get(el) ?? 0) + 1);
   el.style.overflow = 'clip';
@@ -13,5 +13,5 @@ export function clip(end: Promise<unknown>, el = document.getElementById('root')
     if (!left) el.style.overflow = '';
   };
   // A cancelled animation's end is a rejection.
-  end.then(lift, lift);
+  Promise.allSettled(moving.map((animation) => animation?.finished)).then(lift);
 }

@@ -213,8 +213,7 @@ test.describe('the page switch', () => {
   test('what a page adds during its wave condenses too, and what it adds after it does not', async ({ page }) => {
     const weeks = async (late: boolean) => {
       await page.goto('/work', { waitUntil: 'networkidle' });
-      let release = () => {};
-      const held = new Promise<void>((resolve) => (release = resolve));
+      const { held, release } = hold();
       await page.route('**/api/weeks*', async (route) => {
         await held;
         await route.continue();

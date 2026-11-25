@@ -14,7 +14,7 @@ const scrolled = new WeakMap<Element, { left: number; top: number }>();
 
 /** A detached copy of `el` as the reader saw it, with no filter, drop of water or typed password, and no `id` but the ones
  * its own `url(#…)`s point to (a graph's arrowheads and gradients), renamed so none is on the page twice. */
-export function copyOf(el: HTMLElement): HTMLElement {
+function copyOf(el: HTMLElement): HTMLElement {
   const copy = el.cloneNode(true) as HTMLElement;
   const twins = [copy, ...copy.querySelectorAll('*')];
   const named = twins.filter((twin) => twin.hasAttribute('id'));
@@ -223,15 +223,14 @@ function wave(main: HTMLElement, source: DOMRect, copy: HTMLElement | null, link
       const distance = Math.hypot(dx, dy) || 1;
       // React Flow measures its boxes in window pixels when they mount, so a block holding one isn't scaled.
       const scale = el.querySelector('.react-flow') ? '' : ' scale(0.9)';
-      const condensing = condense(el, {
+      moving.push(condense(el, {
         ms: 640,
         from: `translate(${(dx / distance) * 34}px, ${(dy / distance) * 34}px)${scale}`,
         delay: Math.max(0, reaches(distance + 0.15 * r.width, front) - (performance.now() - start)),
         origin: 'center',
-      });
-      moving.push(condensing);
+      }));
     }
-    clip(Promise.allSettled(moving.map((animation) => animation?.finished)));
+    clip(moving);
   };
 
   const watch = new MutationObserver((records) => {
@@ -242,6 +241,8 @@ function wave(main: HTMLElement, source: DOMRect, copy: HTMLElement | null, link
   const stop = () => {
     watch.disconnect();
     layer?.remove();
+    // It holds the old page's copy.
+    if (stopWave === stop) stopWave = () => {};
   };
   setTimeout(stop, front.ms);
   stopWave = stop;

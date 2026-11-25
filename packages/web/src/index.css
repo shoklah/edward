@@ -345,8 +345,7 @@
 }
 
 /* DESIGN.md's Motion: removed under prefers-reduced-motion. Every animation and transition ends at once, a dialog's
-   and a tooltip's included; the table's edge cue, an animation on its scroll timeline, still follows the scroll. A
-   transition takes 0s, since any longer one, on an element with no `transition` of its own, holds each change a frame. */
+   and a tooltip's included; the table's edge cue, an animation on its scroll timeline, still follows the scroll. */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;

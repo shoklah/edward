@@ -78,7 +78,7 @@ function startWave(of: string): NonNullable<typeof wave> {
       delay: Math.max(0, reaches(distance, front) - 120),
     });
   });
-  clip(Promise.allSettled(bobs.map((bob) => bob?.finished)));
+  clip(bobs);
   return { of, ...front, start: performance.now(), drops: 0 };
 }
 
