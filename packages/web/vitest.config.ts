@@ -23,6 +23,9 @@ export default mergeConfig(
     },
     test: {
       name: 'web',
+      // One file at a time: the files share the browser's main thread, and a file drawing water or a bend (in software,
+      // on CI) holds up another's frames until its timed motion fails.
+      fileParallelism: false,
       browser: {
         enabled: true,
         headless: true,
