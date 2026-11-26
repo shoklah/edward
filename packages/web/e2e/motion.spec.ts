@@ -154,17 +154,21 @@ test.describe('the page switch', () => {
 
   test('a press from a scrolled page keeps its copy until the front is done', async ({ page }) => {
     await page.goto('/steps', { waitUntil: 'networkidle' });
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    // Read where the page stands and press in one go, so nothing moves it in between.
-    const top = await page.evaluate(() => {
+    // Scrolled once the page is drawn, however long that takes.
+    await expect
+      .poll(() => page.evaluate(() => (window.scrollTo(0, document.documentElement.scrollHeight), document.getElementById('main')!.getBoundingClientRect().top)))
+      .toBeLessThan(0);
+    // Where the page stood, the press, and where its copy stands, in one go, so a slow browser moves nothing in between.
+    const { top, scrolled, at } = await page.evaluate(async () => {
       const { top } = document.getElementById('main')!.getBoundingClientRect();
       [...document.querySelectorAll<HTMLElement>('aside nav a')].find((a) => a.textContent === 'Weeks')!.click();
-      return top;
+      let layer: Element | null = null;
+      while (!(layer = document.querySelector('[data-copy="page"]'))) await new Promise(requestAnimationFrame);
+      return { top, scrolled: window.scrollY, at: layer.firstElementChild!.getBoundingClientRect().top };
     });
     expect(top).toBeLessThan(0);
-    await expect(copy(page)).toHaveCount(1);
-    expect(await page.evaluate(() => window.scrollY)).toBe(0);
-    expect(await copy(page).evaluate((el) => el.firstElementChild!.getBoundingClientRect().top)).toBe(top);
+    expect(scrolled).toBe(0);
+    expect(at).toBe(top);
     await expect(copy(page)).toHaveCount(0);
   });
 
@@ -365,6 +369,16 @@ test.describe('a run', () => {
   });
 
   test("the title travels from its link's place and size, and the graph waits for its panel to be opaque", async ({ page }) => {
+    // Every animation kept, so one a slow browser has already ended can still be read.
+    await page.addInitScript(() => {
+      const kept: Animation[] = ((window as unknown as { kept: Animation[] }).kept = []);
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (this: Element, frames, options) {
+        const animation = animate.call(this, frames, options);
+        kept.push(animation);
+        return animation;
+      };
+    });
     await page.goto('/work?view=runs', { waitUntil: 'networkidle' });
     const link = page.getByRole('link', { name: FULL_TITLE });
     const at = (await link.boundingBox())!;
@@ -373,7 +387,8 @@ test.describe('a run', () => {
     await expect(title(page)).toBeVisible();
     await frames(page);
     const { start, panel, first } = await page.evaluate(async () => {
-      const of = (el: Element) => el.getAnimations().find((a) => a.id)!;
+      const kept = (window as unknown as { kept: Animation[] }).kept;
+      const of = (el: Element) => kept.findLast((a) => a.id && (a.effect as KeyframeEffect).target === el)!;
       const begins = async (a: Animation) => {
         await a.ready;
         const delay = a.effect!.getTiming().delay!;
@@ -611,16 +626,19 @@ test.describe('an import', () => {
   });
 
   test('the eye blinks on any import', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
-    const blink = page.evaluate(async () => {
-      for (;;) {
-        const found = document.getAnimations().find((a) => a.id && (a.effect as KeyframeEffect).target!.matches('a[aria-label="edward, Home"] svg'));
-        if (found) return [found.id, found.effect!.getTiming().duration];
-        await new Promise(requestAnimationFrame);
-      }
+    // What the eye plays, as it starts, so a slow browser's frames miss none.
+    await page.addInitScript(() => {
+      const blinks: [string, unknown][] = ((window as unknown as { blinks: [string, unknown][] }).blinks = []);
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (this: Element, frames, options) {
+        const { id, duration } = options as KeyframeAnimationOptions;
+        if (this.matches('a[aria-label="edward, Home"] svg')) blinks.push([id!, duration]);
+        return animate.call(this, frames, options);
+      };
     });
+    await page.goto('/', { waitUntil: 'networkidle' });
     await landImport(page, {});
-    expect(await blink).toEqual(['ripple', 260]);
+    await expect.poll(() => page.evaluate(() => (window as unknown as { blinks: unknown[] }).blinks)).toContainEqual(['ripple', 260]);
   });
 
   test('preparing never ends the bend of an import under way', async ({ page }) => {
