@@ -109,16 +109,25 @@ test.describe('the page switch', () => {
     await page.goto('/work', { waitUntil: 'networkidle' });
     // How long the second one lasts: the first press's wave, stopped, doesn't end it.
     const lasted = await page.evaluate(async () => {
+      // When each copy came and went, as the page changed, whatever its frames take.
+      const came = new Map<Node, number>();
+      const lives: number[] = [];
+      const watch = new MutationObserver((records) => {
+        for (const { addedNodes, removedNodes } of records) {
+          for (const node of addedNodes) if ((node as HTMLElement).dataset?.copy === 'page') came.set(node, performance.now());
+          for (const node of removedNodes) if (came.has(node)) lives.push(performance.now() - came.get(node)!);
+        }
+      });
+      watch.observe(document.body, { childList: true });
       for (const name of ['Weeks', 'Spend']) {
         [...document.querySelectorAll<HTMLElement>('aside nav a')].find((a) => a.textContent === name)!.click();
         await new Promise((done) => setTimeout(done, 100));
       }
-      // From the second page's wave, however long its page takes to come.
-      const drawn = () => document.querySelector('h1')?.textContent === 'Spend' && document.querySelector('[data-copy="page"]');
-      while (!drawn()) await new Promise(requestAnimationFrame);
-      const start = performance.now();
-      while (document.querySelector('[data-copy="page"]')) await new Promise(requestAnimationFrame);
-      return performance.now() - start;
+      while (document.querySelector('h1')?.textContent !== 'Spend' || document.querySelector('[data-copy="page"]')) {
+        await new Promise(requestAnimationFrame);
+      }
+      watch.disconnect();
+      return lives.at(-1) ?? 0;
     });
     expect(lasted).toBeGreaterThan(750);
     await expect(page.getByRole('heading', { level: 1, name: 'Spend' })).toBeVisible();
@@ -146,9 +155,13 @@ test.describe('the page switch', () => {
   test('a press from a scrolled page keeps its copy until the front is done', async ({ page }) => {
     await page.goto('/steps', { waitUntil: 'networkidle' });
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    const top = await page.getByRole('main').evaluate((el) => el.getBoundingClientRect().top);
+    // Read where the page stands and press in one go, so nothing moves it in between.
+    const top = await page.evaluate(() => {
+      const { top } = document.getElementById('main')!.getBoundingClientRect();
+      [...document.querySelectorAll<HTMLElement>('aside nav a')].find((a) => a.textContent === 'Weeks')!.click();
+      return top;
+    });
     expect(top).toBeLessThan(0);
-    await rail(page).getByRole('link', { name: 'Weeks' }).click();
     await expect(copy(page)).toHaveCount(1);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     expect(await copy(page).evaluate((el) => el.firstElementChild!.getBoundingClientRect().top)).toBe(top);
