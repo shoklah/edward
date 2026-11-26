@@ -59,9 +59,10 @@ export const OnImport: Story = {
     <Import
       draw={(landed) => (
         <p>
-          <Num value={landed ? 1240 : 1234} />
+          {/* Each new number wider than the old one, which a cell no wider than the new one holds in every font. */}
+          <Num value={landed ? 12_340 : 1234} />
           {' and '}
-          <Num value={landed ? 7 : null} />
+          <Num value={landed ? 17 : null} />
         </p>
       )}
     />
@@ -74,8 +75,8 @@ export const OnImport: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Import' }));
     await expect(numbers.map((el) => el.querySelector('[data-drop="drop"]')!.children[1].textContent)).toEqual(['1,234', '–']);
     await expect(played(numbers[0]).map(({ verb, ms }) => [verb, ms])).toEqual([['ripple', 374], ['ripple', 1054], ['ripple', 2550]]);
-    await eachFrame(canvasElement, () => expect(read()).toEqual(['1,240', '7']));
-    await waitFor(() => expect(numbers.map((el) => [el.childNodes.length, el.innerHTML])).toEqual([[1, '1,240'], [1, '7']]));
+    await eachFrame(canvasElement, () => expect(read()).toEqual(['12,340', '17']));
+    await waitFor(() => expect(numbers.map((el) => [el.childNodes.length, el.innerHTML])).toEqual([[1, '12,340'], [1, '17']]));
   },
 };
 
