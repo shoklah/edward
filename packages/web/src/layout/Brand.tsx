@@ -8,7 +8,7 @@ const LOOK = 'flex items-center gap-2.5 px-3 pt-1 pb-2';
 export function Brand({ home, onNavigate }: { home?: boolean; onNavigate?: () => void }) {
   const mark = (
     <>
-      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <svg data-eye viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path
           d="M2 12c2.6-4.6 6-7 10-7s7.4 2.4 10 7c-2.6 4.6-6 7-10 7s-7.4-2.4-10-7z"
           fill="none"

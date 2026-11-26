@@ -23,7 +23,16 @@ export default mergeConfig(
     },
     test: {
       name: 'web',
-      browser: { enabled: true, headless: true, provider: playwright(), instances: [{ browser: 'chromium' }] },
+      // One file at a time: the files share the browser's main thread, and a file drawing water or a bend (in software,
+      // on CI) holds up another's frames until its timed motion fails.
+      fileParallelism: false,
+      browser: {
+        enabled: true,
+        headless: true,
+        // Under reduced motion, so a test sees the final state at once; one about motion turns it on (`motionOn`).
+        provider: playwright({ contextOptions: { reducedMotion: 'reduce' } }),
+        instances: [{ browser: 'chromium' }],
+      },
       projects: [
         // An absolute configDir, since the root config runs this project from the repo root.
         { plugins: [storybookTest({ configDir: fileURLToPath(new URL('.storybook', import.meta.url)) })], test: { name: 'stories' } },

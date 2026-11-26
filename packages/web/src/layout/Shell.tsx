@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { useRouter } from '@tanstack/react-router';
+import type { StatusResponse } from '@cwd/shared';
 import { useStatus } from '../api.ts';
 import { Button } from '../components/ui/button.tsx';
+import { useImports, useWash } from '../motion/index.ts';
 import { AccountLinks } from './AccountLinks.tsx';
 import { AccountSwitcher } from './AccountSwitcher.tsx';
 import { Brand } from './Brand.tsx';
@@ -10,6 +12,13 @@ import { Menu, MenuButton } from './Menu.tsx';
 import { RefreshButton } from './RefreshButton.tsx';
 import { ShowingControl } from './ShowingControl.tsx';
 import { Banner, StatusBanner, Time } from './StatusBanner.tsx';
+
+/** The shell's waves, apart, so what is fetching redraws nothing else. */
+function Waves({ main, status }: { main: RefObject<HTMLElement | null>; status: StatusResponse | undefined }) {
+  const filters = useWash(main);
+  useImports(status);
+  return filters;
+}
 
 /**
  * The frame of every page. From 768 px: a rail as tall as the window that stays put while the page scrolls, with the
@@ -33,7 +42,8 @@ export function Shell({ children }: { children: ReactNode }) {
   const viewing = status.data?.account?.viewing;
   const main = useRef<HTMLElement>(null);
   const router = useRouter();
-  useEffect(() => router.subscribe('onRendered', (event) => {
+  // Before the waves' effects: a wave leaves the focus where it is.
+  useLayoutEffect(() => router.subscribe('onRendered', (event) => {
     if (event.fromLocation && event.pathChanged) (main.current?.querySelector('h1') ?? main.current)?.focus({ preventScroll: true });
   }), [router]);
   return (
@@ -60,7 +70,7 @@ export function Shell({ children }: { children: ReactNode }) {
           {local && <RefreshButton importing={importing} />}
           <AccountLinks />
           {lastGood && (
-            <p className="px-3 text-xs text-muted-foreground">
+            <p data-imported className="px-3 text-xs text-muted-foreground">
               Imported <Time iso={lastGood} />
             </p>
           )}
@@ -77,6 +87,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {status.data && <StatusBanner status={status.data} />}
         <main ref={main} id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none">{children}</main>
       </div>
+      <Waves main={main} status={status.data} />
     </div>
   );
 }

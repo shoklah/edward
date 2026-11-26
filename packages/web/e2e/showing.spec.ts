@@ -2,6 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { pinClock } from './fixed-time.ts';
 import { settled } from './settled.ts';
+import { startShowing, stopShowing } from './showing.ts';
 
 // dev:fixtures' data has two projects, lantern-notes and tidepool-api; showing mode here shows lantern-notes only.
 // The mode is server state, so Playwright runs one worker and every test here stops it afterwards.
@@ -16,13 +17,7 @@ test.beforeEach(async ({ page }) => {
   await pinClock(page);
 });
 
-test.afterEach(async ({ request }) => {
-  const response = await request.post('/api/showing', {
-    data: { projects: [] },
-    headers: { 'X-Dashboard-Refresh': '1' },
-  });
-  expect(response.status()).toBe(204);
-});
+test.afterEach(({ request }) => stopShowing(request));
 
 test('showing lantern-notes hides tidepool-api from the pages', async ({ page }) => {
   const tidepoolRows = page.getByRole('row').filter({ hasText: /tidepool-api|fix\/retry-backoff/ });
@@ -71,10 +66,7 @@ test('in a short window the brand and the foot stay and the menu scrolls', async
   await page.setViewportSize({ width: 1440, height: 600 });
   await page.goto('/runs');
   const rail = page.getByRole('complementary');
-  await rail.getByRole('switch', { name: 'Showing mode' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Show which projects in full?' });
-  await dialog.getByRole('checkbox', { name: 'lantern-notes' }).check();
-  await dialog.getByRole('button', { name: 'Start showing' }).click();
+  await startShowing(page);
   await expect(rail.getByText('Showing: lantern-notes')).toBeInViewport();
   await expect(rail.getByRole('button', { name: 'Stop showing' })).toBeInViewport();
   await expect(rail.getByRole('button', { name: 'Refresh' })).toBeInViewport();

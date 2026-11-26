@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn } from 'storybook/test';
+import { motionOn, played } from '../test/motion.ts';
 import { RowToggle } from './RowToggle.tsx';
 
 const meta = { component: RowToggle, args: { open: false, onToggle: fn(), children: 'Review' } } satisfies Meta<typeof RowToggle>;
@@ -54,5 +56,28 @@ export const WithLink: Story = {
     await expect(button.querySelector('svg')).not.toHaveClass('text-muted-foreground');
     await userEvent.click(button);
     await expect(args.onToggle).toHaveBeenCalledOnce();
+  },
+};
+
+/** With motion, opening turns the chevron from its closed place; a first draw open and closing turn nothing. */
+export const Turns: Story = {
+  args: { open: true },
+  beforeEach: () => {
+    motionOn();
+  },
+  render: function Render(args) {
+    const [open, setOpen] = useState(args.open);
+    return <RowToggle {...args} open={open} onToggle={() => setOpen(!open)} />;
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const button = canvas.getByRole('button', { name: 'Review' });
+    await expect(played(canvasElement)).toEqual([]);
+    await userEvent.click(button);
+    await expect(played(canvasElement)).toEqual([]);
+    await userEvent.click(button);
+    const chevron = button.querySelector('svg')!;
+    await expect(played(canvasElement)).toEqual([{ verb: 'flow', ms: 160, el: chevron }]);
+    const { effect } = chevron.getAnimations()[0];
+    await expect((effect as KeyframeEffect).getKeyframes().map(({ transform }) => transform)).toEqual(['rotate(-90deg)', 'none']);
   },
 };

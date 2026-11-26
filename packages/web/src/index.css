@@ -127,6 +127,9 @@
     --sidebar-accent-foreground: var(--foreground);
     --sidebar-border: var(--panel-edge);
     --sidebar-ring: var(--ring);
+    --drop: linear-gradient(165deg, rgb(255 255 255 / 0.95), rgb(43 134 197 / 0.1) 50%, rgb(43 134 197 / 0.22));
+    --drop-edge: rgb(255 255 255 / 0.95);
+    --drop-shadow: inset 0 1px 0 #fff, inset 0 -5px 8px rgb(43 134 197 / 0.18), 0 4px 10px rgb(16 22 47 / 0.14);
     --warning-edge: #ec835a;
     --warning-ink: #a8461c;
     --success-edge: #15803d;
@@ -161,6 +164,8 @@
     /* The mark's pupil, two of the backdrop's orbs, the same in both modes (so only here, not in .dark). */
     --mark-pink: #ff3cac;
     --mark-teal: #00d2b8;
+    /* The firm spring, `FIRM` in `motion/play.ts`, the same in both modes. */
+    --spring-firm: linear(0.0000,0.0170,0.0614,0.1251,0.2010,0.2837,0.3687,0.4527,0.5333,0.6087,0.6778,0.7399,0.7947,0.8425,0.8832,0.9176,0.9459,0.9688,0.9870,1.0010,1.0115,1.0190,1.0239,1.0269,1.0282,1.0283,1.0274,1.0259,1.0239,1.0217,1.0193,1.0169,1.0145,1.0123,1.0102,1.0084,1.0067,1.0052,1.0039,1.0029,1);
 }
 
 /* DESIGN.md's look, night glass: tinted glass panels over a night gradient lit by colour orbs, white ink. */
@@ -191,6 +196,9 @@
     --input: rgb(255 255 255 / 0.35);
     --ring: #7ef9ff;
     --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23d9d3ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    --drop: linear-gradient(165deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0.06) 45%, rgb(126 249 255 / 0.2));
+    --drop-edge: rgb(255 255 255 / 0.5);
+    --drop-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65), inset 0 -5px 8px rgb(126 249 255 / 0.2), 0 4px 10px rgb(0 0 0 / 0.2);
     --warning-ink: #ffc8ab;
     --success-edge: #34d399;
     --notice: rgb(250 178 25 / 0.14);
@@ -240,6 +248,14 @@
     border: 1px solid var(--panel-edge);
     box-shadow: inset 0 1px 0 var(--panel-highlight), var(--panel-shadow);
     border-radius: var(--radius-panel);
+}
+
+/* The drop of glass a changed number forms in. */
+@utility drop-glass {
+    background: var(--drop);
+    border: 1px solid var(--drop-edge);
+    box-shadow: var(--drop-shadow);
+    border-radius: var(--radius-control);
 }
 
 @layer base {
@@ -313,13 +329,28 @@
   border-radius: var(--radius-control);
 }
 
+/* DESIGN.md's Motion, unlayered for the same reason: hover, presses and focus are instant everywhere, the generated
+   components included, a switch's thumb flows, and a dialog and a tooltip condense, a dialog going back faster than it came. */
+*, ::before, ::after {
+  transition: none;
+}
+[data-slot='switch-thumb'] {
+  transition: translate 160ms var(--spring-firm);
+}
+[data-slot='dialog-content'][data-state='closed'], [data-slot='dialog-overlay'][data-state='closed'] {
+  animation-duration: 120ms;
+}
+[data-slot='tooltip-content'] {
+  animation-duration: 200ms;
+}
+
 /* DESIGN.md's Motion: removed under prefers-reduced-motion. Every animation and transition ends at once, a dialog's
    and a tooltip's included; the table's edge cue, an animation on its scroll timeline, still follows the scroll. */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }

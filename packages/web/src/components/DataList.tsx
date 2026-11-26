@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import {
   createColumnHelper,
@@ -14,6 +14,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { cn } from 'cn';
+import { useFlow } from '../motion/index.ts';
 import { EmptyRow, NUM } from './Num.tsx';
 import { Pairs } from './Panel.tsx';
 import { RowToggle } from './RowToggle.tsx';
@@ -106,7 +107,8 @@ export function DataList<T extends RowData>({
   // render, never painting a stale page; a new array of the same rows keeps the page.
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
   const [sorting, setSorting] = useState<SortingState>([]);
-  const keys = rows.map(rowKey).join('\n');
+  const all = rows.map(rowKey);
+  const keys = all.join('\n');
   const [seenKeys, setSeenKeys] = useState(keys);
   if (keys !== seenKeys) {
     setSeenKeys(keys);
@@ -119,6 +121,7 @@ export function DataList<T extends RowData>({
     state: { pagination, sorting },
     onPaginationChange: setPagination,
     onSortingChange: (sort) => {
+      flow('sort');
       setSorting(sort);
       setPagination((p) => ({ ...p, pageIndex: 0 }));
     },
@@ -133,12 +136,19 @@ export function DataList<T extends RowData>({
     setSeenOpen(open);
     setToggled(new Set());
   }
-  const toggle = (key: string) =>
+  const opened = (key: string) => toggled.has(key) !== open;
+  const body = useRef<HTMLTableSectionElement>(null);
+  const shown = table.getRowModel().rows.map((row) => all[row.index]);
+  const withOpened = (keys: string[]) => keys.flatMap((key) => (opened(key) ? [key, `${key}\nopen`] : [key]));
+  const flow = useFlow(body, withOpened(shown), withOpened(all));
+  const toggle = (key: string) => {
+    if (!opened(key)) flow('open');
     setToggled((was) => {
       const next = new Set(was);
       if (!next.delete(key)) next.add(key);
       return next;
     });
+  };
   const folded = columns.filter((c) => c.fold);
   const toggleColumn = columns.find((c) => !c.fold);
   return (
@@ -159,12 +169,12 @@ export function DataList<T extends RowData>({
             ))}
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody ref={body}>
           {rows.length === 0 && empty !== undefined && <EmptyRow columns={columns.length}>{empty}</EmptyRow>}
           {table.getRowModel().rows.map((row) => {
             const r = row.original;
-            const key = rowKey(r, row.index);
-            const isOpen = toggled.has(key) !== open;
+            const key = all[row.index];
+            const isOpen = opened(key);
             // With nothing to open but its folded columns (no `extra`, every fact empty), a row opens only while they
             // fold, and not at all without them.
             const foldOnly = extra === undefined && shownPairs(r, facts).length === 0;

@@ -18,6 +18,7 @@ import {
   stepBy,
   verdictLabel,
 } from '../lib/format.ts';
+import { motionRuns } from '../motion/index.ts';
 import type { Unit, UnitKit } from './flow.ts';
 
 /** A finding's line: the Ended chip and every mark cell are this tall, so rules, dots and chip share a middle, a skipped
@@ -131,8 +132,7 @@ export function StepDetail({ unit, onClose }: { unit: Unit; onClose: () => void 
   // A step's detail opening, or showing another step, brings its title row into view if it isn't (instant under
   // reduced motion); closing it doesn't scroll.
   useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    titleRow.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'instant' : 'smooth' });
+    titleRow.current?.scrollIntoView({ block: 'nearest', behavior: motionRuns() ? 'smooth' : 'instant' });
   }, [unit.id]);
   return (
     <Section

@@ -82,7 +82,7 @@ components:
 
 ## Overview
 
-The dashboard answers one person's questions about their own coding workflow: what ran, what the reviews found, what it cost, what broke a rule. It is a playground and a portfolio piece, so it has a look of its own: **night glass**. A deep violet-to-navy gradient fills the page, lit from behind by four large, soft colour orbs. Everything the reader works with sits on glass panels that tint what is behind them. The look is bold in one place, the backdrop, and quiet everywhere the data is: on a panel, type is plain white, numbers line up, and colour appears only where it encodes a series or a state.
+The dashboard answers one person's questions about their own coding workflow: what ran, what the reviews found, what it cost, what broke a rule. It is a playground and a portfolio piece, so it has a look of its own: **night glass**. A deep violet-to-navy gradient fills the page, lit from behind by four large, soft colour orbs. Everything the reader works with sits on glass panels that tint what is behind them. The look is bold in one place, the backdrop, and quiet everywhere the data is: on a panel, type is plain white, numbers line up, and colour appears only where it encodes a series or a state. It is liquid glass: the panels are drops on one surface, and what moves behaves so.
 
 Dark is the look. Light mode is its daylight pair: the same panels, radii, type and rules, with pale blobs behind white glass and dark ink. The app follows the system's setting.
 
@@ -123,7 +123,7 @@ A glass menu rail on the left, as tall as the window and static while the page s
 
 ## Elevation & Depth
 
-Depth comes from glass, not from stacked shadows. One level: a panel has a 1px edge (white 30% dark / 85% light), an inner 1px top highlight (white 40% / 90%), and one soft drop shadow (`0 20px 50px rgb(10 5 40 / 0.45)` dark, `0 10px 30px rgb(30 40 90 / 0.12)` light), over its tint and sheen. A panel has no backdrop blur or saturation, since a filter on a panel is recomputed on every scroll frame over the fixed backdrop, and the backdrop is already soft. Popovers and chart tooltips are solid (`--popover`, the panel's solid colour) with the panel's edge, and shadcn's small tooltips invert (ink background, page-colour text), so they read over any panel. Never a panel inside a panel.
+Depth comes from glass, not from stacked shadows. One level: a panel has a 1px edge (white 30% dark / 85% light), an inner 1px top highlight (white 40% / 90%), and one soft drop shadow (`0 20px 50px rgb(10 5 40 / 0.45)` dark, `0 10px 30px rgb(30 40 90 / 0.12)` light), over its tint and sheen. A panel has no backdrop blur or saturation, since a filter on a panel is recomputed on every scroll frame over the fixed backdrop, and the backdrop is already soft; the page goes through a filter only while a wave runs. Popovers and chart tooltips are solid (`--popover`, the panel's solid colour) with the panel's edge, and shadcn's small tooltips invert (ink background, page-colour text), so they read over any panel. Never a panel inside a panel.
 
 With `prefers-reduced-transparency: reduce`, panels become solid (`#2a1d5e` / `#f7f8fd`); under `forced-colors`, the system colours take over and the edge stays.
 
@@ -150,6 +150,7 @@ Do:
 - Let the backdrop be the one bold element; keep panels calm.
 - Put every data region on a panel, and every number in tabular figures.
 - Use tinted, see-through panels and the coloured glow of the orbs: they are this project's look, not a template's.
+- Start a motion where the reader acted, or where the news came in.
 - Show, don't tell. Text that explains how to read a screen is allowed only after checking that it is necessary, not redundant with what is drawn, and not covering for a design gap.
 
 Don't:
@@ -157,6 +158,8 @@ Don't:
 - Use a series colour for text, or a status colour for a series.
 - Put a panel inside a panel, or a card around a single paragraph.
 - Animate the backdrop.
+- Move anything outside the four verbs.
+- Play a wave with nothing to say.
 
 ## Data display
 
@@ -173,7 +176,11 @@ Don't:
 
 ## Motion
 
-Motion explains a change and nothing else: a detail row opening, data refreshing in place. Transitions animate `opacity` and `transform` only, never `all`, finish within 200ms (exits faster than entrances), and are removed under `prefers-reduced-motion`. Charts do not animate. Hover changes are instant.
+Edward is liquid glass. What leaves is **washed** away, what arrives **condenses** from where it was called, what changes forms inside a drop and sends a **ripple**, and what moves **flows**. Every motion is one of the four; a plain fade or slide is a defect. A dialog and a tooltip condense; a switch's thumb flows.
+
+Motion explains a change and nothing else. The reader's own actions finish within 700 ms. A page is usable from its first frame, reads to its far corner within 1 s of the press and rests within 1.5 s. Two things take longer: an import (a 2 s wave; the last drop has evaporated 4.6 s after it lands) and the run graph drawing itself (1.2 s).
+
+Only `transform` and `opacity` animate, plus the graph's lines and, while a wave runs, the two water filters (a `clip-path` outside Chromium). Springs, never a bounce that hides a value. Numbers never count up. Charts, hover, focus, the backdrop, filters, paging, closing a row and showing mode change at once. Under `prefers-reduced-motion` everything does.
 
 ## Dark mode
 

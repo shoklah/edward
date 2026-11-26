@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { LabellerRequest, ShowingRequest, StatusResponse, TokenResponse } from '@cwd/shared';
+import { useLanding, wash } from './motion/index.ts';
 
 /** A GET the API answered with an error status, which the page can tell apart (a 404 is an unknown key). */
 export class ApiError extends Error {
@@ -33,16 +34,19 @@ export function useStatus() {
   });
 }
 
-/** A GET of the API whose key holds the last good import's time, so its data refetches in place when an import lands. */
+/** A GET of the API whose key holds the last good import's time, so its data refetches in place when an import lands,
+ * and `motion/` is told so. */
 export function useLiveQuery<T>(path: string) {
   const status = useStatus();
-  return useQuery({
+  const query = useQuery({
     queryKey: [path, status.data?.lastGoodImportAt ?? null],
     queryFn: () => getJson<T>(path),
     // Wait for the status, so the first fetch already has its key; a failed status still lets the page load.
     enabled: !status.isPending,
     placeholderData: keepPreviousData,
   });
+  useLanding(path, status.data, query.data === undefined ? undefined : !query.isPlaceholderData);
+  return query;
 }
 
 /** A POST to the API, with its body as JSON when given, answering its response. The header is the server's guard
@@ -57,6 +61,13 @@ async function post(path: string, body?: object): Promise<Response> {
   return response;
 }
 
+/** A POST that changes what the pages may show: no copy of the old page outlives it. */
+async function postAfresh(path: string, body?: object): Promise<void> {
+  wash.clear();
+  await post(path, body);
+  wash.clear();
+}
+
 /** Asks the server for an import now. */
 export async function refresh(): Promise<void> {
   await post('/api/refresh');
@@ -69,12 +80,12 @@ export async function markSeen(): Promise<void> {
 
 /** Shows only these projects in full, by key; an empty list stops showing mode. */
 export async function showProjects(projects: string[]): Promise<void> {
-  await post('/api/showing', { projects } satisfies ShowingRequest);
+  await postAfresh('/api/showing', { projects } satisfies ShowingRequest);
 }
 
 /** Views the account with this login, read-only, or with null one's own again (hosted mode). */
 export async function view(login: string | null): Promise<void> {
-  await post('/api/view', { login });
+  await postAfresh('/api/view', { login });
 }
 
 /** Creates a collector token (hosted mode), answering it raw, this once. */
@@ -95,7 +106,7 @@ export async function resetCollector(): Promise<void> {
 /** Keeps these projects, by key, as the list showing mode and viewers show; showing mode stays as it is, and an empty
  * list turns it off. */
 export async function saveShownProjects(projects: string[]): Promise<void> {
-  await post('/api/showing/projects', { projects } satisfies ShowingRequest);
+  await postAfresh('/api/showing/projects', { projects } satisfies ShowingRequest);
 }
 
 /** Sets the account's labeller (hosted mode): its model and daily max, and its Anthropic key (absent keeps the stored
@@ -136,5 +147,5 @@ export async function deleteAccountAsAdmin(id: number): Promise<void> {
 
 /** Ends the session (hosted mode). */
 export async function signOut(): Promise<void> {
-  await post('/auth/signout');
+  await postAfresh('/auth/signout');
 }

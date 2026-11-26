@@ -2,7 +2,8 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, test, vi } from 'vitest';
-import { ApiError, retry, useLiveQuery } from './api.ts';
+import { ApiError, retry, saveShownProjects, showProjects, signOut, useLiveQuery, view } from './api.ts';
+import { attach } from './motion/wash.ts';
 
 let lastGoodImportAt = '2026-11-12T10:00:00.000Z';
 let thingFetches = 0;
@@ -94,4 +95,23 @@ test('a 401 sends the page to the sign-in page, and is not retried', async () =>
   expect(destinations).toEqual(['/signin']);
   expect(thingFetches).toBe(1);
   expect(retry(0, new ApiError('/api/thing', 401))).toBe(false);
+});
+
+test.each([
+  ['showProjects', () => showProjects([])],
+  ['saveShownProjects', () => saveShownProjects([])],
+  ['view', () => view(null)],
+  ['signOut', () => signOut()],
+])('%s leaves no copy of the page, from the press to the answer', async (_, post) => {
+  let answer = (_: Response) => {};
+  vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise((resolve) => (answer = resolve)));
+  const copies = () => document.querySelectorAll('[data-copy]').length;
+  attach('page', []);
+  const answered = post();
+  expect(copies()).toBe(0);
+  attach('page', []);
+  expect(copies()).toBe(1);
+  answer(new Response(null, { status: 204 }));
+  await answered;
+  expect(copies()).toBe(0);
 });

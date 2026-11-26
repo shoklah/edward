@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, within } from 'storybook/test';
+import { expect, fn, waitFor, within } from 'storybook/test';
 import { parseTime } from '@cwd/shared';
+import { Panel } from '../components/Panel.tsx';
 import { WARNING_INK, formatDayTime } from '../lib/format.ts';
+import { eachFrame, fits, motionOn, played } from '../test/motion.ts';
 import { runFull, runKits, runLong, runPlanPair, runPlanTwice, runSmall } from '../test/runs.ts';
 import { width } from '../test/table.ts';
 import { stagesOf, unitsOf } from './flow.ts';
@@ -92,15 +95,110 @@ export const Full: Story = {
   },
 };
 
-/** Selected: the box shows as pressed, and pressing it again clears the selection. */
+/** The selection rings in the flow. */
+const rings = (flow: HTMLElement) => [...flow.querySelectorAll<HTMLElement>('[data-ring]')];
+const rect = (el: Element) => el.getBoundingClientRect().toJSON();
+
+/** Selected: the box shows as pressed, with the ring at its place and no outline of its own, and pressing it again
+ * clears the selection. */
 export const Selected: Story = {
   args: { selected: 't1' },
   decorators: [width(1100)],
-  play: async ({ canvas, args, userEvent }) => {
+  play: async ({ canvas, canvasElement, args, userEvent }) => {
     const task1 = canvas.getByRole('button', { name: /^Task 1(?!\d)/ });
     await expect(task1).toHaveAttribute('aria-pressed', 'true');
+    await expect(task1.className).not.toContain('outline');
+    const [ring] = rings(canvasElement);
+    await expect(ring).toHaveAttribute('aria-hidden', 'true');
+    await expect(rect(ring)).toEqual(rect(task1));
     await userEvent.click(task1);
     await expect(args.onSelect).toHaveBeenCalledWith(null);
+  },
+};
+
+/** The ring flows from a selected box to the next: a first selection, or none, changes at once. */
+export const RingFlows: Story = {
+  decorators: [width(1100)],
+  render: function Selecting(args) {
+    const [selected, select] = useState<string | null>(null);
+    return <RunFlow {...args} selected={selected} onSelect={select} />;
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const task1 = canvas.getByRole('button', { name: /^Task 1(?!\d)/ });
+    const check = canvas.getByRole('button', { name: /^Wave A check/ });
+    const pressed = () => [task1, check].map((box) => box.getAttribute('aria-pressed'));
+    motionOn();
+    await expect(rings(canvasElement)).toHaveLength(0);
+    await userEvent.click(task1);
+    await expect(rings(canvasElement)).toHaveLength(1);
+    const [ring] = rings(canvasElement);
+    await expect(ring).toHaveAttribute('aria-hidden', 'true');
+    await expect(rect(ring)).toEqual(rect(task1));
+    await expect(played(canvasElement)).toEqual([]);
+    await expect(pressed()).toEqual(['true', 'false']);
+
+    await userEvent.click(check);
+    await expect(rings(canvasElement)).toEqual([ring]);
+    await expect(played(canvasElement)).toEqual([{ verb: 'flow', ms: 420, el: ring }]);
+    // It starts at the first box's place.
+    const [flow] = ring.getAnimations();
+    flow.pause();
+    flow.currentTime = 0;
+    await expect(rect(ring)).toEqual(rect(task1));
+    flow.finish();
+    await expect(rect(ring)).toEqual(rect(check));
+    await expect(pressed()).toEqual(['false', 'true']);
+
+    await userEvent.click(check);
+    await expect(rings(canvasElement)).toHaveLength(0);
+    await expect(played(canvasElement)).toEqual([]);
+    await expect(pressed()).toEqual(['false', 'false']);
+  },
+};
+
+/** 28 tasks in two rows, the first row's last box at the row's end. */
+const long = stagesOf([
+  runFull.timeline[0],
+  ...Array.from({ length: 28 }, (_, i) => ({ ...runFull.timeline[0], kind: 'task' as const, label: `Task ${i + 1}`, tasks: [{ task: i + 1, steps: [] }] })),
+  runFull.timeline.at(-1)!,
+]);
+
+/** The ring springs past the row's last box and the page doesn't scroll: the app's root is clipped while the ring flows,
+ * also when the ring is gone by then, and no longer. */
+export const RingFits: Story = {
+  args: { stages: long },
+  decorators: [
+    (Story) => (
+      // The page's room around a panel 2314 px wide inside.
+      <div data-testid="page" className="overflow-auto p-4" style={{ width: 2314 + 66 }}>
+        <div id="root">
+          <Panel title="Flow">
+            <Story />
+          </Panel>
+        </div>
+      </div>
+    ),
+  ],
+  render: RingFlows.render,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const overflow = () => getComputedStyle(document.getElementById('root')!).overflow;
+    const boxes = canvas.getAllByRole('button');
+    const top = boxes[0].offsetTop;
+    const last = boxes.filter((box) => box.offsetTop === top).at(-1)!;
+    motionOn();
+    await userEvent.click(boxes[0]);
+    await expect(overflow()).toBe('visible');
+    await userEvent.click(last);
+    await expect(overflow()).toBe('clip');
+    await eachFrame(canvasElement, () => fits(canvas.getByTestId('page')));
+    await waitFor(() => expect(overflow()).toBe('visible'));
+
+    // Cleared while the ring flows.
+    await userEvent.click(boxes[0]);
+    await expect(overflow()).toBe('clip');
+    await userEvent.click(boxes[0]);
+    await expect(rings(canvasElement)).toHaveLength(0);
+    await waitFor(() => expect(overflow()).toBe('visible'));
   },
 };
 

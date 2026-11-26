@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from 'cn';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table.tsx';
 import { cellShade, formatCount, total, weekLabel } from '../lib/format.ts';
+import { useRipple } from '../motion/index.ts';
 import { NUM, Num } from './Num.tsx';
 
 /** A cell of a heatmap: its row's id and a week. */
@@ -13,6 +14,27 @@ export type HeatmapRow = { id: string; name: string; values: (number | null)[]; 
 
 /** A group of rows, under a full-width heading row unless its heading is null. */
 export type HeatmapGroup = { heading: ReactNode | null; rows: HeatmapRow[] };
+
+/** A cell's button, its number written in it. */
+function Cell({ label, text, shade, pressed, onClick }: { label: string; text: string; shade: string; pressed: boolean; onClick: () => void }) {
+  const { ref, children } = useRipple<HTMLButtonElement>(text);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      aria-pressed={pressed}
+      aria-label={`${label}: ${text}`}
+      onClick={onClick}
+      className={cn(
+        'h-8 w-full min-w-12 rounded-sm px-1 text-sm whitespace-nowrap tabular-nums',
+        shade,
+        pressed && 'outline-2 outline-offset-1 outline-foreground',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 /**
  * Rows down and the weeks across, each cell a button with its number written in it (`format`, a count by default), so
@@ -84,23 +106,15 @@ export function HeatmapTable({
               </TableHead>
               {row.values.map((value, i) => {
                 const week = weeks[i];
-                const text = format(value);
-                const pressed = selected?.id === row.id && selected.week === week;
                 return (
                   <TableCell key={week} className="p-0.5">
-                    <button
-                      type="button"
-                      aria-pressed={pressed}
-                      aria-label={`${row.name}, week of ${labels[i]}: ${text}`}
+                    <Cell
+                      label={`${row.name}, week of ${labels[i]}`}
+                      text={format(value)}
+                      shade={cellShade(value ?? 0, max)}
+                      pressed={selected?.id === row.id && selected.week === week}
                       onClick={() => onSelect({ id: row.id, week })}
-                      className={cn(
-                        'h-8 w-full min-w-12 rounded-sm px-1 text-sm whitespace-nowrap tabular-nums',
-                        cellShade(value ?? 0, max),
-                        pressed && 'outline-2 outline-offset-1 outline-foreground',
-                      )}
-                    >
-                      {text}
-                    </button>
+                    />
                   </TableCell>
                 );
               })}

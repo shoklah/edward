@@ -1,6 +1,7 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useRef, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from 'cn';
+import { useTurn } from '../motion/index.ts';
 import { LINK } from './Panel.tsx';
 
 /** A table row's toggle for its detail rows: a button with `aria-expanded`, its chevron, an optional mark `before`
@@ -26,9 +27,11 @@ export function RowToggle({
   children?: ReactNode;
 }) {
   const linkId = useId();
+  const icon = useRef<SVGSVGElement>(null);
+  useTurn(icon, open);
   const Chevron = open ? ChevronDown : ChevronRight;
   // Beside a link the toggle heads a section on the backdrop, so its chevron takes primary ink.
-  const chevron = <Chevron aria-hidden className={cn('size-4 flex-none', !link && 'text-muted-foreground')} />;
+  const chevron = <Chevron ref={icon} aria-hidden className={cn('size-4 flex-none', !link && 'text-muted-foreground')} />;
   if (link) {
     return (
       <span className="flex items-center gap-2">
