@@ -231,20 +231,32 @@ test.describe('the page switch', () => {
   });
 
   test('what a page adds during its wave condenses too, and what it adds after it does not', async ({ page }) => {
+    // What condenses, kept as it starts, so one a slow browser has already ended still counts.
+    await page.addInitScript(() => {
+      const kept: Element[] = ((window as unknown as { condensed: Element[] }).condensed = []);
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (this: Element, frames, options) {
+        if ((options as KeyframeAnimationOptions).id === 'condense') kept.push(this);
+        return animate.call(this, frames, options);
+      };
+    });
     const weeks = async (late: boolean) => {
       await page.goto('/work', { waitUntil: 'networkidle' });
+      // Early, the page's data comes as soon as the server answers, inside the wave; late, once the wave is done.
       const { held, release } = hold();
-      await page.route('**/api/weeks*', async (route) => {
-        await held;
-        await route.continue();
-      });
+      if (late) {
+        await page.route('**/api/weeks*', async (route) => {
+          await held;
+          await route.continue();
+        });
+      }
       await rail(page).getByRole('link', { name: 'Weeks' }).click();
       await expect(copy(page)).toHaveCount(1);
       if (late) await rested(page);
       release();
       const table = page.getByRole('region', { name: 'By week table', exact: true });
       await expect(table).toBeAttached();
-      const moving = await table.evaluate((el) => document.getAnimations().some((a) => a.id === 'condense' && (a.effect as KeyframeEffect).target!.contains(el)));
+      const moving = await table.evaluate((el) => (window as unknown as { condensed: Element[] }).condensed.some((block) => block.contains(el)));
       await page.unroute('**/api/weeks*');
       return moving;
     };
